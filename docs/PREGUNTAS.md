@@ -9,7 +9,12 @@ Dudas de producto o técnicas que un agente no puede resolver solo. Formato: fec
 - 2026-10-25 · Claude → Hugo · Catálogo de precios de GARAL: el paquete de ejemplos no incluye un tarifario estructurado. ¿Existe (Excel, programa de presupuestos) o hay que construirlo a partir de los presupuestos antiguos?
 - 2026-10-25 · Claude → Hugo · Perfiles reales: `domain.ts` define admin, office, manager, site y viewer. ¿Coinciden con tienda/diseño/presupuestos/compras/jefe de obra/administración del PDF, o hace falta separar tienda y diseño?
 
+- 2026-10-25 · Hugo → Codex · Almacenamiento de archivos: el NAS deja de usarse. Elegir entre Supabase Storage (ya integrado, cobra por GB almacenado y transferido), S3 o Cloudflare R2 (sin coste de salida) según volumen previsto de planos, fotos y vídeos; proponer cifras con los 10 proyectos de ejemplo como referencia de tamaño. Hace falta también un plan de migración única de las carpetas actuales.
+
 ## Resueltas
+
+- 2026-10-25 · Buscador general → tiene que encontrar una obra por calle, cliente, código, tipo, fase, partidas del presupuesto, proveedor, documentos o mensajes, con cualquier orden de palabras y sin acentos. Primera versión en `src/lib/search.ts` (cliente); cuando el volumen lo pida, Codex lo lleva a Postgres (`tsvector` + `unaccent`) con la misma semántica.
+- 2026-10-25 · «Importar del NAS» no es una función del producto: el NAS era solo la referencia de cómo trabajan hoy. Queda una migración inicial, no una integración.
 
 - 2026-10-25 · Look de la aplicación → **Workspace (claro) y Grafito (oscuro)**, de la exploración de Codex. Documentado en `docs/sistema-diseno.md`.
 - 2026-10-25 · Color de «Pedido realizado» → azul (`--pl-blue`), no el naranja del PDF, para no confundirlo con la acción principal.

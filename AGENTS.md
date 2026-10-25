@@ -21,7 +21,7 @@ Si algo no está en estas fuentes, no se inventa: se anota como pregunta en `doc
 
 **Codex** es responsable de:
 - Modelo de datos, migraciones y políticas RLS en Supabase; autenticación y permisos por rol (`Role` en `domain.ts`).
-- API y comandos (`src/app/api/**`, `applyCommand`, validación con zod), almacenamiento de archivos, importación del NAS.
+- API y comandos (`src/app/api/**`, `applyCommand`, validación con zod) y almacenamiento de archivos. El NAS actual de GARAL deja de usarse con Plano: hace falta una migración inicial de sus carpetas y un almacenamiento en la nube elegido por relación calidad/precio (Supabase Storage, S3, R2…); la decisión está en `docs/PREGUNTAS.md`.
 - Motor de cálculo de presupuestos (partidas, ajustes, versiones, comparación) y su lógica de negocio.
 - Integraciones de servicio: SMS/notificaciones, exportación PDF, transcripción de voz, análisis de planos.
 - Infraestructura: Vercel, variables de entorno, CI, `npm run check`.
