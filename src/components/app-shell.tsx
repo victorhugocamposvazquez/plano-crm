@@ -2,7 +2,7 @@
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { House, Layers2, CalendarDays, FileText, Users, Package, FolderOpen, Wallet, Menu, SquarePen, LogOut } from "lucide-react";
+import { House, Layers2, CalendarDays, FileText, BookOpen, Users, Package, FolderOpen, Wallet, Menu, SquarePen, LogOut } from "lucide-react";
 import { Brand } from "@/components/ui/brand";
 import { useWorkspace } from "@/components/workspace-provider";
 import { roleNames } from "@/lib/domain";
@@ -15,6 +15,7 @@ const items = [
   { href: "/proyectos", label: "Proyectos", icon: Layers2, primary: true },
   { href: "/agenda", label: "Agenda", icon: CalendarDays, primary: true },
   { href: "/presupuestos", label: "Presupuestos", icon: FileText },
+  { href: "/catalogo", label: "Catálogo de precios", icon: BookOpen },
   { href: "/clientes", label: "Clientes", icon: Users },
   { href: "/compras", label: "Compras", icon: Package },
   { href: "/documentos", label: "Documentos", icon: FolderOpen },
