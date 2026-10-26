@@ -1631,3 +1631,97 @@ p {
   display: inline-flex;
 }
 
+
+/* ---------- Capa semántica y elevación ---------- */
+
+.status[data-tone="success"] { color: var(--pl-success); }
+.status[data-tone="info"] { color: var(--pl-info); }
+.status[data-tone="danger"] { color: var(--pl-danger); }
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: var(--pl-radius-full);
+  font-size: var(--pl-text-sm);
+  font-weight: var(--pl-weight-medium);
+  background: var(--pl-raised);
+  color: var(--pl-muted);
+}
+
+.pill::before {
+  content: "";
+  width: var(--pl-dot);
+  height: var(--pl-dot);
+  border-radius: var(--pl-radius-full);
+  background: currentColor;
+}
+
+.pill[data-tone="success"] { background: var(--pl-success-bg); color: var(--pl-success); }
+.pill[data-tone="info"] { background: var(--pl-info-bg); color: var(--pl-info); }
+.pill[data-tone="warning"] { background: var(--pl-warning-bg); color: var(--pl-warning); }
+.pill[data-tone="danger"] { background: var(--pl-danger-bg); color: var(--pl-danger); }
+.pill[data-tone="ink"] { background: var(--pl-ink); color: var(--pl-bg); }
+
+/* Medidor: verde por defecto, ámbar con plazos vencidos, rojo con la entrega pasada */
+.meter[data-tone="success"] > span { background: var(--pl-success); }
+.meter[data-tone="warning"] > span { background: var(--pl-warning); }
+.meter[data-tone="danger"] > span { background: var(--pl-danger); }
+.meter[data-tone="neutral"] > span { background: var(--pl-ink); }
+.meter[data-done="true"] > span { background: var(--pl-success); }
+
+.progress-value[data-tone="success"] { color: var(--pl-success); }
+.progress-value[data-tone="warning"] { color: var(--pl-warning); }
+.progress-value[data-tone="danger"] { color: var(--pl-danger); }
+
+/* Elevación: paneles sobre la página; en Grafito el escalón lo da la superficie */
+.panel,
+.line,
+.summary a,
+.kpi-card {
+  background: var(--pl-surface);
+  box-shadow: var(--pl-shadow-1);
+}
+
+.panel-head {
+  background: var(--pl-surface-zone);
+}
+
+.notice,
+.auth-card .empty {
+  box-shadow: var(--pl-shadow-2);
+}
+
+/* Zona: agrupa un bloque secundario (lateral de la ficha, resúmenes) */
+.zone {
+  padding: 16px;
+  border-radius: var(--pl-radius-panel);
+  background: var(--pl-surface-zone);
+}
+
+.zone .panel,
+.zone .line {
+  box-shadow: none;
+}
+
+@media (min-width: 1280px) {
+  .zone {
+    padding: 20px;
+  }
+}
+
+/* Chips de versión con la capa semántica */
+.chip-version[data-kind="approved"] {
+  border-color: var(--pl-success);
+  background: var(--pl-success-bg);
+}
+
+.chip-version[data-kind="approved"] .pl-mono {
+  color: var(--pl-success);
+}
+
+/* Partidas cambiadas: el delta en ámbar sigue, lo eliminado en rojo */
+.row-item .removed {
+  color: var(--pl-danger);
+}

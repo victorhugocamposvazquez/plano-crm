@@ -29,7 +29,7 @@ export function buildAgenda(data: Workspace, today = localDate()): Agenda {
   };
 }
 
-export type AlertTone = "warning" | "ink" | "blue" | "muted";
+export type AlertTone = "danger" | "warning" | "ink" | "info" | "success" | "muted";
 export type Alert = { id: string; tone: AlertTone; title: string; detail: string; href: string; kind: "task" | "approval" | "draft" | "purchase" | "estimate" };
 
 /**
@@ -43,13 +43,13 @@ export function buildAlerts(data: Workspace, today = localDate()): Alert[] {
   const overdue = buildAgenda(data, today).overdue;
   for (const task of overdue) {
     const days = Math.round((Date.parse(`${today}T12:00:00`) - Date.parse(`${task.due_date}T12:00:00`)) / 86400000);
-    alerts.push({ id: `task-${task.id}`, tone: "warning", kind: "task", title: task.title, detail: `${task.project.name} · ${task.trade} · ${days === 1 ? "vence desde ayer" : `${days} días de retraso`}`, href: `/proyectos/${task.project_id}` });
+    alerts.push({ id: `task-${task.id}`, tone: "danger", kind: "task", title: task.title, detail: `${task.project.name} · ${task.trade} · ${days === 1 ? "vence desde ayer" : `${days} días de retraso`}`, href: `/proyectos/${task.project_id}` });
   }
 
   for (const version of data.versions.filter(v => v.status === "issued")) {
     const budget = data.budgets.find(b => b.id === version.budget_id); const p = budget && project(budget.project_id);
     if (!p) continue;
-    alerts.push({ id: `issued-${version.id}`, tone: "ink", kind: "approval", title: `V${version.number} cerrada, pendiente de aprobar`, detail: `${p.name} · ${budget.title} · ${version.change_reason}`, href: `/proyectos/${p.id}` });
+    alerts.push({ id: `issued-${version.id}`, tone: "warning", kind: "approval", title: `V${version.number} cerrada, pendiente de aprobar`, detail: `${p.name} · ${budget.title} · ${version.change_reason}`, href: `/proyectos/${p.id}` });
   }
 
   for (const version of data.versions.filter(v => v.status === "draft")) {
@@ -62,7 +62,7 @@ export function buildAlerts(data: Workspace, today = localDate()): Alert[] {
 
   for (const purchase of data.purchases.filter(p => p.status === "ordered")) {
     const p = project(purchase.project_id); if (!p) continue;
-    alerts.push({ id: `purchase-${purchase.id}`, tone: "blue", kind: "purchase", title: `${purchase.name} · pedido, sin recibir`, detail: `${p.name} · ${purchase.supplier} · ${purchase.received_quantity}/${purchase.quantity} ${purchase.unit}`, href: `/proyectos/${p.id}` });
+    alerts.push({ id: `purchase-${purchase.id}`, tone: "info", kind: "purchase", title: `${purchase.name} · pedido, sin recibir`, detail: `${p.name} · ${purchase.supplier} · ${purchase.received_quantity}/${purchase.quantity} ${purchase.unit}`, href: `/proyectos/${p.id}` });
   }
 
   for (const p of data.projects.filter(p => p.status === "lead" && !data.budgets.some(b => b.project_id === p.id))) {

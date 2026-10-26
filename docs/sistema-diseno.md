@@ -130,3 +130,28 @@ import "@/styles/tokens.css";
 - Sin atributo, el tema sigue a `prefers-color-scheme`. `<html data-theme="light">` fuerza Workspace y `<html data-theme="dark">` fuerza Grafito; guardar la preferencia del usuario ahí.
 - `data-accent="orange"` en el contenedor de una pantalla activa la variante naranja del botón principal.
 - Los componentes solo leen variables `--pl-*`; ningún color en hexadecimal fuera de `tokens.css`.
+
+## 2b. Capa semántica y elevación (añadida el 26-10-2026)
+
+El sistema sigue siendo casi monocromo, pero los **estados que cambian decisiones** ganan color propio, siempre con texto al lado:
+
+| Token | Significa | Workspace | Grafito | Dónde |
+|---|---|---|---|---|
+| `--pl-success` / `--pl-success-bg` | conseguido, en marcha sin problemas | `#2F7D4F` / `#E2F0E7` | `#6CC08A` / `#1B3326` | avance del proyecto, tarea hecha, aprobada para obra, material en obra, proyecto finalizado |
+| `--pl-info` / `--pl-info-bg` | en curso, pedido, enlace | = `--pl-blue` / `#E3ECF4` | = `--pl-blue` / `#1C2E40` | «En obra», pedido realizado, revisión cerrada |
+| `--pl-warning` / `--pl-warning-bg` | pendiente, revisar | `#926022` / `#F7ECD8` | `#D4AE79` / `#3A2E14` | pendiente de aprobar, recibido sin entregar, avance con plazos vencidos |
+| `--pl-danger` / `--pl-danger-bg` | vencido, rechazado, eliminado | `#B83A2E` / `#F6E3E1` | `#E8756B` / `#3E1F1C` | tarea atrasada, entrega pasada, partida eliminada |
+
+- **Medidor de avance** (`.meter[data-tone]`): verde por defecto; ámbar si el proyecto tiene tareas vencidas; rojo si la fecha de entrega ha pasado; el porcentaje toma el mismo color (`.progress-value`).
+- **Píldora** (`.pill[data-tone]`): fondo tintado + punto, para listas densas donde el punto solo no basta. El punto + texto (`.status`) sigue siendo la forma por defecto.
+- El naranja no entra en esta capa: sigue siendo firma de marca y acción.
+
+**Elevación.** Dos niveles:
+
+| Token | Workspace | Grafito | Uso |
+|---|---|---|---|
+| `--pl-shadow-1` + `--pl-surface` | sombra muy suave sobre `--pl-bg` | sin sombra; la superficie sube a `--pl-soft` | paneles, tarjetas, líneas de estimación, resúmenes |
+| `--pl-shadow-2` | sombra flotante | sombra flotante más densa | hoja inferior, toast, menús |
+| `--pl-surface-zone` | `--pl-soft` | `#15171A` (más hundido que el fondo) | **zona** (`.zone`): bloque secundario como el lateral de la ficha; dentro de una zona los paneles no llevan sombra |
+
+Regla: un panel se separa de la página por elevación, una zona agrupa paneles por fondo. No se combinan borde grueso + sombra + fondo en el mismo elemento.

@@ -30,7 +30,7 @@ describe("Agenda del día", () => {
     expect(agenda.overdue.map(t => t.id)).toContain(stale.tasks[0].id);
     const alerts = buildAlerts(stale, today);
     expect(alerts[0].kind).toBe("task");
-    expect(alerts[0].tone).toBe("warning");
+    expect(alerts[0].tone).toBe("danger");
   });
 });
 

@@ -6,7 +6,8 @@ import { ArrowLeft, Ellipsis } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
 import { Tabs } from "@/components/ui/tabs";
 import { Button, LinkButton } from "@/components/ui/button";
-import { ProjectStatus, Meter } from "@/components/ui/status";
+import { ProjectStatus, Meter, progressTone } from "@/components/ui/status";
+import { localDate } from "@/lib/hoy";
 import { DocumentsPanel } from "@/components/project/documents-panel";
 import { ChatPanel } from "@/components/project/chat-panel";
 import { PurchasesPanel } from "@/components/project/purchases-panel";
@@ -54,6 +55,8 @@ export default function ObraPage() {
   if (!project) return <div className="empty"><strong>Proyecto no encontrado</strong><LinkButton href="/proyectos" variant="ghost">Volver a proyectos</LinkButton></div>;
 
   const progress = projectProgress(data, project.id);
+  const overdueTasks = tasks.filter(t => t.status === "pending" && t.due_date < localDate()).length;
+  const meterTone = progressTone({ overdue: overdueTasks, done: project.status === "completed" || progress >= 100 });
   const changeFor = (itemId: string) => changes.find(c => c.id === itemId);
 
   return (
@@ -76,9 +79,9 @@ export default function ObraPage() {
             <div className="panel-body">
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
                 <ProjectStatus status={project.status} />
-                <span className="pl-mono text-sm">{progress}%</span>
+                <span className="pl-mono text-sm progress-value" data-tone={meterTone}>{progress}%</span>
               </div>
-              <div style={{ marginTop: 9 }}><Meter value={progress} label={`Avance de ${project.name}`} /></div>
+              <div style={{ marginTop: 9 }}><Meter value={progress} label={`Avance de ${project.name}`} tone={meterTone} /></div>
               <p className="muted text-xs" style={{ marginTop: 8 }}>{tasks.filter(t => t.status === "done").length} de {tasks.length} tareas completadas · avance ponderado por tarea</p>
             </div>
             <div className="kpis">
@@ -140,7 +143,7 @@ export default function ObraPage() {
                     })}
                     {changes.filter(c => c.kind === "removed").map(change => (
                       <div key={change.id} className="row-item">
-                        <span><strong style={{ textDecoration: "line-through", color: "var(--pl-muted)" }}>{change.before?.description}</strong><small className="warning">Eliminada en V{working?.number}</small></span>
+                        <span><strong className="removed" style={{ textDecoration: "line-through" }}>{change.before?.description}</strong><small className="warning">Eliminada en V{working?.number}</small></span>
                         <span className="pl-mono muted text-xs">{change.before?.quantity} {change.before?.unit}</span>
                         <span className="pl-mono muted">{signed(change.delta)}</span>
                       </div>
@@ -177,7 +180,7 @@ export default function ObraPage() {
           {section === "purchases" && <PurchasesPanel projectId={project.id} purchases={purchases} />}
         </div>
 
-        <aside style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        <aside className="zone" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           <div>
             <div className="section-label" style={{ marginTop: 0 }}><span>Tareas</span><span className="pl-mono">{tasks.filter(t => t.status === "pending").length} pendientes</span></div>
             <div className="panel">
