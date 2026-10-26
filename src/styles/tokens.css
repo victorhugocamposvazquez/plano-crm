@@ -214,3 +214,48 @@ a {
     animation-duration: 0.01ms !important;
   }
 }
+
+/*
+ * Capa semántica y elevación (26-10-2026). Cuatro tonos con su fondo tintado y dos niveles de sombra.
+ * En Grafito la elevación se expresa con un escalón de superficie, no con sombra.
+ */
+:root {
+  --pl-success: #2f7d4f;
+  --pl-success-bg: #e2f0e7;
+  --pl-info: var(--pl-blue);
+  --pl-info-bg: #e3ecf4;
+  --pl-warning-bg: #f7ecd8;
+  --pl-danger: #b83a2e;
+  --pl-danger-bg: #f6e3e1;
+
+  --pl-surface: var(--pl-bg);
+  --pl-surface-zone: var(--pl-soft);
+  --pl-shadow-1: 0 1px 2px rgb(32 39 45 / 0.04), 0 2px 10px rgb(32 39 45 / 0.05);
+  --pl-shadow-2: var(--pl-shadow-float);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --pl-success: #6cc08a;
+    --pl-success-bg: #1b3326;
+    --pl-info-bg: #1c2e40;
+    --pl-warning-bg: #3a2e14;
+    --pl-danger: #e8756b;
+    --pl-danger-bg: #3e1f1c;
+    --pl-surface: var(--pl-soft);
+    --pl-surface-zone: #15171a;
+    --pl-shadow-1: none;
+  }
+}
+
+:root[data-theme="dark"] {
+  --pl-success: #6cc08a;
+  --pl-success-bg: #1b3326;
+  --pl-info-bg: #1c2e40;
+  --pl-warning-bg: #3a2e14;
+  --pl-danger: #e8756b;
+  --pl-danger-bg: #3e1f1c;
+  --pl-surface: var(--pl-soft);
+  --pl-surface-zone: #15171a;
+  --pl-shadow-1: none;
+}

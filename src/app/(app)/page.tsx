@@ -44,7 +44,7 @@ export default function HoyPage() {
         ))}</div>
   );
 
-  const toneFor = (tone: Tone | "muted") => tone;
+  const toneFor = (tone: Tone) => tone;
 
   return (
     <div className="page">
@@ -83,7 +83,7 @@ export default function HoyPage() {
           {!canToggle && <p className="muted text-xs" style={{ marginTop: 8 }}>Tu perfil puede consultar la agenda pero no marcar tareas.</p>}
         </section>
 
-        <aside style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        <aside className="zone" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
           <div>
             <div className="section-label" style={{ marginTop: 0 }}><span>Atención</span><span className="pl-mono">{String(alerts.length).padStart(2, "0")}</span></div>
             <div className="panel">
