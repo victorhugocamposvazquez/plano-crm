@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { ArrowLeft, Ellipsis } from "lucide-react";
@@ -7,24 +7,41 @@ import { useWorkspace } from "@/components/workspace-provider";
 import { Tabs } from "@/components/ui/tabs";
 import { Button, LinkButton } from "@/components/ui/button";
 import { ProjectStatus, PurchaseStatus, Meter } from "@/components/ui/status";
-import { projectProgress, money, totals, dateLabel, compareVersions, kindNames, lineTotal, type BudgetVersion, type ItemChange } from "@/lib/domain";
+import { projectProgress, money, totals, dateLabel, compareVersions, kindNames, lineTotal, type Budget, type BudgetVersion, type ItemChange, type Workspace } from "@/lib/domain";
 
 type Section = "budget" | "documents" | "chat" | "purchases";
+
+/** Revisión aprobada de un presupuesto, si la hay. */
+function approvedOf(data: Workspace, budget: Budget | undefined) {
+  return budget?.approved_version_id ? data.versions.find(v => v.id === budget.approved_version_id) : undefined;
+}
+
+/** Importe firmado en base (sin IVA): las comparaciones usan siempre el mismo criterio que `compareVersions`. */
+const signed = (cents: number) => `${cents < 0 ? "−" : "+"}${money(Math.abs(cents))}`;
 
 export default function ObraPage() {
   const { id } = useParams<{ id: string }>();
   const { data, loading } = useWorkspace();
   const [section, setSection] = useState<Section>("budget");
+  const [budgetId, setBudgetId] = useState<string | null>(null);
 
   const project = data.projects.find(p => p.id === id);
-  const budget = data.budgets.find(b => b.project_id === id);
+  const budgets = useMemo(() => data.budgets.filter(b => b.project_id === id).sort((a, b) => a.created_at.localeCompare(b.created_at)), [data.budgets, id]);
+  useEffect(() => { if (!budgetId || !budgets.some(b => b.id === budgetId)) setBudgetId(budgets[0]?.id ?? null); }, [budgets, budgetId]);
+  const budget = budgets.find(b => b.id === budgetId) ?? budgets[0];
   const versions = useMemo(() => data.versions.filter(v => v.budget_id === budget?.id).sort((a, b) => b.number - a.number), [data.versions, budget?.id]);
-  const approved = versions.find(v => v.id === budget?.approved_version_id);
+  const approved = approvedOf(data, budget);
   const working = versions.find(v => v.status === "draft" || v.status === "issued");
   const changes: ItemChange[] = approved && working ? compareVersions(approved, working) : [];
-  const delta = changes.reduce((sum, c) => sum + c.delta, 0);
-  const shown: BudgetVersion | undefined = working ?? approved;
-  const certified = data.certifications.filter(c => c.project_id === id).reduce((sum, c) => sum + c.amount, 0);
+  const deltaBase = changes.reduce((sum, c) => sum + c.delta, 0);
+  const shown: BudgetVersion | undefined = working ?? approved ?? versions[0];
+
+  // El total de la obra suma la base aprobada de todos sus ámbitos (apartamento, piso, terraza…).
+  const approvedProjectBase = budgets.reduce((sum, b) => { const v = approvedOf(data, b); return sum + (v ? totals(v.items).base : 0); }, 0);
+  const approvedScopes = budgets.filter(b => approvedOf(data, b)).length;
+  // Las certificaciones de hoy son borradores con importe base: todavía no están validadas ni facturadas.
+  const certificationsDraft = data.certifications.filter(c => c.project_id === id).reduce((sum, c) => sum + c.amount, 0);
+
   const documents = data.documents.filter(d => d.project_id === id);
   const messages = data.messages.filter(m => m.project_id === id);
   const purchases = data.purchases.filter(p => p.project_id === id);
@@ -62,14 +79,14 @@ export default function ObraPage() {
               <p className="muted text-xs" style={{ marginTop: 8 }}>{tasks.filter(t => t.status === "done").length} de {tasks.length} tareas completadas · avance ponderado por tarea</p>
             </div>
             <div className="kpis">
-              <div className="kpi"><small>Aprobado</small><strong>{approved ? money(totals(approved.items).total) : "—"}</strong></div>
-              <div className="kpi"><small>Certificado</small><strong>{certified ? money(certified) : "—"}</strong></div>
-              <div className="kpi"><small>En revisión</small><strong>{working ? money(totals(working.items).total) : "—"}</strong></div>
+              <div className="kpi"><small>Aprobado · sin IVA{approvedScopes > 1 ? ` · ${approvedScopes} ámbitos` : ""}</small><strong>{approvedScopes ? money(approvedProjectBase) : "—"}</strong></div>
+              <div className="kpi"><small>Certificaciones en preparación</small><strong>{certificationsDraft ? money(certificationsDraft) : "—"}</strong></div>
+              <div className="kpi"><small>En revisión · sin IVA</small><strong>{working ? money(totals(working.items).base) : "—"}</strong></div>
             </div>
           </div>
 
           <Tabs label="Secciones de la obra" value={section} onChange={setSection} options={[
-            { id: "budget", label: "Presupuesto", count: versions.length },
+            { id: "budget", label: budgets.length > 1 ? "Presupuestos" : "Presupuesto", count: versions.length },
             { id: "documents", label: "Documentos", count: documents.length },
             { id: "chat", label: "Chat", count: messages.length },
             { id: "purchases", label: "Compras", count: purchases.length }
@@ -77,14 +94,30 @@ export default function ObraPage() {
 
           {section === "budget" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              {!budget && <div className="empty"><strong>Esta obra aún no tiene presupuesto</strong><span className="muted text-sm">Se crea desde la visita o desde el catálogo de artículos.</span></div>}
-              {versions.length > 0 && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {approved && <span className="chip-version" data-kind="approved"><span>V{approved.number} · aprobada para obra · {dateLabel(approved.approved_at ?? approved.updated_at)}</span><span className="pl-mono">{money(totals(approved.items).total)}</span></span>}
-                  {working && <span className="chip-version" data-kind="draft"><span>V{working.number} · {working.status === "draft" ? "en revisión" : "revisión cerrada"} · {working.created_by_name}, {dateLabel(working.updated_at)}</span><span className="pl-mono">{approved ? `${delta >= 0 ? "+" : "−"}${money(Math.abs(delta))}` : money(totals(working.items).total)}</span></span>}
-                  {!approved && !working && versions[0] && <span className="chip-version" data-kind="draft"><span>V{versions[0].number} · {versions[0].change_reason}</span><span className="pl-mono">{money(totals(versions[0].items).total)}</span></span>}
+              {budgets.length === 0 && <div className="empty"><strong>Esta obra aún no tiene presupuesto</strong><span className="muted text-sm">Se crea desde la visita o desde el catálogo de artículos.</span></div>}
+
+              {budgets.length > 1 && (
+                <div className="segments" role="tablist" aria-label="Ámbito del presupuesto">
+                  {budgets.map(b => {
+                    const v = approvedOf(data, b);
+                    return (
+                      <button key={b.id} type="button" role="tab" className="segment" aria-selected={b.id === budget?.id} onClick={() => setBudgetId(b.id)}>
+                        <span>{b.title}</span>
+                        <small className="pl-mono">{v ? money(totals(v.items).base) : "sin aprobar"}</small>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
+
+              {versions.length > 0 && (
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {approved && <span className="chip-version" data-kind="approved"><span>V{approved.number} · aprobada para obra · {dateLabel(approved.approved_at ?? approved.updated_at)}</span><span className="pl-mono">{money(totals(approved.items).base)} <small className="muted">sin IVA</small></span></span>}
+                  {working && <span className="chip-version" data-kind="draft"><span>V{working.number} · {working.status === "draft" ? "cambios en preparación" : "revisión cerrada"} · {working.created_by_name}, {dateLabel(working.updated_at)}</span><span className="pl-mono">{approved ? signed(deltaBase) : money(totals(working.items).base)} <small className="muted">sin IVA</small></span></span>}
+                  {!approved && !working && shown && <span className="chip-version" data-kind="draft"><span>V{shown.number} · {shown.change_reason}</span><span className="pl-mono">{money(totals(shown.items).base)} <small className="muted">sin IVA</small></span></span>}
+                </div>
+              )}
+
               {shown && (
                 <div>
                   <div className="section-label"><span>Partidas de la V{shown.number}{approved && working ? " · cambios respecto a la aprobada" : ""}</span><span className="pl-mono">{shown.items.length}</span></div>
@@ -93,12 +126,12 @@ export default function ObraPage() {
                       const change = changeFor(item.id);
                       const note = !change ? (approved && working ? "Sin cambios" : item.chapter)
                         : change.kind === "added" ? `Añadida en V${shown.number}`
-                        : `Cambiado · ${change.fields.map(f => f === "quantity" ? `${change.before?.quantity} → ${change.after?.quantity} ${item.unit}` : f === "unit_price" ? `${money(change.before?.unit_price ?? 0)} → ${money(change.after?.unit_price ?? 0)}` : f === "adjustment_percent" ? `ajuste ${change.after?.adjustment_percent}%` : f).join(" · ")}`;
+                        : `Cambiado · ${change.fields.map(f => f === "quantity" ? `${change.before?.quantity} → ${change.after?.quantity} ${item.unit}` : f === "unit_price" ? `${money(change.before?.unit_price ?? 0)} → ${money(change.after?.unit_price ?? 0)}` : f === "adjustment_percent" ? `ajuste ${change.after?.adjustment_percent}%` : f === "description" ? "descripción" : f === "inclusion" ? "inclusión" : f).join(" · ")}`;
                       return (
                         <div key={item.id} className="row-item">
-                          <span><strong>{item.description}</strong><small className={change ? "warning" : ""}>{note}{item.inclusion !== "included" ? ` · ${item.inclusion === "optional" ? "Alternativa" : "Excluida"}` : ""}</small></span>
+                          <span><strong>{item.description}</strong><small className={change ? "warning" : ""}>{note}{item.inclusion !== "included" ? ` · ${item.inclusion === "optional" ? "Alternativa, no suma" : "Excluida, no suma"}` : ""}</small></span>
                           <span className="pl-mono muted text-xs">{item.quantity} {item.unit}</span>
-                          <span className="pl-mono">{money(lineTotal(item))}</span>
+                          <span className="pl-mono" style={item.inclusion !== "included" ? { color: "var(--pl-muted)" } : undefined}>{money(lineTotal(item))}{change && change.delta !== 0 ? <small className="warning" style={{ display: "block", textAlign: "right" }}>{signed(change.delta)}</small> : null}</span>
                         </div>
                       );
                     })}
@@ -106,13 +139,25 @@ export default function ObraPage() {
                       <div key={change.id} className="row-item">
                         <span><strong style={{ textDecoration: "line-through", color: "var(--pl-muted)" }}>{change.before?.description}</strong><small className="warning">Eliminada en V{working?.number}</small></span>
                         <span className="pl-mono muted text-xs">{change.before?.quantity} {change.before?.unit}</span>
-                        <span className="pl-mono muted">−{money(Math.abs(change.delta))}</span>
+                        <span className="pl-mono muted">{signed(change.delta)}</span>
                       </div>
                     ))}
                   </div>
-                  <p className="muted text-xs" style={{ marginTop: 10 }}>Base {money(totals(shown.items).base)} · IVA {money(totals(shown.items).tax)} · Total {money(totals(shown.items).total)}</p>
+                  <div className="totals">
+                    <span><small>Base</small><strong className="pl-mono">{money(totals(shown.items).base)}</strong></span>
+                    <span><small>IVA</small><strong className="pl-mono">{money(totals(shown.items).tax)}</strong></span>
+                    <span><small>Total</small><strong className="pl-mono">{money(totals(shown.items).total)}</strong></span>
+                    {approved && working && <span><small>Diferencia con la aprobada</small><strong className="pl-mono">{signed(deltaBase)} <span className="muted" style={{ fontWeight: 400 }}>base · {signed(totals(working.items).total - totals(approved.items).total)} total</span></strong></span>}
+                  </div>
+                  {(shown.notes || (approved && approved.notes && approved.id !== shown.id)) && (
+                    <div className="panel" style={{ marginTop: 12 }}>
+                      {shown.notes && <div className="panel-body"><small className="muted text-xs">Notas y condiciones · V{shown.number}</small><p className="text-sm" style={{ marginTop: 4 }}>{shown.notes}</p></div>}
+                      {approved && approved.notes && approved.id !== shown.id && <div className="panel-body" style={{ borderTop: "var(--pl-hairline) solid var(--pl-line)" }}><small className="muted text-xs">Notas y condiciones · V{approved.number} aprobada</small><p className="text-sm muted" style={{ marginTop: 4 }}>{approved.notes}</p></div>}
+                    </div>
+                  )}
                 </div>
               )}
+
               {approved && working && (
                 <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
                   <Button variant="secondary">Ver cambios completos</Button>
