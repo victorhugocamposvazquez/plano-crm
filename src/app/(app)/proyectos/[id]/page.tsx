@@ -1,8 +1,12 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import Link from "next/link";
 import { useParams } from "next/navigation";
-import { ArrowLeft, Ellipsis } from "lucide-react";
+import { Ellipsis, MessageSquare } from "lucide-react";
+import { Drawer } from "@/components/ui/drawer";
+import { BackLink } from "@/components/ui/back-link";
+import { TaskRow } from "@/components/project/task-row";
+import { TaskDialog } from "@/components/project/task-dialog";
+import { useQueryState } from "@/lib/use-query-state";
 import { useWorkspace } from "@/components/workspace-provider";
 import { Tabs } from "@/components/ui/tabs";
 import { Button, LinkButton } from "@/components/ui/button";
@@ -11,9 +15,9 @@ import { localDate } from "@/lib/hoy";
 import { DocumentsPanel } from "@/components/project/documents-panel";
 import { ChatPanel } from "@/components/project/chat-panel";
 import { PurchasesPanel } from "@/components/project/purchases-panel";
-import { projectProgress, money, totals, dateLabel, compareVersions, kindNames, lineTotal, type Budget, type BudgetVersion, type ItemChange, type Workspace } from "@/lib/domain";
+import { projectProgress, money, totals, dateLabel, compareVersions, kindNames, lineTotal, can, type Budget, type BudgetVersion, type ItemChange, type Task, type Workspace } from "@/lib/domain";
 
-type Section = "budget" | "documents" | "chat" | "purchases";
+type Section = "budget" | "documents" | "purchases";
 
 /** Revisión aprobada de un presupuesto, si la hay. */
 function approvedOf(data: Workspace, budget: Budget | undefined) {
@@ -26,12 +30,27 @@ const signed = (cents: number) => `${cents < 0 ? "−" : "+"}${money(Math.abs(ce
 export default function ObraPage() {
   const { id } = useParams<{ id: string }>();
   const { data, loading } = useWorkspace();
-  const [section, setSection] = useState<Section>("budget");
-  const [budgetId, setBudgetId] = useState<string | null>(null);
+  const [section, setSection] = useQueryState<Section>("s", "budget");
+  const [budgetParam, setBudgetParam] = useQueryState<string>("p", "");
+  const budgetId = budgetParam || null;
+  const setBudgetId = (id: string | null) => setBudgetParam(id ?? "");
+  const [abierta, setAbierta] = useState<Task | null>(null);
+  const [chatParam, setChatParam] = useQueryState<string>("chat", "");
+  const chatAbierto = chatParam === "1";
+  const [pendingTask, setPendingTask] = useState<string | null>(null);
+  const { actor, busy, send, notify } = useWorkspace();
+  const canToggle = can(actor.role, "task.toggle");
+  async function toggleTask(task: Task) {
+    if (!canToggle || busy || pendingTask) return;
+    setPendingTask(task.id);
+    try { await send({ type: "task.toggle", id: task.id, status: task.status === "done" ? "pending" : "done" }); }
+    catch (e) { notify(e instanceof Error ? e.message : "No se ha podido actualizar la tarea."); }
+    finally { setPendingTask(null); }
+  }
 
   const project = data.projects.find(p => p.id === id);
   const budgets = useMemo(() => data.budgets.filter(b => b.project_id === id).sort((a, b) => a.created_at.localeCompare(b.created_at)), [data.budgets, id]);
-  useEffect(() => { if (!budgetId || !budgets.some(b => b.id === budgetId)) setBudgetId(budgets[0]?.id ?? null); }, [budgets, budgetId]);
+  useEffect(() => { if (budgetId && budgets.length && !budgets.some(b => b.id === budgetId)) setBudgetId(null); }, [budgets, budgetId]); // eslint-disable-line react-hooks/exhaustive-deps
   const budget = budgets.find(b => b.id === budgetId) ?? budgets[0];
   const versions = useMemo(() => data.versions.filter(v => v.budget_id === budget?.id).sort((a, b) => b.number - a.number), [data.versions, budget?.id]);
   const approved = approvedOf(data, budget);
@@ -63,12 +82,15 @@ export default function ObraPage() {
     <div className="page">
       <div>
         <div className="eyebrow">
-          <Link href="/proyectos" className="muted" style={{ display: "inline-flex", alignItems: "center", gap: 6, textDecoration: "none" }}><ArrowLeft size={13} strokeWidth={1.8} aria-hidden="true" />Proyectos</Link>
+          <BackLink fallback="/proyectos">Proyectos</BackLink>
           <span>· {project.code} · {kindNames[project.kind]}</span>
         </div>
         <div className="page-head">
           <h1 className="h2" style={{ fontSize: "var(--pl-text-h1)" }}>{project.name}</h1>
-          <Button variant="icon" aria-label="Más acciones"><Ellipsis size={19} strokeWidth={1.55} aria-hidden="true" /></Button>
+          <div style={{ display: "flex", gap: 8 }}>
+            <Button variant="secondary" className="chat-launcher" onClick={() => setChatParam("1")} aria-haspopup="dialog" aria-expanded={chatAbierto}><MessageSquare size={17} strokeWidth={1.6} aria-hidden="true" />Chat<span className="pl-mono">{messages.length}</span></Button>
+            <Button variant="icon" aria-label="Más acciones"><Ellipsis size={19} strokeWidth={1.55} aria-hidden="true" /></Button>
+          </div>
         </div>
         <p className="subtitle">{project.client_name} · {project.location} · desde {dateLabel(project.created_at)}</p>
       </div>
@@ -94,7 +116,6 @@ export default function ObraPage() {
           <Tabs label="Secciones de la obra" value={section} onChange={setSection} options={[
             { id: "budget", label: budgets.length > 1 ? "Presupuestos" : "Presupuesto", count: versions.length },
             { id: "documents", label: "Documentos", count: documents.length },
-            { id: "chat", label: "Chat", count: messages.length },
             { id: "purchases", label: "Compras", count: purchases.length }
           ]} />
 
@@ -175,8 +196,6 @@ export default function ObraPage() {
 
           {section === "documents" && <DocumentsPanel project={project} documents={documents} />}
 
-          {section === "chat" && <ChatPanel projectId={project.id} messages={messages} />}
-
           {section === "purchases" && <PurchasesPanel projectId={project.id} purchases={purchases} />}
         </div>
 
@@ -185,12 +204,7 @@ export default function ObraPage() {
             <div className="section-label" style={{ marginTop: 0 }}><span>Tareas</span><span className="pl-mono">{tasks.filter(t => t.status === "pending").length} pendientes</span></div>
             <div className="panel">
               {tasks.length === 0 && <div className="panel-body muted text-sm">Sin tareas planificadas.</div>}
-              {tasks.map((task, i) => (
-                <div key={task.id} className="panel-row" style={i === 0 ? { borderTop: 0 } : undefined}>
-                  <span style={{ minWidth: 0 }}><span style={{ display: "block", textDecoration: task.status === "done" ? "line-through" : undefined, color: task.status === "done" ? "var(--pl-muted)" : undefined }}>{task.title}</span><small className="muted text-xs">{task.trade} · {task.assignee || "Sin asignar"} · {dateLabel(task.due_date)}</small></span>
-                  <span className="pl-mono muted text-xs">{task.weight}%</span>
-                </div>
-              ))}
+              {tasks.map(task => <div key={task.id} style={{ padding: "0 14px" }}><TaskRow task={task} canToggle={canToggle} pending={pendingTask === task.id} showDate compact onToggle={toggleTask} onOpen={setAbierta} /></div>)}
             </div>
           </div>
           <div>
@@ -201,6 +215,10 @@ export default function ObraPage() {
           </div>
         </aside>
       </div>
+      <TaskDialog task={abierta ? data.tasks.find(t => t.id === abierta.id) ?? null : null} onClose={() => setAbierta(null)} />
+      <Drawer open={chatAbierto} onClose={() => setChatParam("")} title="Chat del proyecto" subtitle={`${project.name} · lo ve todo el equipo con acceso`}>
+        <ChatPanel projectId={project.id} messages={messages} />
+      </Drawer>
     </div>
   );
 }
