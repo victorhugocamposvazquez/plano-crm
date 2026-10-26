@@ -86,3 +86,42 @@ export function oficios(tareas: Task[]) {
 export function personas(tareas: Task[]) {
   return [...new Set(tareas.map(t => t.assignee).filter(Boolean))].sort((a, b) => a.localeCompare(b, "es"));
 }
+
+/* ---------- Vista de calendario (mes) ---------- */
+
+/** Primer día del mes de una fecha ISO. */
+export function primerDiaMes(iso: string) {
+  return `${iso.slice(0, 7)}-01`;
+}
+
+export function sumarMeses(iso: string, meses: number) {
+  const date = new Date(`${primerDiaMes(iso)}T12:00:00`);
+  date.setMonth(date.getMonth() + meses);
+  return localDate(date);
+}
+
+const mesLargo = new Intl.DateTimeFormat("es-ES", { month: "long", year: "numeric" });
+
+export function etiquetaMes(iso: string) {
+  return mesLargo.format(new Date(`${primerDiaMes(iso)}T12:00:00`)).replace(/^./, c => c.toUpperCase());
+}
+
+export type DiaCalendario = { iso: string; enMes: boolean };
+
+/** Rejilla de 6 semanas (lunes a domingo) que cubre el mes; los días de relleno van marcados. */
+export function rejillaMes(iso: string): DiaCalendario[][] {
+  const primero = primerDiaMes(iso);
+  const inicio = lunesDe(primero);
+  const mes = primero.slice(0, 7);
+  return Array.from({ length: 6 }, (_, semana) => Array.from({ length: 7 }, (_, dia) => { const d = sumarDias(inicio, semana * 7 + dia); return { iso: d, enMes: d.startsWith(mes) }; }));
+}
+
+/** Tareas del mes por día, para pintar el calendario sin recorrer todo cada celda. */
+export function porDiaDelMes(tareas: TareaAgenda[], iso: string) {
+  const rejilla = rejillaMes(iso);
+  const desde = rejilla[0][0].iso, hasta = rejilla[5][6].iso;
+  const map = new Map<string, TareaAgenda[]>();
+  for (const t of tareas) if (t.due_date >= desde && t.due_date <= hasta) map.set(t.due_date, [...(map.get(t.due_date) ?? []), t]);
+  for (const list of map.values()) list.sort((a, b) => Number(a.status === "done") - Number(b.status === "done") || b.weight - a.weight);
+  return map;
+}

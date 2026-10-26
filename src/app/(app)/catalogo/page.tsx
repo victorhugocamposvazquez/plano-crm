@@ -1,5 +1,6 @@
 "use client";
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useQueryState } from "@/lib/use-query-state";
 import { Search, X, Plus, BookOpen } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
 import { Button } from "@/components/ui/button";
@@ -9,7 +10,9 @@ import { unidades, unidadNombres, eurosACentimos, codigoSugerido, buscarArticulo
 export default function CatalogoPage() {
   const { data, actor, busy, loading, send, notify } = useWorkspace();
   const allowed = can(actor.role, "article.create");
-  const [query, setQuery] = useState("");
+  const [queryParam, setQueryParam] = useQueryState<string>("q", "");
+  const [query, setQuery] = useState(queryParam);
+  useEffect(() => { const t = setTimeout(() => { if (query !== queryParam) setQueryParam(query); }, 300); return () => clearTimeout(t); }, [query, queryParam, setQueryParam]);
   const [adding, setAdding] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");

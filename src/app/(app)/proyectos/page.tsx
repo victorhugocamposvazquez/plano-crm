@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Building2, Plus, ArrowUpRight, FileText, Search, X } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
@@ -7,6 +7,7 @@ import { Tabs } from "@/components/ui/tabs";
 import { ProjectStatus, Meter } from "@/components/ui/status";
 import { projectProgress, projectStatus, money, totals, dateLabel, type Project, type Workspace } from "@/lib/domain";
 import { searchProjects } from "@/lib/search";
+import { useQueryState } from "@/lib/use-query-state";
 
 type Filter = "all" | "active" | "estimating" | "completed";
 const filters: { id: Filter; label: string; match: (p: Project) => boolean }[] = [
@@ -24,8 +25,11 @@ function approvedAmount(data: Workspace, projectId: string) {
 
 export default function ObrasPage() {
   const { data, loading, error } = useWorkspace();
-  const [filter, setFilter] = useState<Filter>("all");
-  const [query, setQuery] = useState("");
+  const [filter, setFilter] = useQueryState<Filter>("f", "all");
+  const [queryParam, setQueryParam] = useQueryState<string>("q", "");
+  const [query, setQuery] = useState(queryParam);
+  // La búsqueda vive en la URL (con retardo) para que «atrás» y recargar conserven el contexto.
+  useEffect(() => { const t = setTimeout(() => { if (query !== queryParam) setQueryParam(query); }, 300); return () => clearTimeout(t); }, [query, queryParam, setQueryParam]);
   const hits = useMemo(() => searchProjects(data, data.projects.filter(filters.find(f => f.id === filter)!.match), query), [data, filter, query]);
   const projects = hits.map(h => h.project);
   const matchedIn = (id: string) => hits.find(h => h.project.id === id)?.matchedIn ?? [];

@@ -155,3 +155,13 @@ El sistema sigue siendo casi monocromo, pero los **estados que cambian decisione
 | `--pl-surface-zone` | `--pl-soft` | `#15171A` (más hundido que el fondo) | **zona** (`.zone`): bloque secundario como el lateral de la ficha; dentro de una zona los paneles no llevan sombra |
 
 Regla: un panel se separa de la página por elevación, una zona agrupa paneles por fondo. No se combinan borde grueso + sombra + fondo en el mismo elemento.
+
+## 10. Navegación y contexto (añadido el 26-10-2026)
+
+Principio: **la pantalla en la que trabajas no se pierde**. Reglas:
+
+1. **Detalle en capa, no en ruta.** Ver una tarea, un documento o un aviso abre un diálogo (`Modal`: hoja inferior en móvil, centrado en escritorio) sobre la pantalla actual; al cerrarlo sigues donde estabas, con el mismo scroll. Solo cambian de ruta las entidades con ficha propia (proyecto, presupuesto, cliente).
+2. **El estado de la vista vive en la URL.** Pestaña de la ficha (`?s=`), presupuesto elegido (`?p=`), filtro y búsqueda de listas (`?f=`, `?q=`), vista, día y filtros de la agenda (`?v=`, `?d=`, `?o=`, `?p=`). `useQueryState` sustituye la entrada del historial (no la apila): cambiar un filtro no obliga a pulsar «atrás» diez veces, pero «atrás» desde una ficha devuelve la lista tal como estaba y recargar o compartir el enlace muestra lo mismo.
+3. **«Volver» es volver.** `BackLink` usa el historial cuando se viene de dentro de Plano y el destino de respaldo cuando se entra directo. El enlace al proyecto desde un diálogo es una acción explícita («Abrir proyecto»), nunca el comportamiento por defecto de tocar una fila.
+4. **Las acciones no te mueven.** Completar una tarea, registrar una recepción o enviar un mensaje actualizan la vista en sitio y lo confirman con el toast; solo «Guardar estimación» navega, porque crea la entidad a la que ir.
+5. **Controles propios.** Selectores (`Select`), conmutadores de vista (`.view-toggle`) y segmentos del sistema, no los nativos del navegador: misma altura que los campos, teclado completo, lista con elevación 2.

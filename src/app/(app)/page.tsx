@@ -4,6 +4,8 @@ import Link from "next/link";
 import { ArrowUpRight, CalendarDays } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
 import { Status, type Tone } from "@/components/ui/status";
+import { TaskRow } from "@/components/project/task-row";
+import { TaskDialog } from "@/components/project/task-dialog";
 import { can, dateLabel, type Task } from "@/lib/domain";
 import { buildAgenda, buildAlerts, greeting, localDate, longDate, type AgendaTask } from "@/lib/hoy";
 
@@ -29,19 +31,13 @@ export default function HoyPage() {
     }
   }
 
+  const [abierta, setAbierta] = useState<Task | null>(null);
+  const tareaAbierta = abierta ? data.tasks.find(t => t.id === abierta.id) ?? null : null;
+
   const TaskList = ({ tasks, empty }: { tasks: AgendaTask[]; empty: string }) => (
     tasks.length === 0
       ? <p className="muted text-sm" style={{ padding: "10px 0" }}>{empty}</p>
-      : <div>{tasks.map(task => (
-          <label key={task.id} className="task-row" data-done={task.status === "done"}>
-            <input type="checkbox" checked={task.status === "done"} disabled={!canToggle || pendingId === task.id} onChange={() => toggle(task)} aria-label={`${task.status === "done" ? "Reabrir" : "Completar"} ${task.title}`} />
-            <span style={{ minWidth: 0 }}>
-              <span className="task-title">{task.title}</span>
-              <span className="task-meta">{task.project.name} · {task.trade}{task.assignee ? ` · ${task.assignee}` : ""}{task.due_date !== today ? ` · ${dateLabel(task.due_date)}` : ""}</span>
-            </span>
-            <Link href={`/proyectos/${task.project_id}`} className="muted" aria-label={`Abrir ${task.project.name}`} style={{ display: "inline-flex" }}><ArrowUpRight size={15} strokeWidth={1.6} aria-hidden="true" /></Link>
-          </label>
-        ))}</div>
+      : <div>{tasks.map(task => <TaskRow key={task.id} task={task} projectName={task.project.name} canToggle={canToggle} pending={pendingId === task.id} showDate={task.due_date !== today} compact onToggle={toggle} onOpen={setAbierta} />)}</div>
   );
 
   const toneFor = (tone: Tone) => tone;
@@ -111,6 +107,7 @@ export default function HoyPage() {
           </div>
         </aside>
       </div>
+      <TaskDialog task={tareaAbierta} onClose={() => setAbierta(null)} />
     </div>
   );
 }

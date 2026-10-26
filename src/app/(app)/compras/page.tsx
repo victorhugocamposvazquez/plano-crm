@@ -1,15 +1,16 @@
 "use client";
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import Link from "next/link";
 import { Package, ArrowUpRight } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
 import { Tabs } from "@/components/ui/tabs";
 import { PurchasesPanel } from "@/components/project/purchases-panel";
 import { filtros, agruparPorProyecto, resumen, type Filtro } from "@/lib/compras";
+import { useQueryState } from "@/lib/use-query-state";
 
 export default function ComprasPage() {
   const { data, loading } = useWorkspace();
-  const [filtro, setFiltro] = useState<Filtro>("all");
+  const [filtro, setFiltro] = useQueryState<Filtro>("f", "all");
   const visibles = useMemo(() => data.purchases.filter(p => filtro === "all" || p.status === filtro), [data.purchases, filtro]);
   const grupos = useMemo(() => agruparPorProyecto(data, visibles), [data, visibles]);
   const totales = resumen(data.purchases);
