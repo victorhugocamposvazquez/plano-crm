@@ -1493,3 +1493,31 @@ p {
   background: var(--pl-raised);
   color: var(--pl-faint);
 }
+
+/* ---------- Compras y materiales ---------- */
+
+.purchase {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 0;
+  border-bottom: var(--pl-hairline) solid var(--pl-line);
+}
+
+.purchase-main {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--pl-space-3);
+  font-size: 14px;
+}
+
+.purchase-main strong {
+  font-weight: var(--pl-weight-medium);
+}
+
+.purchase-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
