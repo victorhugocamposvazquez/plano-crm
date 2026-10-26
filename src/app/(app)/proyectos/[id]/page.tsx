@@ -7,6 +7,8 @@ import { useWorkspace } from "@/components/workspace-provider";
 import { Tabs } from "@/components/ui/tabs";
 import { Button, LinkButton } from "@/components/ui/button";
 import { ProjectStatus, PurchaseStatus, Meter } from "@/components/ui/status";
+import { DocumentsPanel } from "@/components/project/documents-panel";
+import { ChatPanel } from "@/components/project/chat-panel";
 import { projectProgress, money, totals, dateLabel, compareVersions, kindNames, lineTotal, type Budget, type BudgetVersion, type ItemChange, type Workspace } from "@/lib/domain";
 
 type Section = "budget" | "documents" | "chat" | "purchases";
@@ -167,20 +169,9 @@ export default function ObraPage() {
             </div>
           )}
 
-          {section === "documents" && (
-            documents.length === 0
-              ? <div className="empty"><strong>Aún no hay documentos</strong><span className="muted text-sm">Planos, contratos y fotos de antes, durante y después se adjuntan aquí.</span><Button variant="secondary">Adjuntar documento</Button></div>
-              : <div>{documents.map(doc => <div key={doc.id} className="row-doc"><span>{doc.name}<small>{doc.category} · {dateLabel(doc.created_at)}</small></span></div>)}</div>
-          )}
+          {section === "documents" && <DocumentsPanel project={project} documents={documents} />}
 
-          {section === "chat" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-              {messages.length === 0 && <div className="empty"><strong>Sin mensajes</strong><span className="muted text-sm">La conversación de la obra la ven todos los perfiles con acceso.</span></div>}
-              {messages.map(message => (
-                <div key={message.id} className="panel"><div className="panel-body"><p className="text-sm">{message.body}</p><p className="muted text-xs" style={{ marginTop: 8 }}>{message.author_name} · {dateLabel(message.created_at)}</p></div></div>
-              ))}
-            </div>
-          )}
+          {section === "chat" && <ChatPanel projectId={project.id} messages={messages} />}
 
           {section === "purchases" && (
             purchases.length === 0

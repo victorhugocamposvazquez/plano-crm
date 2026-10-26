@@ -1364,3 +1364,132 @@ p {
   align-items: flex-start;
   gap: var(--pl-space-2);
 }
+
+/* ---------- Expediente: documentos y chat ---------- */
+
+.uploader {
+  display: flex;
+  align-items: flex-end;
+  flex-wrap: wrap;
+  gap: 10px;
+  padding: 14px;
+  border: var(--pl-hairline) dashed var(--pl-strong-line);
+  border-radius: var(--pl-radius-panel);
+}
+
+.uploader .field select {
+  height: var(--pl-button-height);
+}
+
+.doc-row {
+  width: 100%;
+  border: 0;
+  border-bottom: var(--pl-hairline) solid var(--pl-line);
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+}
+
+.doc-row:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+.chat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pl-space-4);
+}
+
+.chat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 60dvh;
+  overflow-y: auto;
+  padding-right: 2px;
+}
+
+.chat-day {
+  display: flex;
+  justify-content: center;
+  margin: 8px 0 2px;
+  font-size: var(--pl-text-xs);
+  color: var(--pl-muted);
+}
+
+.msg {
+  max-width: 85%;
+  padding: 10px 12px;
+  border: var(--pl-hairline) solid var(--pl-line);
+  border-radius: 12px 12px 12px 4px;
+  background: var(--pl-soft);
+  font-size: 14px;
+  line-height: 1.45;
+}
+
+.msg[data-mine="true"] {
+  margin-left: auto;
+  border-radius: 12px 12px 4px 12px;
+  background: var(--pl-bg);
+  border-color: var(--pl-strong-line);
+}
+
+.msg header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 4px;
+  font-size: var(--pl-text-xs);
+  color: var(--pl-muted);
+}
+
+.msg header strong {
+  font-weight: var(--pl-weight-medium);
+  color: var(--pl-ink);
+}
+
+.msg p {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 8px 8px 8px 14px;
+  border: var(--pl-hairline) solid var(--pl-line);
+  border-radius: var(--pl-radius-command);
+  background: var(--pl-soft);
+}
+
+.composer:focus-within {
+  border-color: var(--pl-ink);
+}
+
+.composer textarea {
+  flex: 1;
+  min-height: 28px;
+  max-height: 160px;
+  padding: 6px 0;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--pl-ink);
+  font-size: var(--pl-text-ui);
+  line-height: 1.4;
+  resize: none;
+  field-sizing: content;
+}
+
+.composer textarea::placeholder {
+  color: var(--pl-muted);
+}
+
+.composer .btn-round:disabled {
+  background: var(--pl-raised);
+  color: var(--pl-faint);
+}
