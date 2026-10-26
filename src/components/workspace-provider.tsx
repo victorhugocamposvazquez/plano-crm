@@ -21,6 +21,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const [actor,setActor] = useState<Actor>(demoActor);
   const [loading,setLoading] = useState(true), [error,setError] = useState(""), [notice,setNotice] = useState(""), [busy,setBusy] = useState(false);
   const lock = useRef(false);
+  const pendingRequest = useRef<{ body: string; id: string } | null>(null);
   const notify = useCallback((message: string) => setNotice(message), []);
   useEffect(() => { if (!notice) return; const timer = setTimeout(() => setNotice(""), 5500); return () => clearTimeout(timer); }, [notice]);
   const refresh = useCallback(async () => {
@@ -45,8 +46,11 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       let next: Workspace;
       if (mode === "demo") { next = applyCommand(savedDemo(), command, actor); localStorage.setItem(key, JSON.stringify(next)); }
       else {
-        const response = await fetch("/api/commands", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(command) });
+        const serialized = JSON.stringify(command);
+        if (pendingRequest.current?.body !== serialized) pendingRequest.current = { body: serialized, id: crypto.randomUUID() };
+        const response = await fetch("/api/commands", { method: "POST", headers: { "Content-Type": "application/json", "Idempotency-Key": pendingRequest.current.id }, body: serialized });
         const result = await response.json(); if (!response.ok) throw new Error(result.error || "No se pudo guardar el cambio."); next = result.workspace;
+        pendingRequest.current = null;
       }
       setData(next); return next;
     } finally { lock.current = false; setBusy(false); }

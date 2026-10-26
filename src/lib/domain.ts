@@ -7,9 +7,9 @@ export type Article = { id: string; organization_id: string; code: string; name:
 export type Budget = { id: string; organization_id: string; project_id: string; title: string; approved_version_id: string | null; created_at: string };
 export const itemSchema = z.object({
   id: z.uuid(), chapter: z.string().trim().min(1).max(120), description: z.string().trim().min(1).max(2000),
-  quantity: z.number().min(0).max(1000000), unit: z.enum(["m²", "ml", "ud", "h", "global"]),
-  unit_price: z.number().int().min(0).max(100000000), adjustment_percent: z.number().min(-50).max(100),
-  vat_rate: z.number().min(0).max(30), inclusion: z.enum(["included", "optional", "excluded"])
+  quantity: z.number().min(0).max(1000000).multipleOf(0.001), unit: z.enum(["m²", "ml", "ud", "h", "global"]),
+  unit_price: z.number().int().min(0).max(100000000), adjustment_percent: z.number().min(-50).max(100).multipleOf(0.01),
+  vat_rate: z.number().min(0).max(30).multipleOf(0.01), inclusion: z.enum(["included", "optional", "excluded"])
 });
 export type BudgetItem = z.infer<typeof itemSchema>;
 export type BudgetVersion = { id: string; organization_id: string; budget_id: string; number: number; status: "draft" | "issued" | "approved" | "superseded"; draft_revision: number; items: BudgetItem[]; notes: string; change_reason: string; created_by_name: string; created_at: string; updated_at: string; approved_at: string | null; approval_reference: string | null };
@@ -27,10 +27,10 @@ export const commandSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("project.status"), id: z.uuid(), status: z.enum(["lead", "estimating", "planning", "active", "completed"]) }),
   z.object({ type: z.literal("budget.create"), project_id: z.uuid(), title: text }),
   z.object({ type: z.literal("budget.revise"), version_id: z.uuid(), reason: text }),
-  z.object({ type: z.literal("budget.save"), version_id: z.uuid(), expected_revision: z.number().int().min(0), items: z.array(itemSchema).max(500).refine(items => new Set(items.map(i => i.id)).size === items.length, "Hay partidas duplicadas"), notes: z.string().max(5000) }),
+  z.object({ type: z.literal("budget.save"), version_id: z.uuid(), expected_revision: z.number().int().min(0), items: z.array(itemSchema).max(500).refine(items => new Set(items.map(i => i.id)).size === items.length, "Hay partidas duplicadas").refine(items => items.reduce((s,i) => s + lineTotal(i) * 1.3, 0) <= Number.MAX_SAFE_INTEGER, "El presupuesto supera el límite de cálculo seguro"), notes: z.string().max(5000) }),
   z.object({ type: z.literal("budget.issue"), version_id: z.uuid(), expected_revision: z.number().int().min(0) }),
   z.object({ type: z.literal("budget.approve"), version_id: z.uuid(), reference: text }),
-  z.object({ type: z.literal("article.create"), code: text, name: text, chapter: text, unit: z.enum(["m²", "ml", "ud", "h", "global"]), unit_price: z.number().int().min(0).max(100000000), vat_rate: z.number().min(0).max(30) }),
+  z.object({ type: z.literal("article.create"), code: text, name: text, chapter: z.string().trim().min(1).max(120), unit: z.enum(["m²", "ml", "ud", "h", "global"]), unit_price: z.number().int().min(0).max(100000000), vat_rate: z.number().min(0).max(30).multipleOf(0.01) }),
   z.object({ type: z.literal("task.create"), project_id: z.uuid(), title: text, trade: text, assignee: z.string().max(120), due_date: z.iso.date(), weight: z.number().int().min(1).max(100) }),
   z.object({ type: z.literal("task.toggle"), id: z.uuid(), status: z.enum(["pending", "done"]) }),
   z.object({ type: z.literal("purchase.create"), project_id: z.uuid(), name: text, supplier: text, quantity: z.number().positive().max(1000000), unit: z.enum(["m²", "ml", "ud", "h", "global"]) }),
@@ -47,11 +47,18 @@ export const versionStatus = { draft: "Borrador", issued: "Revisión cerrada", a
 export const purchaseStatus = { planned: "Por pedir", ordered: "Pedido", received: "Recibido", delivered: "En obra" };
 export const money = (cents: number) => new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(cents / 100);
 export const dateLabel = (value: string) => new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short" }).format(new Date(value.length === 10 ? `${value}T12:00:00` : value));
-export const lineTotal = (item: BudgetItem) => Math.round(item.quantity * item.unit_price * (1 + item.adjustment_percent / 100));
+function roundRatio(numerator: bigint, denominator: bigint) {
+  const rounded = Number((numerator + denominator / 2n) / denominator);
+  if (!Number.isSafeInteger(rounded)) throw new Error("Importe fuera del rango de cálculo seguro.");
+  return rounded;
+}
+// Cantidad en milésimas y porcentajes en centésimas: mismo redondeo decimal que PostgreSQL.
+export const lineTotal = (item: BudgetItem) => roundRatio(BigInt(Math.round(item.quantity * 1000)) * BigInt(item.unit_price) * BigInt(10000 + Math.round(item.adjustment_percent * 100)), 10000000n);
 export function totals(items: BudgetItem[]) {
   const included = items.filter(i => i.inclusion === "included");
   const base = included.reduce((sum, i) => sum + lineTotal(i), 0);
-  const tax = included.reduce((sum, i) => sum + Math.round(lineTotal(i) * i.vat_rate / 100), 0);
+  const tax = included.reduce((sum, i) => sum + roundRatio(BigInt(lineTotal(i)) * BigInt(Math.round(i.vat_rate * 100)), 10000n), 0);
+  if (!Number.isSafeInteger(base + tax)) throw new Error("Importe fuera del rango de cálculo seguro.");
   return { base, tax, total: base + tax };
 }
 export function projectProgress(state: Workspace, id: string) {
@@ -123,6 +130,8 @@ export function applyCommand(previous: Workspace, input: Command, actor: Actor, 
     case "budget.approve": {
       const { v, b } = version(command.version_id);
       if (v.status !== "issued") throw new Error("Primero cierra la revisión antes de aprobarla.");
+      const reserved = state.certifications.filter(c => state.versions.find(x => x.id === c.budget_version_id)?.budget_id === b.id).reduce((s,c) => s + c.amount,0);
+      if (totals(v.items).base < reserved) throw new Error("La revisión es inferior al importe ya reservado en certificaciones.");
       const old = state.versions.find(x => x.id === b.approved_version_id);
       if (old) old.status = "superseded";
       v.status = "approved"; v.approval_reference = command.reference; v.approved_at = now; v.updated_at = now; b.approved_version_id = v.id;
@@ -147,6 +156,7 @@ export function applyCommand(previous: Workspace, input: Command, actor: Actor, 
     case "purchase.update": {
       const p = state.purchases.find(p => p.id === command.id); if (!p) throw new Error("Pedido no encontrado.");
       if (command.received_quantity > p.quantity || command.delivered_quantity > command.received_quantity) throw new Error("Las cantidades entregadas no pueden superar las recibidas, ni estas las pedidas.");
+      if ((command.status === "planned" && command.received_quantity !== 0) || (command.status === "received" && command.received_quantity !== p.quantity) || (command.status === "delivered" && command.delivered_quantity !== p.quantity)) throw new Error("El estado no coincide con las cantidades recibidas o entregadas.");
       p.status = command.status; p.received_quantity = command.received_quantity; p.delivered_quantity = command.delivered_quantity; projectId = p.project_id; activity = `${p.name}: ${purchaseStatus[p.status]}`; break;
     }
     case "message.send": state.messages.push({ id: uuid(), organization_id: org, project_id: command.project_id, body: command.body, author_name: actor.name, created_at: now }); activity = "Mensaje en la conversación del proyecto"; break;
