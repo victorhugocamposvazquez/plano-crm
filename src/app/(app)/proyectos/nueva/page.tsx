@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { ArrowLeft, Camera, Mic, MicOff, Plus, Trash2, X } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { can, money, kindNames, dateLabel, type Project } from "@/lib/domain";
 import { trabajosRapidos, articulosPorCapitulo, articuloPara, partidasDesdeLineas, rangoEstimacion, importeLinea, notasDeVisita, comprobaciones, type Linea } from "@/lib/estimacion";
 
@@ -180,13 +181,10 @@ export default function NuevaVisitaPage() {
             <div className="chips">
               {trabajosRapidos.map(t => { const a = articuloPara(t, data.articles); return <button key={t.id} type="button" className="chip" disabled={!a} title={a ? t.hint : "Sin artículo en el catálogo"} onClick={() => a && addLinea(a.id)}><Plus size={13} strokeWidth={2} aria-hidden="true" />{t.label}</button>; })}
             </div>
-            <label className="field" style={{ marginTop: 4 }}>
+            <div className="field" style={{ marginTop: 4 }}>
               <span>Otra partida del catálogo</span>
-              <select value="" onChange={e => { if (e.target.value) addLinea(e.target.value); }} aria-label="Añadir artículo del catálogo">
-                <option value="">Elegir artículo…</option>
-                {[...porCapitulo.entries()].map(([chapter, list]) => <optgroup key={chapter} label={chapter}>{list.map(a => <option key={a.id} value={a.id}>{a.name} · {money(a.unit_price)}/{a.unit}</option>)}</optgroup>)}
-              </select>
-            </label>
+              <Select label="Añadir artículo del catálogo" value="" placeholder="Elegir artículo…" onChange={id => addLinea(id)} options={[...porCapitulo.entries()].flatMap(([chapter, list]) => list.map(a => ({ value: a.id, label: a.name, hint: `${chapter} · ${money(a.unit_price)}/${a.unit}` })))} />
+            </div>
           </div>
 
           {lineas.length === 0 && <div className="empty"><strong>Aún no hay partidas</strong><span className="muted text-sm">Toca un trabajo habitual o elige un artículo del catálogo y estima la cantidad.</span></div>}
@@ -226,7 +224,7 @@ export default function NuevaVisitaPage() {
             <div className="panel-body">
               <div className="range"><small>Entre</small><strong className="pl-mono">{money(rango.minTotal)}</strong><small>y</small><strong className="pl-mono">{money(rango.maxTotal)}</strong><small>con IVA</small></div>
               <div className="totals" style={{ marginTop: 10 }}><span><small>Base</small><strong className="pl-mono">{money(rango.base)}</strong></span><span><small>Total con IVA</small><strong className="pl-mono">{money(rango.total)}</strong></span>
-                <label className="field" style={{ gap: 2 }}><span>Horquilla</span><select value={margen} onChange={e => setMargen(Number(e.target.value))} style={{ height: 36 }}><option value={0.1}>±10 %</option><option value={0.15}>±15 %</option><option value={0.25}>±25 %</option></select></label>
+                <div className="field" style={{ gap: 2, minWidth: 120 }}><span>Horquilla</span><Select size="sm" label="Horquilla de la estimación" value={String(margen)} onChange={v => setMargen(Number(v))} options={[{ value: "0.1", label: "±10 %" }, { value: "0.15", label: "±15 %" }, { value: "0.25", label: "±25 %" }]} /></div>
               </div>
             </div>
             <div style={{ borderTop: "var(--pl-hairline) solid var(--pl-line)" }}>

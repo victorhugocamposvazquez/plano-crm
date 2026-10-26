@@ -3,6 +3,7 @@ import { useMemo, useState, type ChangeEvent } from "react";
 import { FileText, Image as ImageIcon, Film, Upload, ArrowUpRight } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
 import { Status } from "@/components/ui/status";
+import { Select } from "@/components/ui/select";
 import { can, dateLabel, type Document, type Project } from "@/lib/domain";
 import { categoryNames, categoryOrder, acceptedTypes, maxBytes, formatSize, isImage, isVideo, checklist, groupByCategory, type Category } from "@/lib/documentos";
 
@@ -60,10 +61,10 @@ export function DocumentsPanel({ project, documents }: { project: Project; docum
 
       {allowed && (
         <div className="uploader">
-          <label className="field" style={{ flex: 1, minWidth: 200 }}>
+          <div className="field" style={{ flex: 1, minWidth: 200 }}>
             <span>Guardar como</span>
-            <select value={category} onChange={e => setCategory(e.target.value as Category)}>{categoryOrder.map(c => <option key={c} value={c}>{categoryNames[c]}</option>)}</select>
-          </label>
+            <Select label="Categoría del documento" value={category} onChange={setCategory} options={categoryOrder.map(c => ({ value: c, label: categoryNames[c] }))} />
+          </div>
           <label className="btn btn-primary" style={{ cursor: busy || uploading ? "default" : "pointer", opacity: busy || uploading ? 0.6 : 1 }}>
             <Upload {...iconProps} />{uploading ? `Subiendo ${uploading}…` : "Adjuntar"}
             <input type="file" accept={acceptedTypes} multiple disabled={busy || Boolean(uploading)} onChange={onFiles} style={{ position: "absolute", width: 1, height: 1, opacity: 0 }} />
