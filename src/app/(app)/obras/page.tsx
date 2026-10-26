@@ -3,7 +3,6 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Building2, Plus, ArrowUpRight, FileText, Search, X } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
-import { Button } from "@/components/ui/button";
 import { Tabs } from "@/components/ui/tabs";
 import { ProjectStatus, Meter } from "@/components/ui/status";
 import { projectProgress, projectStatus, money, totals, dateLabel, type Project, type Workspace } from "@/lib/domain";
@@ -41,7 +40,7 @@ export default function ObrasPage() {
         <div className="eyebrow"><FileText size={13} strokeWidth={1.8} aria-hidden="true" /><span>{data.organization_name || "Espacio de trabajo"}</span></div>
         <div className="page-head">
           <h1 className="h1">Tus obras.</h1>
-          <Button variant="icon" aria-label="Nueva obra" onClick={() => alert("La creación de obra llega con la pantalla de visita.")}><Plus size={19} strokeWidth={1.55} aria-hidden="true" /></Button>
+          <Link href="/obras/nueva" className="btn btn-icon" aria-label="Nueva visita" title="Nueva visita"><Plus size={19} strokeWidth={1.55} aria-hidden="true" /></Link>
         </div>
         <p className="subtitle">
           {loading ? "Cargando el espacio de trabajo…" : `${data.projects.length} obras · ${activeCount} en obra · ${money(inProgressAmount)} aprobados en curso, sin IVA`}
