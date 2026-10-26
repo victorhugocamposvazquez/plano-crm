@@ -1,6 +1,7 @@
 "use client";
 import { useState, type FormEvent } from "react";
 import Link from "next/link";
+import { ArrowRight } from "lucide-react";
 import { Brand } from "@/components/ui/brand";
 import { Button } from "@/components/ui/button";
 import { supabaseConfigured } from "@/lib/supabase/browser";
@@ -36,36 +37,41 @@ export default function LoginPage() {
   const fieldError = (name: string) => fields.find(f => f.path === name)?.message;
 
   return (
-    <main className="auth-card">
-      <Brand />
-      <div>
-        <h1 className="h1">Entrar.</h1>
-        <p className="subtitle">Proyectos, presupuestos y documentos de tu empresa, en un solo sitio.</p>
-      </div>
+    <main className="auth-shell">
+      {/* Banda de marca: papel de plano (retícula fina) sobre la superficie de zona. */}
+      <aside className="auth-brand" aria-hidden="true">
+        <Brand className="auth-logo" />
+        <p className="auth-claim">Cada obra, bajo control.</p>
+        <div className="auth-cota"><span /><small className="pl-mono">CRM de proyectos de obra y reforma</small><span /></div>
+      </aside>
 
-      {!configured ? (
-        <div className="empty">
-          <strong>Este entorno usa datos de demostración</strong>
-          <span className="muted text-sm">No hay cuentas: los cambios se guardan solo en este navegador. Para trabajar con datos reales hay que configurar Supabase (ver <code>docs/despliegue.md</code>).</span>
-          <Link href="/proyectos" className="btn btn-primary">Ir a los proyectos</Link>
-        </div>
-      ) : (
-        <form onSubmit={submit} className="auth-form" noValidate>
-          <label className="field">
-            <span>Correo electrónico</span>
-            <input type="email" name="email" value={email} onChange={e => setEmail(e.target.value)} autoComplete="username" inputMode="email" required aria-invalid={Boolean(fieldError("email")) || undefined} aria-describedby={fieldError("email") ? "error-email" : undefined} />
-            {fieldError("email") && <small id="error-email" className="warning">{fieldError("email")}</small>}
-          </label>
-          <label className="field">
-            <span>Contraseña</span>
-            <input type="password" name="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" required aria-invalid={Boolean(fieldError("password")) || undefined} aria-describedby={fieldError("password") ? "error-password" : undefined} />
-            {fieldError("password") && <small id="error-password" className="warning">{fieldError("password")}</small>}
-          </label>
-          {error && <p role="alert" className="auth-error">{error}</p>}
-          <Button type="submit" variant="primary" disabled={busy || !email || !password}>{busy ? "Entrando…" : "Entrar"}</Button>
-          <p className="muted text-xs">Solo pueden entrar las cuentas dadas de alta por administración. Si no recuerdas la contraseña, pide a administración que la restablezca.</p>
-        </form>
-      )}
+      <section className="auth-card">
+        <h1 className="h1">Entrar.</h1>
+
+        {!configured ? (
+          <div className="empty">
+            <strong>Este entorno usa datos de demostración</strong>
+            <span className="muted text-sm">No hay cuentas: los cambios se guardan solo en este navegador. Para trabajar con datos reales hay que configurar Supabase (ver <code>docs/despliegue.md</code>).</span>
+            <Link href="/proyectos" className="btn btn-primary">Ir a los proyectos</Link>
+          </div>
+        ) : (
+          <form onSubmit={submit} className="auth-form" noValidate>
+            <label className="field">
+              <span>Correo electrónico</span>
+              <input type="email" name="email" value={email} onChange={e => setEmail(e.target.value)} autoComplete="username" inputMode="email" required autoFocus aria-invalid={Boolean(fieldError("email")) || undefined} aria-describedby={fieldError("email") ? "error-email" : undefined} />
+              {fieldError("email") && <small id="error-email" className="warning">{fieldError("email")}</small>}
+            </label>
+            <label className="field">
+              <span>Contraseña</span>
+              <input type="password" name="password" value={password} onChange={e => setPassword(e.target.value)} autoComplete="current-password" required aria-invalid={Boolean(fieldError("password")) || undefined} aria-describedby={fieldError("password") ? "error-password" : undefined} />
+              {fieldError("password") && <small id="error-password" className="warning">{fieldError("password")}</small>}
+            </label>
+            {error && <p role="alert" className="auth-error">{error}</p>}
+            <Button type="submit" variant="primary" disabled={busy || !email || !password} className="auth-submit">{busy ? "Entrando…" : "Entrar"}{!busy && <ArrowRight size={17} strokeWidth={1.8} aria-hidden="true" />}</Button>
+            <p className="muted text-xs">Acceso solo para cuentas dadas de alta por administración. Si no recuerdas la contraseña, pide que la restablezcan.</p>
+          </form>
+        )}
+      </section>
     </main>
   );
 }

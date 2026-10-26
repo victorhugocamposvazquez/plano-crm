@@ -2212,3 +2212,135 @@ p {
   font-size: var(--pl-text-xs);
   color: var(--pl-muted);
 }
+
+/* ---------- Acceso: banda de marca + tarjeta ---------- */
+
+.auth {
+  padding: 0;
+  align-items: stretch;
+  justify-content: stretch;
+}
+
+.auth-shell {
+  width: 100%;
+  min-height: 100dvh;
+  display: grid;
+  grid-template-rows: auto 1fr;
+}
+
+.auth-brand {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--pl-space-6);
+  padding: 28px 24px 24px;
+  background-color: var(--pl-surface-zone);
+  background-image:
+    linear-gradient(var(--pl-line) 1px, transparent 1px),
+    linear-gradient(90deg, var(--pl-line) 1px, transparent 1px);
+  background-size: 32px 32px;
+  background-position: -1px -1px;
+  border-bottom: var(--pl-hairline) solid var(--pl-line);
+}
+
+.auth-brand::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(180deg, transparent 40%, var(--pl-surface-zone) 100%);
+  pointer-events: none;
+}
+
+.auth-brand > * {
+  position: relative;
+  z-index: 1;
+}
+
+.auth-logo {
+  --pl-brand-dot: 9px;
+  font-size: 40px;
+}
+
+.auth-claim {
+  max-width: 16ch;
+  font-size: 22px;
+  font-weight: var(--pl-weight-medium);
+  line-height: 1.15;
+  letter-spacing: -0.04em;
+  color: var(--pl-ink);
+}
+
+.auth-cota {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: var(--pl-text-xs);
+  color: var(--pl-muted);
+}
+
+.auth-cota > span {
+  flex: 1;
+  height: 1px;
+  background: var(--pl-strong-line);
+  position: relative;
+}
+
+.auth-cota > span::before,
+.auth-cota > span::after {
+  content: "";
+  position: absolute;
+  top: -4px;
+  width: 1px;
+  height: 9px;
+  background: var(--pl-strong-line);
+}
+
+.auth-cota > span::before { left: 0; }
+.auth-cota > span::after { right: 0; }
+
+.auth-card {
+  width: 100%;
+  max-width: 420px;
+  margin: 0 auto;
+  padding: 28px 24px calc(28px + env(safe-area-inset-bottom));
+  display: flex;
+  flex-direction: column;
+  gap: var(--pl-space-6);
+}
+
+.auth-submit {
+  margin-top: 4px;
+}
+
+@media (min-width: 1024px) {
+  .auth-shell {
+    grid-template-rows: none;
+    grid-template-columns: minmax(360px, 44%) 1fr;
+  }
+
+  .auth-brand {
+    padding: 48px;
+    border-bottom: 0;
+    border-right: var(--pl-hairline) solid var(--pl-line);
+  }
+
+  .auth-brand::after {
+    background: linear-gradient(180deg, transparent 55%, var(--pl-surface-zone) 100%);
+  }
+
+  .auth-logo {
+    --pl-brand-dot: 12px;
+    font-size: 56px;
+  }
+
+  .auth-claim {
+    font-size: 32px;
+  }
+
+  .auth-card {
+    align-self: center;
+    max-width: 440px;
+    padding: 48px 40px;
+  }
+}
