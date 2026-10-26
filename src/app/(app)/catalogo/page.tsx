@@ -47,7 +47,7 @@ export default function CatalogoPage() {
         <div className="eyebrow"><BookOpen size={13} strokeWidth={1.8} aria-hidden="true" /><span>{data.organization_name || "Espacio de trabajo"}</span></div>
         <div className="page-head">
           <h1 className="h1">Catálogo de precios.</h1>
-          {allowed && <Button variant="icon" aria-label={adding ? "Cerrar alta" : "Nuevo artículo"} aria-expanded={adding} onClick={() => setAdding(v => !v)}>{adding ? <X size={19} strokeWidth={1.55} aria-hidden="true" /> : <Plus size={19} strokeWidth={1.55} aria-hidden="true" />}</Button>}
+          {allowed && <Button variant={adding ? "secondary" : "primary"} className="btn-new" aria-expanded={adding} onClick={() => setAdding(v => !v)}>{adding ? <X size={17} strokeWidth={1.8} aria-hidden="true" /> : <Plus size={17} strokeWidth={1.8} aria-hidden="true" />}{adding ? "Cerrar" : "Nuevo artículo"}</Button>}
         </div>
         <p className="subtitle">{loading ? "Cargando el catálogo…" : `${data.articles.length} artículos en ${chapters.length} capítulos · precios sin IVA que alimentan estimaciones y presupuestos`}</p>
       </div>

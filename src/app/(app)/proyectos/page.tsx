@@ -8,6 +8,7 @@ import { ProjectStatus, Meter } from "@/components/ui/status";
 import { projectProgress, projectStatus, money, totals, dateLabel, type Project, type Workspace } from "@/lib/domain";
 import { searchProjects } from "@/lib/search";
 import { useQueryState } from "@/lib/use-query-state";
+import { NewProjectDialog } from "@/components/project/new-project-dialog";
 
 type Filter = "all" | "active" | "estimating" | "completed";
 const filters: { id: Filter; label: string; match: (p: Project) => boolean }[] = [
@@ -27,6 +28,8 @@ export default function ObrasPage() {
   const { data, loading, error } = useWorkspace();
   const [filter, setFilter] = useQueryState<Filter>("f", "all");
   const [queryParam, setQueryParam] = useQueryState<string>("q", "");
+  // «?nuevo=1» abre el alta sobre la lista: recargar o volver atrás conserva el contexto.
+  const [nuevo, setNuevo] = useQueryState<string>("nuevo", "");
   const [query, setQuery] = useState(queryParam);
   // La búsqueda vive en la URL (con retardo) para que «atrás» y recargar conserven el contexto.
   useEffect(() => { const t = setTimeout(() => { if (query !== queryParam) setQueryParam(query); }, 300); return () => clearTimeout(t); }, [query, queryParam, setQueryParam]);
@@ -44,7 +47,7 @@ export default function ObrasPage() {
         <div className="eyebrow"><FileText size={13} strokeWidth={1.8} aria-hidden="true" /><span>{data.organization_name || "Espacio de trabajo"}</span></div>
         <div className="page-head">
           <h1 className="h1">Tus proyectos.</h1>
-          <Link href="/proyectos/nueva" className="btn btn-icon" aria-label="Nueva visita" title="Nueva visita"><Plus size={19} strokeWidth={1.55} aria-hidden="true" /></Link>
+          <button type="button" className="btn btn-primary btn-new" onClick={() => setNuevo("1")}><Plus size={17} strokeWidth={1.8} aria-hidden="true" />Nuevo proyecto</button>
         </div>
         <p className="subtitle">
           {loading ? "Cargando el espacio de trabajo…" : `${data.projects.length} proyectos · ${activeCount} en obra · ${money(inProgressAmount)} aprobados en curso, sin IVA`}
@@ -95,7 +98,7 @@ export default function ObrasPage() {
         {!loading && projects.length === 0 && (
           <div className="empty" style={{ marginTop: 16 }}>
             <strong>{query ? `Nada coincide con «${query}»` : "No hay proyectos en este filtro"}</strong>
-            <span className="muted text-sm">{query ? "Prueba con parte de la calle, el apellido del cliente o un material del presupuesto." : "Los proyectos nuevos entran desde una visita o desde «Nueva obra»."}</span>
+            <span className="muted text-sm">{query ? "Prueba con parte de la calle, el apellido del cliente o un material del presupuesto." : "Da de alta un proyecto desde «Nuevo proyecto» o estima en la visita."}</span>
           </div>
         )}
       </div>
@@ -109,6 +112,7 @@ export default function ObrasPage() {
           </Link>
         </div>
       )}
+      <NewProjectDialog open={nuevo === "1"} onClose={() => setNuevo("")} />
     </div>
   );
 }
