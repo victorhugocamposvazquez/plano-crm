@@ -25,7 +25,7 @@ export default function LoginPage() {
       const result = await response.json().catch(() => ({}));
       if (!response.ok) { setError(result.error || "No se ha podido iniciar sesión."); setFields(Array.isArray(result.fields) ? result.fields : []); return; }
       // Navegación completa para que las cookies de sesión lleguen al proveedor del espacio.
-      window.location.assign(typeof result.redirect === "string" ? result.redirect : "/obras");
+      window.location.assign(typeof result.redirect === "string" ? result.redirect : "/proyectos");
     } catch {
       setError("Sin conexión con el servidor. Comprueba la red e inténtalo de nuevo.");
     } finally {
@@ -40,14 +40,14 @@ export default function LoginPage() {
       <Brand />
       <div>
         <h1 className="h1">Entrar.</h1>
-        <p className="subtitle">Obras, presupuestos y documentos de tu empresa, en un solo sitio.</p>
+        <p className="subtitle">Proyectos, presupuestos y documentos de tu empresa, en un solo sitio.</p>
       </div>
 
       {!configured ? (
         <div className="empty">
           <strong>Este entorno usa datos de demostración</strong>
           <span className="muted text-sm">No hay cuentas: los cambios se guardan solo en este navegador. Para trabajar con datos reales hay que configurar Supabase (ver <code>docs/despliegue.md</code>).</span>
-          <Link href="/obras" className="btn btn-primary">Ir a las obras</Link>
+          <Link href="/proyectos" className="btn btn-primary">Ir a los proyectos</Link>
         </div>
       ) : (
         <form onSubmit={submit} className="auth-form" noValidate>

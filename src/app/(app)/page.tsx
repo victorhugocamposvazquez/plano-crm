@@ -39,7 +39,7 @@ export default function HoyPage() {
               <span className="task-title">{task.title}</span>
               <span className="task-meta">{task.project.name} · {task.trade}{task.assignee ? ` · ${task.assignee}` : ""}{task.due_date !== today ? ` · ${dateLabel(task.due_date)}` : ""}</span>
             </span>
-            <Link href={`/obras/${task.project_id}`} className="muted" aria-label={`Abrir ${task.project.name}`} style={{ display: "inline-flex" }}><ArrowUpRight size={15} strokeWidth={1.6} aria-hidden="true" /></Link>
+            <Link href={`/proyectos/${task.project_id}`} className="muted" aria-label={`Abrir ${task.project.name}`} style={{ display: "inline-flex" }}><ArrowUpRight size={15} strokeWidth={1.6} aria-hidden="true" /></Link>
           </label>
         ))}</div>
   );
@@ -57,9 +57,9 @@ export default function HoyPage() {
       </div>
 
       <div className="summary">
-        <Link href="/obras"><strong>{data.projects.filter(p => p.status === "active").length}</strong><small>obras en marcha</small></Link>
-        <Link href="/obras"><strong>{data.versions.filter(v => v.status === "draft" || v.status === "issued").length}</strong><small>presupuestos en revisión</small></Link>
-        <Link href="/obras"><strong>{data.purchases.filter(p => p.status === "ordered").length}</strong><small>pedidos sin recibir</small></Link>
+        <Link href="/proyectos"><strong>{data.projects.filter(p => p.status === "active").length}</strong><small>proyectos en obra</small></Link>
+        <Link href="/proyectos"><strong>{data.versions.filter(v => v.status === "draft" || v.status === "issued").length}</strong><small>presupuestos en revisión</small></Link>
+        <Link href="/proyectos"><strong>{data.purchases.filter(p => p.status === "ordered").length}</strong><small>pedidos sin recibir</small></Link>
       </div>
 
       <div className="detail">
@@ -102,7 +102,7 @@ export default function HoyPage() {
             {data.activities.slice(0, 5).map(activity => {
               const project = data.projects.find(p => p.id === activity.project_id);
               return (
-                <Link key={activity.id} href={project ? `/obras/${project.id}` : "/obras"} className="row-doc">
+                <Link key={activity.id} href={project ? `/proyectos/${project.id}` : "/proyectos"} className="row-doc">
                   <span>{activity.text}<small>{project ? `${project.name} · ` : ""}{activity.actor_name} · {dateLabel(activity.created_at)}</small></span>
                 </Link>
               );

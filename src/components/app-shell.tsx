@@ -12,7 +12,7 @@ const iconProps = { size: 19, strokeWidth: 1.55, "aria-hidden": true } as const;
 /** Las cuatro primeras entradas son las de la navegación inferior en móvil. */
 const items = [
   { href: "/", label: "Hoy", icon: House, primary: true, exact: true },
-  { href: "/obras", label: "Obras", icon: Layers2, primary: true },
+  { href: "/proyectos", label: "Proyectos", icon: Layers2, primary: true },
   { href: "/agenda", label: "Agenda", icon: CalendarDays, primary: true },
   { href: "/presupuestos", label: "Presupuestos", icon: FileText },
   { href: "/clientes", label: "Clientes", icon: Users },
@@ -72,7 +72,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <header className="topbar">
           <Link href="/" aria-label="Inicio" style={{ color: "inherit", textDecoration: "none" }}><Brand /></Link>
           <div className="topbar-tools">
-            <Link href="/obras/nueva" aria-label="Nueva visita" style={{ color: "inherit", display: "inline-flex" }}><SquarePen {...iconProps} /></Link>
+            <Link href="/proyectos/nueva" aria-label="Nueva visita" style={{ color: "inherit", display: "inline-flex" }}><SquarePen {...iconProps} /></Link>
             {signOutButton}
             <span className="avatar" aria-label={actor.name}>{initials || "·"}</span>
           </div>

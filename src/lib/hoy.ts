@@ -43,13 +43,13 @@ export function buildAlerts(data: Workspace, today = localDate()): Alert[] {
   const overdue = buildAgenda(data, today).overdue;
   for (const task of overdue) {
     const days = Math.round((Date.parse(`${today}T12:00:00`) - Date.parse(`${task.due_date}T12:00:00`)) / 86400000);
-    alerts.push({ id: `task-${task.id}`, tone: "warning", kind: "task", title: task.title, detail: `${task.project.name} · ${task.trade} · ${days === 1 ? "vence desde ayer" : `${days} días de retraso`}`, href: `/obras/${task.project_id}` });
+    alerts.push({ id: `task-${task.id}`, tone: "warning", kind: "task", title: task.title, detail: `${task.project.name} · ${task.trade} · ${days === 1 ? "vence desde ayer" : `${days} días de retraso`}`, href: `/proyectos/${task.project_id}` });
   }
 
   for (const version of data.versions.filter(v => v.status === "issued")) {
     const budget = data.budgets.find(b => b.id === version.budget_id); const p = budget && project(budget.project_id);
     if (!p) continue;
-    alerts.push({ id: `issued-${version.id}`, tone: "ink", kind: "approval", title: `V${version.number} cerrada, pendiente de aprobar`, detail: `${p.name} · ${budget.title} · ${version.change_reason}`, href: `/obras/${p.id}` });
+    alerts.push({ id: `issued-${version.id}`, tone: "ink", kind: "approval", title: `V${version.number} cerrada, pendiente de aprobar`, detail: `${p.name} · ${budget.title} · ${version.change_reason}`, href: `/proyectos/${p.id}` });
   }
 
   for (const version of data.versions.filter(v => v.status === "draft")) {
@@ -57,16 +57,16 @@ export function buildAlerts(data: Workspace, today = localDate()): Alert[] {
     if (!p || !budget.approved_version_id) continue;
     const approved = data.versions.find(v => v.id === budget.approved_version_id);
     const delta = approved ? totals(version.items).base - totals(approved.items).base : 0;
-    alerts.push({ id: `draft-${version.id}`, tone: "muted", kind: "draft", title: `V${version.number} con cambios en preparación`, detail: `${p.name} · ${delta >= 0 ? "+" : "−"}${Math.abs(delta / 100).toLocaleString("es-ES", { style: "currency", currency: "EUR" })} sin IVA · ${version.created_by_name}`, href: `/obras/${p.id}` });
+    alerts.push({ id: `draft-${version.id}`, tone: "muted", kind: "draft", title: `V${version.number} con cambios en preparación`, detail: `${p.name} · ${delta >= 0 ? "+" : "−"}${Math.abs(delta / 100).toLocaleString("es-ES", { style: "currency", currency: "EUR" })} sin IVA · ${version.created_by_name}`, href: `/proyectos/${p.id}` });
   }
 
   for (const purchase of data.purchases.filter(p => p.status === "ordered")) {
     const p = project(purchase.project_id); if (!p) continue;
-    alerts.push({ id: `purchase-${purchase.id}`, tone: "blue", kind: "purchase", title: `${purchase.name} · pedido, sin recibir`, detail: `${p.name} · ${purchase.supplier} · ${purchase.received_quantity}/${purchase.quantity} ${purchase.unit}`, href: `/obras/${p.id}` });
+    alerts.push({ id: `purchase-${purchase.id}`, tone: "blue", kind: "purchase", title: `${purchase.name} · pedido, sin recibir`, detail: `${p.name} · ${purchase.supplier} · ${purchase.received_quantity}/${purchase.quantity} ${purchase.unit}`, href: `/proyectos/${p.id}` });
   }
 
   for (const p of data.projects.filter(p => p.status === "lead" && !data.budgets.some(b => b.project_id === p.id))) {
-    alerts.push({ id: `estimate-${p.id}`, tone: "muted", kind: "estimate", title: `${p.name} · sin estimación`, detail: `${p.client_name} · ${p.location} · primera visita`, href: `/obras/${p.id}` });
+    alerts.push({ id: `estimate-${p.id}`, tone: "muted", kind: "estimate", title: `${p.name} · sin estimación`, detail: `${p.client_name} · ${p.location} · primera visita`, href: `/proyectos/${p.id}` });
   }
 
   return alerts;
