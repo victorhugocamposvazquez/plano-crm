@@ -4,6 +4,7 @@ import { useQueryState } from "@/lib/use-query-state";
 import { Search, X, Plus, BookOpen } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { can, money } from "@/lib/domain";
 import { unidades, unidadNombres, eurosACentimos, codigoSugerido, buscarArticulos, agruparPorCapitulo, capitulos, type Unidad } from "@/lib/catalogo";
 
@@ -59,9 +60,9 @@ export default function CatalogoPage() {
           </div>
           <label className="field"><span>Descripción del artículo</span><input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Preparación y pintura plástica lisa de paramentos" required maxLength={500} /></label>
           <div className="line-grid">
-            <label className="field"><span>Unidad</span><select value={form.unit} onChange={e => setForm({ ...form, unit: e.target.value as Unidad })}>{unidades.map(u => <option key={u} value={u}>{unidadNombres[u]}</option>)}</select></label>
+            <div className="field"><span>Unidad</span><Select label="Unidad" value={form.unit} onChange={u => setForm({ ...form, unit: u })} options={unidades.map(u => ({ value: u, label: unidadNombres[u] }))} /></div>
             <label className="field"><span>Precio sin IVA</span><span className="unit-input"><input type="text" inputMode="decimal" value={form.price} onChange={e => setForm({ ...form, price: e.target.value })} placeholder="49,50" required aria-invalid={form.price !== "" && cents === null ? true : undefined} /><span>€ / {form.unit}</span></span></label>
-            <label className="field"><span>IVA</span><select value={form.vat} onChange={e => setForm({ ...form, vat: e.target.value })}><option value="21">21 %</option><option value="10">10 % · vivienda con requisitos</option><option value="0">0 %</option></select></label>
+            <div className="field"><span>IVA</span><Select label="IVA" value={form.vat} onChange={v => setForm({ ...form, vat: v })} options={[{ value: "21", label: "21 %" }, { value: "10", label: "10 %", hint: "Vivienda con requisitos" }, { value: "0", label: "0 %" }]} /></div>
           </div>
           {error && <p role="alert" className="auth-error">{error}</p>}
           <div className="form-actions">

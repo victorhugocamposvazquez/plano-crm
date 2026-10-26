@@ -3,6 +3,7 @@ import { useState, type FormEvent } from "react";
 import { Plus, X } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
 import { Button } from "@/components/ui/button";
+import { Select } from "@/components/ui/select";
 import { PurchaseStatus } from "@/components/ui/status";
 import { can, type Purchase } from "@/lib/domain";
 import { accionesPara, comandoPara, pendienteDeRecibir } from "@/lib/compras";
@@ -53,7 +54,7 @@ export function PurchasesPanel({ projectId, purchases, showAdd = true }: { proje
           <div className="line-grid">
             <label className="field"><span>Proveedor</span><input type="text" value={form.supplier} onChange={e => setForm({ ...form, supplier: e.target.value })} placeholder="Almacén o taller" required maxLength={500} /></label>
             <label className="field"><span>Cantidad</span><span className="unit-input"><input type="text" inputMode="decimal" value={form.quantity} onChange={e => setForm({ ...form, quantity: e.target.value })} placeholder="32" required /><span>{form.unit}</span></span></label>
-            <label className="field"><span>Unidad</span><select value={form.unit} onChange={e => setForm({ ...form, unit: e.target.value as Unidad })}>{unidades.map(u => <option key={u} value={u}>{unidadNombres[u]}</option>)}</select></label>
+            <div className="field"><span>Unidad</span><Select label="Unidad" value={form.unit} onChange={u => setForm({ ...form, unit: u })} options={unidades.map(u => ({ value: u, label: unidadNombres[u] }))} /></div>
           </div>
           <div className="form-actions"><Button type="submit" variant="primary" disabled={pending === "new" || busy || !form.name.trim() || !form.supplier.trim() || !form.quantity}>{pending === "new" ? "Guardando…" : "Añadir a la lista"}</Button></div>
         </form>
