@@ -777,6 +777,102 @@ p {
   font-size: var(--pl-text-xs);
 }
 
+/* ---------- Acceso ---------- */
+
+.auth {
+  min-height: 100dvh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--pl-space-6) var(--pl-space-4);
+}
+
+.auth-card {
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--pl-space-6);
+}
+
+.auth-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--pl-space-4);
+}
+
+.auth-error {
+  padding: 10px 12px;
+  border-left: 3px solid var(--pl-warning);
+  background: var(--pl-soft);
+  border-radius: 0 var(--pl-radius-tab) var(--pl-radius-tab) 0;
+  font-size: var(--pl-text-md);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: var(--pl-text-xs);
+  color: var(--pl-muted);
+}
+
+.field input,
+.field select,
+.field textarea {
+  height: var(--pl-control-height);
+  padding: 0 14px;
+  border: var(--pl-hairline) solid var(--pl-line);
+  border-radius: var(--pl-radius-control);
+  background: var(--pl-bg);
+  color: var(--pl-ink);
+  font-size: var(--pl-text-ui);
+}
+
+.field input:focus-visible {
+  outline: 0;
+  border-width: var(--pl-hairline-active);
+  border-color: var(--pl-ink);
+}
+
+.field input[aria-invalid="true"] {
+  border-color: var(--pl-warning);
+}
+
+.nav-signout {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  margin-left: auto;
+  border: 0;
+  border-radius: var(--pl-radius-icon-button);
+  background: transparent;
+  color: var(--pl-muted);
+  cursor: pointer;
+}
+
+.nav-signout:disabled {
+  color: var(--pl-faint);
+  cursor: default;
+}
+
+@media (min-width: 768px) and (max-width: 1279px) {
+  .nav-foot {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .nav-user {
+    display: none;
+  }
+
+  .nav-signout {
+    margin-left: 0;
+  }
+}
+
 /* ---------- Buscador ---------- */
 
 .search {

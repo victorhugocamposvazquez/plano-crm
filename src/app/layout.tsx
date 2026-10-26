@@ -6,8 +6,6 @@ import "@fontsource/ibm-plex-mono/400.css";
 import "@fontsource/ibm-plex-mono/500.css";
 import "@/styles/tokens.css";
 import "@/styles/ui.css";
-import { WorkspaceProvider } from "@/components/workspace-provider";
-import { AppShell } from "@/components/app-shell";
 
 export const metadata: Metadata = {
   title: { default: "Plano", template: "%s · Plano" },
@@ -25,14 +23,11 @@ export const viewport: Viewport = {
   ]
 };
 
+/** Raíz común: fuentes y tokens. El proveedor del espacio y el armazón viven en el grupo (app); /login queda fuera. */
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="es" suppressHydrationWarning>
-      <body>
-        <WorkspaceProvider>
-          <AppShell>{children}</AppShell>
-        </WorkspaceProvider>
-      </body>
+      <body>{children}</body>
     </html>
   );
 }
