@@ -3,7 +3,6 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Building2, Plus, ArrowUpRight, FileText, Search, X } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
-import { Button } from "@/components/ui/button";
 import { Tabs } from "@/components/ui/tabs";
 import { ProjectStatus, Meter } from "@/components/ui/status";
 import { projectProgress, projectStatus, money, totals, dateLabel, type Project, type Workspace } from "@/lib/domain";
@@ -17,10 +16,10 @@ const filters: { id: Filter; label: string; match: (p: Project) => boolean }[] =
   { id: "completed", label: "Finalizadas", match: p => p.status === "completed" }
 ];
 
+/** Base aprobada (sin IVA) sumando todos los presupuestos de la obra; null si ninguno está aprobado. */
 function approvedAmount(data: Workspace, projectId: string) {
-  const budget = data.budgets.find(b => b.project_id === projectId);
-  const version = budget?.approved_version_id ? data.versions.find(v => v.id === budget.approved_version_id) : undefined;
-  return version ? totals(version.items).total : null;
+  const approved = data.budgets.filter(b => b.project_id === projectId).map(b => data.versions.find(v => v.id === b.approved_version_id)).filter(v => v !== undefined);
+  return approved.length ? approved.reduce((sum, v) => sum + totals(v.items).base, 0) : null;
 }
 
 export default function ObrasPage() {
@@ -40,11 +39,11 @@ export default function ObrasPage() {
       <div>
         <div className="eyebrow"><FileText size={13} strokeWidth={1.8} aria-hidden="true" /><span>{data.organization_name || "Espacio de trabajo"}</span></div>
         <div className="page-head">
-          <h1 className="h1">Tus obras.</h1>
-          <Button variant="icon" aria-label="Nueva obra" onClick={() => alert("La creación de obra llega con la pantalla de visita.")}><Plus size={19} strokeWidth={1.55} aria-hidden="true" /></Button>
+          <h1 className="h1">Tus proyectos.</h1>
+          <Link href="/proyectos/nueva" className="btn btn-icon" aria-label="Nueva visita" title="Nueva visita"><Plus size={19} strokeWidth={1.55} aria-hidden="true" /></Link>
         </div>
         <p className="subtitle">
-          {loading ? "Cargando el espacio de trabajo…" : `${data.projects.length} obras · ${activeCount} en obra · ${money(inProgressAmount)} en curso`}
+          {loading ? "Cargando el espacio de trabajo…" : `${data.projects.length} proyectos · ${activeCount} en obra · ${money(inProgressAmount)} aprobados en curso, sin IVA`}
         </p>
       </div>
 
@@ -52,19 +51,19 @@ export default function ObrasPage() {
 
       <label className="search">
         <Search size={16} strokeWidth={1.8} aria-hidden="true" />
-        <input type="search" className="search-input" value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar por calle, cliente, partida, proveedor…" aria-label="Buscar obras" autoComplete="off" />
+        <input type="search" className="search-input" value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar por calle, cliente, partida, proveedor…" aria-label="Buscar proyectos" autoComplete="off" />
         {query && <button type="button" className="search-clear" aria-label="Borrar búsqueda" onClick={() => setQuery("")}><X size={15} strokeWidth={1.8} aria-hidden="true" /></button>}
       </label>
 
-      <Tabs label="Filtrar obras" value={filter} onChange={setFilter} options={filters.map(f => ({ id: f.id, label: f.label, count: searchProjects(data, data.projects.filter(f.match), query).length }))} />
+      <Tabs label="Filtrar proyectos" value={filter} onChange={setFilter} options={filters.map(f => ({ id: f.id, label: f.label, count: searchProjects(data, data.projects.filter(f.match), query).length }))} />
 
       <div>
-        <div className="row-head"><span>Obra</span><span>Cliente</span><span>Fase</span><span>Avance</span><span style={{ textAlign: "right" }}>Aprobado</span><span>Estado</span></div>
+        <div className="row-head"><span>Proyecto</span><span>Cliente</span><span>Fase</span><span>Avance</span><span style={{ textAlign: "right" }}>Aprobado · sin IVA</span><span>Estado</span></div>
         {projects.map(project => {
           const progress = projectProgress(data, project.id);
           const amount = approvedAmount(data, project.id);
           return (
-            <Link key={project.id} href={`/obras/${project.id}`} className="row-project">
+            <Link key={project.id} href={`/proyectos/${project.id}`} className="row-project">
               <span className="row-main">
                 <span className="row-icon"><Building2 size={16} strokeWidth={1.6} aria-hidden="true" /></span>
                 <span className="row-text">
@@ -91,8 +90,8 @@ export default function ObrasPage() {
         })}
         {!loading && projects.length === 0 && (
           <div className="empty" style={{ marginTop: 16 }}>
-            <strong>{query ? `Nada coincide con «${query}»` : "No hay obras en este filtro"}</strong>
-            <span className="muted text-sm">{query ? "Prueba con parte de la calle, el apellido del cliente o un material del presupuesto." : "Las obras nuevas entran desde una visita o desde «Nueva obra»."}</span>
+            <strong>{query ? `Nada coincide con «${query}»` : "No hay proyectos en este filtro"}</strong>
+            <span className="muted text-sm">{query ? "Prueba con parte de la calle, el apellido del cliente o un material del presupuesto." : "Los proyectos nuevos entran desde una visita o desde «Nueva obra»."}</span>
           </div>
         )}
       </div>
@@ -100,7 +99,7 @@ export default function ObrasPage() {
       {lastVersion && lastProject && (
         <div>
           <div className="section-label"><span>Último presupuesto tocado</span><ArrowUpRight size={15} strokeWidth={1.6} aria-hidden="true" /></div>
-          <Link href={`/obras/${lastProject.id}`} className="row-doc">
+          <Link href={`/proyectos/${lastProject.id}`} className="row-doc">
             <FileText size={19} strokeWidth={1.55} aria-hidden="true" className="muted" />
             <span>V{lastVersion.number} · {lastVersion.change_reason}<small>{lastProject.name} · {dateLabel(lastVersion.updated_at)} · {lastVersion.created_by_name}</small></span>
           </Link>

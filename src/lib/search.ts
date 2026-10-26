@@ -13,7 +13,7 @@ export function projectFields(data: Workspace, project: Project): SearchField[] 
   const versions = data.versions.filter(v => budgetIds.includes(v.budget_id));
   const items = [...new Set(versions.flatMap(v => v.items.map(i => `${i.chapter} ${i.description}`)))];
   return [
-    { label: "obra", text: `${project.code} ${project.name}` },
+    { label: "proyecto", text: `${project.code} ${project.name}` },
     { label: "dirección", text: project.location },
     { label: "cliente", text: project.client_name },
     { label: "tipo", text: kindNames[project.kind] },

@@ -1,8 +1,8 @@
 "use client";
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { House, Layers2, CalendarDays, FileText, Users, Package, FolderOpen, Wallet, Menu, SquarePen } from "lucide-react";
+import { House, Layers2, CalendarDays, FileText, Users, Package, FolderOpen, Wallet, Menu, SquarePen, LogOut } from "lucide-react";
 import { Brand } from "@/components/ui/brand";
 import { useWorkspace } from "@/components/workspace-provider";
 import { roleNames } from "@/lib/domain";
@@ -12,7 +12,7 @@ const iconProps = { size: 19, strokeWidth: 1.55, "aria-hidden": true } as const;
 /** Las cuatro primeras entradas son las de la navegación inferior en móvil. */
 const items = [
   { href: "/", label: "Hoy", icon: House, primary: true, exact: true },
-  { href: "/obras", label: "Obras", icon: Layers2, primary: true },
+  { href: "/proyectos", label: "Proyectos", icon: Layers2, primary: true },
   { href: "/agenda", label: "Agenda", icon: CalendarDays, primary: true },
   { href: "/presupuestos", label: "Presupuestos", icon: FileText },
   { href: "/clientes", label: "Clientes", icon: Users },
@@ -24,9 +24,28 @@ const items = [
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
-  const { actor, notice } = useWorkspace();
+  const { actor, notice, mode, notify } = useWorkspace();
+  const [leaving, setLeaving] = useState(false);
   const initials = actor.name.split(/[\s·]+/).filter(Boolean).slice(0, 2).map(w => w[0]?.toUpperCase()).join("");
   const isActive = (href: string, exact?: boolean) => (exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`));
+
+  async function signOut() {
+    if (leaving) return;
+    setLeaving(true);
+    try {
+      const response = await fetch("/api/auth/sign-out", { method: "POST", headers: { "Content-Type": "application/json" }, body: "{}" });
+      const result = await response.json().catch(() => ({}));
+      if (!response.ok) { notify(result.error || "No se ha podido cerrar la sesión."); return; }
+      window.location.assign(typeof result.redirect === "string" ? result.redirect : "/login");
+    } catch {
+      notify("Sin conexión: no se ha podido cerrar la sesión.");
+    } finally {
+      setLeaving(false);
+    }
+  }
+  const signOutButton = mode === "supabase" && (
+    <button type="button" className="nav-signout" onClick={signOut} disabled={leaving} aria-label="Cerrar sesión" title="Cerrar sesión"><LogOut {...iconProps} /></button>
+  );
 
   return (
     <div className="shell">
@@ -44,7 +63,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         })}
         <div className="nav-foot">
           <span className="avatar" aria-hidden="true">{initials || "·"}</span>
-          <span className="text-sm">{actor.name}<small className="muted" style={{ display: "block" }}>{roleNames[actor.role]}</small></span>
+          <span className="text-sm nav-user">{actor.name}<small className="muted" style={{ display: "block" }}>{roleNames[actor.role]}</small></span>
+          {signOutButton}
         </div>
       </nav>
 
@@ -52,7 +72,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         <header className="topbar">
           <Link href="/" aria-label="Inicio" style={{ color: "inherit", textDecoration: "none" }}><Brand /></Link>
           <div className="topbar-tools">
-            <Link href="/obras/nueva" aria-label="Nueva visita" style={{ color: "inherit", display: "inline-flex" }}><SquarePen {...iconProps} /></Link>
+            <Link href="/proyectos/nueva" aria-label="Nueva visita" style={{ color: "inherit", display: "inline-flex" }}><SquarePen {...iconProps} /></Link>
+            {signOutButton}
             <span className="avatar" aria-label={actor.name}>{initials || "·"}</span>
           </div>
         </header>
