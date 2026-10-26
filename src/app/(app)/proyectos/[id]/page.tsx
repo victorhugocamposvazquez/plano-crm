@@ -6,9 +6,10 @@ import { ArrowLeft, Ellipsis } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
 import { Tabs } from "@/components/ui/tabs";
 import { Button, LinkButton } from "@/components/ui/button";
-import { ProjectStatus, PurchaseStatus, Meter } from "@/components/ui/status";
+import { ProjectStatus, Meter } from "@/components/ui/status";
 import { DocumentsPanel } from "@/components/project/documents-panel";
 import { ChatPanel } from "@/components/project/chat-panel";
+import { PurchasesPanel } from "@/components/project/purchases-panel";
 import { projectProgress, money, totals, dateLabel, compareVersions, kindNames, lineTotal, type Budget, type BudgetVersion, type ItemChange, type Workspace } from "@/lib/domain";
 
 type Section = "budget" | "documents" | "chat" | "purchases";
@@ -173,17 +174,7 @@ export default function ObraPage() {
 
           {section === "chat" && <ChatPanel projectId={project.id} messages={messages} />}
 
-          {section === "purchases" && (
-            purchases.length === 0
-              ? <div className="empty"><strong>Sin materiales previstos</strong><span className="muted text-sm">La lista de compras se vincula al presupuesto aprobado.</span></div>
-              : <div style={{ borderTop: "var(--pl-hairline) solid var(--pl-line)" }}>{purchases.map(purchase => (
-                  <div key={purchase.id} className="row-item">
-                    <span><strong>{purchase.name}</strong><small>{purchase.supplier} · recibido {purchase.received_quantity}/{purchase.quantity} {purchase.unit}</small></span>
-                    <span />
-                    <PurchaseStatus status={purchase.status} />
-                  </div>
-                ))}</div>
-          )}
+          {section === "purchases" && <PurchasesPanel projectId={project.id} purchases={purchases} />}
         </div>
 
         <aside style={{ display: "flex", flexDirection: "column", gap: 20 }}>
