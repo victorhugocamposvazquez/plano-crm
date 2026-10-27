@@ -191,3 +191,11 @@ La guía por capítulos (`guiaPorTipo`) es el guion de una obra según el tipo d
 ### Pantallas transversales
 
 Presupuestos, Clientes, Documentos y Finanzas leen todo el espacio y enlazan a la ficha del proyecto conservando el contexto (`?s=`, `?p=`). Sus filtros van en la URL (`?f=`, `?q=`, `?c=`). Importes siempre en base sin IVA, en mono. «Más» es la puerta de las secciones secundarias en móvil (tarjeta de cuenta, lista de secciones, tema) y repite el menú lateral en escritorio. En Finanzas la tabla se apila en móvil con el nombre de la columna delante de cada cifra (`data-label`).
+
+### Menú contextual
+
+`Menu` (botón «···» + lista propia con teclado y cierre al pulsar fuera) reúne lo que se hace con un objeto y no cabe en su cabecera; cada entrada lleva etiqueta y una línea de ayuda, y las que no aplican se muestran deshabilitadas con el motivo en la ayuda. Las acciones que cambian estado (cerrar revisión, aprobar, nueva revisión, cambiar de fase) confirman siempre en un `Modal` sobre la pantalla, con el dato que el dominio exige (referencia de aprobación, motivo de la revisión).
+
+### Ciclo del presupuesto en la ficha
+
+Bajo las partidas, una fila de acciones según el estado (`accionesPresupuesto`): borrador → «Editar partidas» y «Cerrar Vn»; cerrada → «Aprobar Vn para obra» (oficina y administración) o «Nueva revisión»; aprobada sin borrador → «Nueva revisión». Con aprobada y borrador a la vez, «Ver cambios completos» abre el comparador campo a campo con la diferencia en base.

@@ -2728,3 +2728,70 @@ p {
 .more-item strong { display: block; font-size: var(--pl-text-md); font-weight: var(--pl-weight-medium); }
 .more-item small { display: block; margin-top: 2px; font-size: var(--pl-text-xs); }
 .more-icon { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; flex: 0 0 auto; border-radius: var(--pl-radius-icon-button); background: var(--pl-soft); color: var(--pl-ink); }
+
+/* ---------- Menú contextual ---------- */
+
+.menu { position: relative; display: inline-flex; }
+.menu-list {
+  position: absolute;
+  top: calc(100% + 6px);
+  z-index: 20;
+  min-width: 250px;
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+  border: var(--pl-hairline) solid var(--pl-line);
+  border-radius: var(--pl-radius-panel);
+  background: var(--pl-surface);
+  box-shadow: var(--pl-shadow-2);
+}
+.menu-list[data-align="end"] { right: 0; }
+.menu-list[data-align="start"] { left: 0; }
+.menu-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  padding: 6px 10px;
+  border: 0;
+  border-radius: var(--pl-radius-control);
+  background: transparent;
+  color: var(--pl-ink);
+  text-align: left;
+  font: inherit;
+  font-size: var(--pl-text-sm);
+  cursor: pointer;
+}
+.menu-item[data-active="true"] { background: var(--pl-soft); }
+.menu-item:disabled { color: var(--pl-faint); cursor: default; }
+.menu-item:disabled .muted { color: var(--pl-faint); }
+.menu-item[data-danger] { color: var(--pl-danger); }
+.menu-icon { display: inline-flex; flex: 0 0 auto; color: var(--pl-muted); }
+.menu-item[data-active="true"] .menu-icon { color: var(--pl-ink); }
+.menu-label { display: block; font-weight: var(--pl-weight-medium); }
+.menu-item small { display: block; margin-top: 1px; font-size: var(--pl-text-xs); }
+
+/* ---------- Acciones del presupuesto y comparador ---------- */
+
+.actions-row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+.actions-row .btn-primary { margin-left: auto; }
+.changes { display: flex; flex-direction: column; gap: 10px; }
+.change { padding: 10px 12px; border: var(--pl-hairline) solid var(--pl-line); border-left-width: 3px; border-radius: var(--pl-radius-control); }
+.change[data-kind="added"] { border-left-color: var(--pl-success); }
+.change[data-kind="changed"] { border-left-color: var(--pl-warning); }
+.change[data-kind="removed"] { border-left-color: var(--pl-danger); }
+.change header { display: flex; justify-content: space-between; gap: 10px; font-size: var(--pl-text-sm); }
+.change header strong { font-weight: var(--pl-weight-medium); }
+.change[data-kind="removed"] header strong { text-decoration: line-through; color: var(--pl-muted); }
+.change ul { margin: 6px 0 0; padding-left: 18px; font-size: var(--pl-text-sm); color: var(--pl-ink); }
+.change li + li { margin-top: 2px; }
+.change small { display: block; margin-top: 6px; font-size: var(--pl-text-xs); }
+
+@media (max-width: 767px) {
+  /* En móvil el menú contextual se ancla abajo, sobre la barra de navegación, para no salirse de pantalla. */
+  .menu-list,
+  .menu-list[data-align="end"],
+  .menu-list[data-align="start"] { position: fixed; top: auto; left: 12px; right: 12px; bottom: calc(76px + env(safe-area-inset-bottom)); min-width: 0; }
+  .menu-item { min-height: 48px; }
+}

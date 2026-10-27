@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { Ellipsis, MessageSquare, Plus, PenLine, Footprints } from "lucide-react";
+import { MessageSquare, Plus, Footprints } from "lucide-react";
 import { Drawer } from "@/components/ui/drawer";
 import { BackLink } from "@/components/ui/back-link";
 import { TaskRow } from "@/components/project/task-row";
@@ -16,6 +16,8 @@ import { DocumentsPanel } from "@/components/project/documents-panel";
 import { ChatPanel } from "@/components/project/chat-panel";
 import { PurchasesPanel } from "@/components/project/purchases-panel";
 import { BudgetEditor } from "@/components/project/budget-editor";
+import { BudgetActions } from "@/components/project/budget-actions";
+import { ProjectMenu } from "@/components/project/project-menu";
 import { projectProgress, money, totals, dateLabel, compareVersions, kindNames, lineTotal, can, type Budget, type BudgetVersion, type ItemChange, type Task, type Workspace } from "@/lib/domain";
 
 type Section = "budget" | "documents" | "purchases";
@@ -116,7 +118,7 @@ export default function ObraPage() {
           <div className="head-actions">
             {canBudget && sinPartidas && (project.status === "lead" || project.status === "estimating") && <LinkButton href={`/proyectos/nueva?proyecto=${project.id}`} variant="secondary"><Footprints size={17} strokeWidth={1.6} aria-hidden="true" />Estimar en visita</LinkButton>}
             <Button variant="secondary" className="chat-launcher" onClick={() => setChatParam("1")} aria-haspopup="dialog" aria-expanded={chatAbierto}><MessageSquare size={17} strokeWidth={1.6} aria-hidden="true" />Chat<span className="pl-mono">{messages.length}</span></Button>
-            <Button variant="icon" aria-label="Más acciones"><Ellipsis size={19} strokeWidth={1.55} aria-hidden="true" /></Button>
+            <ProjectMenu project={project} approvedVersion={approved} puedeEstimar={canBudget && sinPartidas && (project.status === "lead" || project.status === "estimating")} onChat={() => setChatParam("1")} />
           </div>
         </div>
         <p className="subtitle">{[project.client_name, project.location, `desde ${dateLabel(project.created_at)}`].filter(Boolean).join(" · ")}</p>
@@ -180,7 +182,7 @@ export default function ObraPage() {
 
               {shown && (
                 <div>
-                  <div className="section-label"><span>Partidas de la V{shown.number}{approved && working ? " · cambios respecto a la aprobada" : ""}</span><span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>{editable && canSave && shown.id === editable.id && <button type="button" className="btn btn-ghost" style={{ height: 30 }} onClick={() => setEditParam("1")}><PenLine size={14} strokeWidth={1.8} aria-hidden="true" />Editar partidas</button>}<span className="pl-mono">{shown.items.length}</span></span></div>
+                  <div className="section-label"><span>Partidas de la V{shown.number}{approved && working ? " · cambios respecto a la aprobada" : ""}</span><span className="pl-mono">{shown.items.length}</span></div>
                   {shown.items.length === 0 && editable && canSave && shown.id === editable.id && <div className="empty" style={{ padding: "22px 16px" }}><strong>La V{shown.number} está vacía</strong><span className="muted text-sm">Añade partidas del catálogo con la guía por capítulos, o estímalas en la visita.</span><Button variant="primary" className="btn-new" onClick={() => setEditParam("1")}><Plus size={17} strokeWidth={1.8} aria-hidden="true" />Añadir partidas</Button></div>}
                   <div style={{ borderTop: "var(--pl-hairline) solid var(--pl-line)" }}>
                     {shown.items.map(item => {
@@ -219,12 +221,7 @@ export default function ObraPage() {
                 </div>
               )}
 
-              {approved && working && (
-                <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-                  <Button variant="secondary">Ver cambios completos</Button>
-                  <Button variant="primary">Enviar V{working.number} al cliente</Button>
-                </div>
-              )}
+              {budget && <BudgetActions budget={budget} approved={approved} working={working} onEdit={() => setEditParam("1")} />}
             </div>
           )}
 
