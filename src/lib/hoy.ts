@@ -49,7 +49,7 @@ export function buildAlerts(data: Workspace, today = localDate()): Alert[] {
   for (const version of data.versions.filter(v => v.status === "issued")) {
     const budget = data.budgets.find(b => b.id === version.budget_id); const p = budget && project(budget.project_id);
     if (!p) continue;
-    alerts.push({ id: `issued-${version.id}`, tone: "warning", kind: "approval", title: `V${version.number} cerrada, pendiente de aprobar`, detail: `${p.name} · ${budget.title} · ${version.change_reason}`, href: `/proyectos/${p.id}` });
+    alerts.push({ id: `issued-${version.id}`, tone: "warning", kind: "approval", title: `V${version.number} cerrada, pendiente de aprobar`, detail: `${p.name} · ${budget.title} · ${version.change_reason}`, href: `/proyectos/${p.id}?s=budget&p=${budget.id}` });
   }
 
   for (const version of data.versions.filter(v => v.status === "draft")) {
@@ -57,12 +57,12 @@ export function buildAlerts(data: Workspace, today = localDate()): Alert[] {
     if (!p || !budget.approved_version_id) continue;
     const approved = data.versions.find(v => v.id === budget.approved_version_id);
     const delta = approved ? totals(version.items).base - totals(approved.items).base : 0;
-    alerts.push({ id: `draft-${version.id}`, tone: "muted", kind: "draft", title: `V${version.number} con cambios en preparación`, detail: `${p.name} · ${delta >= 0 ? "+" : "−"}${Math.abs(delta / 100).toLocaleString("es-ES", { style: "currency", currency: "EUR" })} sin IVA · ${version.created_by_name}`, href: `/proyectos/${p.id}` });
+    alerts.push({ id: `draft-${version.id}`, tone: "muted", kind: "draft", title: `V${version.number} con cambios en preparación`, detail: `${p.name} · ${delta >= 0 ? "+" : "−"}${Math.abs(delta / 100).toLocaleString("es-ES", { style: "currency", currency: "EUR" })} sin IVA · ${version.created_by_name}`, href: `/proyectos/${p.id}?s=budget` });
   }
 
   for (const purchase of data.purchases.filter(p => p.status === "ordered")) {
     const p = project(purchase.project_id); if (!p) continue;
-    alerts.push({ id: `purchase-${purchase.id}`, tone: "info", kind: "purchase", title: `${purchase.name} · pedido, sin recibir`, detail: `${p.name} · ${purchase.supplier} · ${purchase.received_quantity}/${purchase.quantity} ${purchase.unit}`, href: `/proyectos/${p.id}` });
+    alerts.push({ id: `purchase-${purchase.id}`, tone: "info", kind: "purchase", title: `${purchase.name} · pedido, sin recibir`, detail: `${p.name} · ${purchase.supplier} · ${purchase.received_quantity}/${purchase.quantity} ${purchase.unit}`, href: `/proyectos/${p.id}?s=purchases` });
   }
 
   for (const p of data.projects.filter(p => p.status === "lead" && !data.budgets.some(b => b.project_id === p.id))) {

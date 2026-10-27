@@ -1,8 +1,8 @@
 "use client";
 import { useState } from "react";
-import { Lock, Stamp, GitBranch, Diff } from "lucide-react";
+import { Lock, Stamp, GitBranch, Diff, Printer } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
-import { Button } from "@/components/ui/button";
+import { Button, LinkButton } from "@/components/ui/button";
 import { useWorkspace } from "@/components/workspace-provider";
 import { can, money, totals, compareVersions, lineTotal, type Budget, type BudgetVersion } from "@/lib/domain";
 import { accionesPresupuesto, describirCambio } from "@/lib/presupuesto";
@@ -13,7 +13,7 @@ const signed = (cents: number) => `${cents < 0 ? "−" : "+"}${money(Math.abs(ce
  * Acciones del presupuesto según su estado: cerrar la revisión, aprobarla para obra con referencia,
  * abrir una nueva revisión y ver el comparador completo. Cada una confirma en un diálogo sobre la ficha.
  */
-export function BudgetActions({ budget, approved, working, onEdit }: { budget: Budget; approved?: BudgetVersion; working?: BudgetVersion; onEdit: () => void }) {
+export function BudgetActions({ budget, approved, working, shown, onEdit }: { budget: Budget; approved?: BudgetVersion; working?: BudgetVersion; shown?: BudgetVersion; onEdit: () => void }) {
   const { actor, busy, send, notify } = useWorkspace();
   const permisos = { guardar: can(actor.role, "budget.save"), aprobar: can(actor.role, "budget.approve") };
   const acciones = accionesPresupuesto(approved, working, permisos);
@@ -41,11 +41,13 @@ export function BudgetActions({ budget, approved, working, onEdit }: { budget: B
     }
   }
 
-  if (!acciones.length && !(approved && working)) return null;
+  const imprimible = shown && shown.items.length > 0 ? shown : undefined;
+  if (!acciones.length && !(approved && working) && !imprimible) return null;
 
   return (
     <>
       <div className="actions-row">
+        {imprimible && <LinkButton href={`/imprimir/presupuesto/${imprimible.id}`} variant="secondary" target="_blank" rel="noopener"><Printer size={16} strokeWidth={1.7} aria-hidden="true" />{imprimible.status === "draft" ? `Imprimir borrador V${imprimible.number}` : `PDF de la V${imprimible.number}`}</LinkButton>}
         {approved && working && <Button variant="secondary" onClick={() => setDialogo("cambios")}><Diff size={16} strokeWidth={1.7} aria-hidden="true" />Ver cambios completos</Button>}
         {acciones.includes("editar") && <Button variant="secondary" onClick={onEdit}>Editar partidas</Button>}
         {acciones.includes("revisar") && <Button variant="secondary" onClick={() => setDialogo("revisar")}><GitBranch size={16} strokeWidth={1.7} aria-hidden="true" />Nueva revisión</Button>}
