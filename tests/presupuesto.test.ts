@@ -57,3 +57,32 @@ describe("Editor manual de presupuesto", () => {
     expect(r.alternativas).toBe(1);
   });
 });
+
+import { accionesPresupuesto, describirCambio } from "@/lib/presupuesto";
+import { compareVersions } from "@/lib/domain";
+
+describe("Ciclo de vida de la revisión", () => {
+  const demo = createDemo();
+  const aprobada = demo.versions.find(v => v.id === "00000000-0000-4000-8000-000000000060")!;
+  const borrador = demo.versions.find(v => v.id === "00000000-0000-4000-8000-000000000061")!;
+
+  it("ofrece editar y cerrar sobre un borrador con partidas, y solo editar si está vacío", () => {
+    expect(accionesPresupuesto(aprobada, borrador, { guardar: true, aprobar: true })).toEqual(["editar", "cerrar"]);
+    expect(accionesPresupuesto(undefined, { ...borrador, items: [] }, { guardar: true, aprobar: true })).toEqual(["editar"]);
+    expect(accionesPresupuesto(aprobada, borrador, { guardar: false, aprobar: false })).toEqual([]);
+  });
+
+  it("sobre una revisión cerrada ofrece aprobar o abrir otra, y sobre la aprobada sola, revisar", () => {
+    expect(accionesPresupuesto(aprobada, { ...borrador, status: "issued" }, { guardar: true, aprobar: true })).toEqual(["aprobar", "revisar"]);
+    expect(accionesPresupuesto(aprobada, { ...borrador, status: "issued" }, { guardar: true, aprobar: false })).toEqual(["revisar"]);
+    expect(accionesPresupuesto(aprobada, undefined, { guardar: true, aprobar: true })).toEqual(["revisar"]);
+  });
+
+  it("describe cada cambio campo a campo", () => {
+    const cambios = compareVersions(aprobada, borrador);
+    const textos = cambios.flatMap(describirCambio);
+    expect(textos.some(t => t.startsWith("Cantidad:"))).toBe(true);
+    expect(textos.some(t => t.startsWith("Añadida"))).toBe(true);
+    expect(textos.every(t => t.length > 0)).toBe(true);
+  });
+});

@@ -1,4 +1,4 @@
-import { itemSchema, lineTotal, totals, type Article, type BudgetItem, type Project } from "./domain";
+import { itemSchema, lineTotal, totals, fieldNames, money, type Article, type BudgetItem, type BudgetVersion, type ItemChange, type Project } from "./domain";
 
 /**
  * Edición manual de un presupuesto desde la ficha del proyecto.
@@ -101,4 +101,37 @@ export function progresoGuia(pasos: PasoGuia[], items: BudgetItem[]) {
 export function resumen(items: BudgetItem[]) {
   const t = totals(items);
   return { ...t, incluidas: items.filter(i => i.inclusion === "included").length, alternativas: items.filter(i => i.inclusion === "optional").length };
+}
+
+/* ---------- Ciclo de vida de la revisión ---------- */
+
+export type AccionPresupuesto = "editar" | "cerrar" | "aprobar" | "revisar";
+
+/**
+ * Qué se puede hacer con el presupuesto según su estado:
+ * borrador → editar y cerrar; cerrada → aprobar (oficina/administración) o abrir una nueva revisión;
+ * aprobada sin borrador → nueva revisión. Los permisos reales los aplica el dominio.
+ */
+export function accionesPresupuesto(approved: BudgetVersion | undefined, working: BudgetVersion | undefined, permisos: { guardar: boolean; aprobar: boolean }): AccionPresupuesto[] {
+  const out: AccionPresupuesto[] = [];
+  if (working?.status === "draft" && permisos.guardar) { out.push("editar"); if (working.items.some(i => i.inclusion === "included" && i.quantity > 0)) out.push("cerrar"); }
+  if (working?.status === "issued") { if (permisos.aprobar) out.push("aprobar"); if (permisos.guardar) out.push("revisar"); }
+  if (!working && approved && permisos.guardar) out.push("revisar");
+  return out;
+}
+
+const valor = (field: string, item?: { [k: string]: unknown }) => {
+  if (!item) return "—";
+  const v = item[field];
+  if (field === "unit_price") return money(Number(v));
+  if (field === "adjustment_percent" || field === "vat_rate") return `${v} %`;
+  if (field === "inclusion") return v === "included" ? "incluida" : v === "optional" ? "alternativa" : "excluida";
+  return String(v);
+};
+
+/** Texto de un cambio entre revisiones, campo a campo, para el comparador completo. */
+export function describirCambio(change: ItemChange): string[] {
+  if (change.kind === "added") return [`Añadida en la nueva revisión · ${change.after?.quantity} ${change.after?.unit} × ${money(change.after?.unit_price ?? 0)}`];
+  if (change.kind === "removed") return [`Eliminada · estaba en ${change.before?.quantity} ${change.before?.unit} × ${money(change.before?.unit_price ?? 0)}`];
+  return change.fields.map(f => `${fieldNames[f] ?? f}: ${valor(f, change.before)} → ${valor(f, change.after)}`);
 }
