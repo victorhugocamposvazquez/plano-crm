@@ -209,3 +209,7 @@ Los documentos (`src/components/documents/*`) se abren en la ruta `(print)` sin 
 La **hoja de pedido** (`/imprimir/pedido/<proyecto>?p=<proveedor>`) usa la misma identidad y maqueta: proveedor, obra y dirección de entrega, líneas con cantidad y estado (nuevo pedido / ya pedido), columna en blanco para plazo y observaciones, instrucciones de entrega y firmas de ambas partes. Se abre desde la lista de materiales del proyecto, un botón por proveedor con pendientes.
 
 **Presentación por presupuesto** (botón «Presentación» en la vista de impresión): logo del cliente (portada y junto a sus datos), imagen de portada propia que sustituye a la de la empresa, título de portada y carta de presentación en la primera página. El documento numera capítulos (01, 02…) y partidas (01.03) y, con más de un capítulo, abre con un resumen por capítulos con barras proporcionales en el color principal.
+
+### Importación del catálogo
+
+«Importar CSV» en Catálogo abre un cajón ancho en tres pasos: pegar o subir el CSV (separador detectado, cabecera reconocida), revisar el mapeo de columnas con el selector propio y la tabla de filas con su estado (entra / ya existe / error con motivo), e importar en lote con barra de progreso. Nada se guarda hasta el último paso y las filas con problemas nunca se importan a medias. «Exportar CSV» devuelve el catálogo en el mismo formato (punto y coma, coma decimal, UTF-8 con BOM) para editarlo en Excel y volver a importarlo. Lógica en `src/lib/importar-catalogo.ts`.
