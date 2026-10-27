@@ -1,25 +1,35 @@
 "use client";
+import type { CSSProperties } from "react";
 import { ArrowRight, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { etapas, type SiguientePaso, type TipoAccion } from "@/lib/siguiente-paso";
 
 /**
- * «Qué toca ahora» en la ficha: la fase visible (visita → entrega), el siguiente paso y su acción principal.
- * La acción la ejecuta la ficha, que es quien tiene los diálogos y los comandos a mano.
+ * «Qué toca ahora» en la ficha: la fase visible (visita → entrega) sobre una pista continua con lo hecho en
+ * verde, el siguiente paso y su acción principal. En móvil solo se etiqueta la fase actual («Fase 2 de 5»).
+ * La acción la ejecuta la ficha, que tiene los diálogos y los comandos a mano.
  */
 export function NextStep({ paso, busy, onAccion }: { paso: SiguientePaso; busy?: boolean; onAccion: (tipo: TipoAccion) => void }) {
   const indice = etapas.findIndex(e => e.id === paso.etapa);
   const terminado = paso.accion === "ninguna";
+  const progreso = terminado ? 1 : indice / (etapas.length - 1);
+  const actual = etapas[indice];
   return (
     <section className="next-step zone" data-urgencia={paso.urgencia} aria-label="Siguiente paso">
-      <ol className="stepper" aria-label="Fase del proyecto">
-        {etapas.map((e, i) => (
-          <li key={e.id} data-state={terminado || i < indice ? "done" : i === indice ? "current" : "todo"}>
-            <span className="stepper-dot">{terminado || i < indice ? <Check size={11} strokeWidth={2.6} aria-hidden="true" /> : null}</span>
-            <span className="stepper-label">{e.label}</span>
-          </li>
-        ))}
-      </ol>
+      <div className="stepper-wrap">
+        <ol className="stepper" aria-label="Fase del proyecto" style={{ "--steps": etapas.length, "--progress": progreso } as CSSProperties}>
+          {etapas.map((e, i) => {
+            const state = terminado || i < indice ? "done" : i === indice ? "current" : "todo";
+            return (
+              <li key={e.id} data-state={state} aria-current={state === "current" ? "step" : undefined}>
+                <span className="stepper-dot">{state === "done" ? <Check size={11} strokeWidth={2.6} aria-hidden="true" /> : null}</span>
+                <span className="stepper-label">{e.label}</span>
+              </li>
+            );
+          })}
+        </ol>
+        <span className="stepper-current">Fase {indice + 1} de {etapas.length} · <strong>{actual?.label}</strong></span>
+      </div>
       <div className="next-step-body">
         <div style={{ minWidth: 0 }}>
           <small className="next-step-kicker">{terminado ? "Cerrado" : "Siguiente paso"}</small>

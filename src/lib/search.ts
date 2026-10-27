@@ -22,7 +22,7 @@ export function projectFields(data: Workspace, project: Project): SearchField[] 
     { label: "proveedores", text: data.purchases.filter(p => p.project_id === project.id).map(p => `${p.name} ${p.supplier}`).join(" ") },
     { label: "documentos", text: data.documents.filter(d => d.project_id === project.id).map(d => d.name).join(" ") },
     { label: "tareas", text: data.tasks.filter(t => t.project_id === project.id).map(t => `${t.title} ${t.trade} ${t.assignee}`).join(" ") },
-    { label: "chat", text: data.messages.filter(m => m.project_id === project.id).map(m => `${m.author_name} ${m.body}`).join(" ") }
+    { label: "chat", text: data.messages.filter(m => m.project_id === project.id && !m.deleted_at).map(m => `${m.author_name} ${m.body}`).join(" ") }
   ].filter(f => f.text.trim());
 }
 

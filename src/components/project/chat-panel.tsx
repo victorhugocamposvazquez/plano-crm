@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import Link from "next/link";
-import { ArrowUp, Hash, FileText, ListChecks, Package, Receipt, X, Paperclip } from "lucide-react";
+import { ArrowUp, Hash, FileText, ListChecks, Package, Receipt, X, Paperclip, Pencil, Trash2, Check } from "lucide-react";
+import { Menu } from "@/components/ui/menu";
 import { useWorkspace } from "@/components/workspace-provider";
 import { TaskDialog } from "@/components/project/task-dialog";
 import { can, type Message, type Task } from "@/lib/domain";
@@ -21,6 +22,9 @@ const etiquetaDia = (iso: string) => { const hoy = new Date().toISOString().slic
 export function ChatPanel({ projectId, messages }: { projectId: string; messages: Message[] }) {
   const { data, actor, busy, send, notify, fileUrl } = useWorkspace();
   const allowed = can(actor.role, "message.send");
+  const puedeBorrarAjenos = actor.role === "admin" || actor.role === "office";
+  const [editing, setEditing] = useState<{ id: string; body: string } | null>(null);
+  const [working, setWorking] = useState<string | null>(null);
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
   const [picker, setPicker] = useState<{ open: boolean; query: string; active: number }>({ open: false, query: "", active: 0 });
@@ -69,6 +73,22 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
     if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void submit(); }
   }
 
+  async function guardarEdicion() {
+    if (!editing || working) return;
+    const text = editing.body.trim(); if (!text) return;
+    setWorking(editing.id);
+    try { await send({ type: "message.edit", id: editing.id, body: text }); setEditing(null); }
+    catch (e) { notify(e instanceof Error ? e.message : "No se ha podido editar el mensaje."); }
+    finally { setWorking(null); }
+  }
+  async function borrar(id: string) {
+    if (working) return;
+    setWorking(id);
+    try { await send({ type: "message.delete", id }); }
+    catch (e) { notify(e instanceof Error ? e.message : "No se ha podido borrar el mensaje."); }
+    finally { setWorking(null); }
+  }
+
   async function openRef(ref: Ref) {
     const dest = destinoRef(ref, data, projectId);
     if ("task" in dest) { const t = data.tasks.find(x => x.id === dest.task); if (t) setOpenTask(t); else notify("Esa tarea ya no existe."); return; }
@@ -103,12 +123,29 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
                 {!g.mine && <span className="msg-avatar" data-tone={tonoAutor(g.author)} aria-hidden="true">{iniciales(g.author)}</span>}
                 <div className="msg-stack">
                   {!g.mine && <span className="msg-author">{g.author}</span>}
-                  {g.items.map((m, i) => (
-                    <article key={m.id} className="msg" data-mine={g.mine} data-first={i === 0} data-last={i === g.items.length - 1}>
-                      <p>{parseMessage(m.body).map((part, j) => part.kind === "text" ? <span key={j}>{part.text}</span> : <RefChip key={j} r={part.ref} />)}</p>
-                      <time dateTime={m.created_at}>{time.format(new Date(m.created_at))}</time>
-                    </article>
-                  ))}
+                  {g.items.map((m, i) => {
+                    const borrado = Boolean(m.deleted_at);
+                    const acciones = borrado ? [] : [
+                      ...(g.mine ? [{ id: "editar", label: "Editar", icon: <Pencil size={15} strokeWidth={1.7} />, onSelect: () => setEditing({ id: m.id, body: m.body }) }] : []),
+                      ...(g.mine || puedeBorrarAjenos ? [{ id: "borrar", label: "Borrar", hint: "Queda constancia de que hubo un mensaje", icon: <Trash2 size={15} strokeWidth={1.7} />, danger: true, onSelect: () => void borrar(m.id) }] : [])
+                    ];
+                    return (
+                      <article key={m.id} className="msg" data-mine={g.mine} data-first={i === 0} data-last={i === g.items.length - 1} data-deleted={borrado} data-busy={working === m.id}>
+                        {editing?.id === m.id ? (
+                          <form className="msg-edit" onSubmit={e => { e.preventDefault(); void guardarEdicion(); }}>
+                            <textarea value={editing.body} onChange={e => setEditing({ id: m.id, body: e.target.value })} rows={2} autoFocus maxLength={5000} aria-label="Editar mensaje" onKeyDown={e => { if (e.key === "Escape") setEditing(null); if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); void guardarEdicion(); } }} />
+                            <div className="msg-edit-actions"><button type="button" className="btn btn-ghost" style={{ height: 30 }} onClick={() => setEditing(null)}>Cancelar</button><button type="submit" className="btn btn-primary" style={{ height: 30 }} disabled={!editing.body.trim() || working === m.id}><Check size={14} strokeWidth={2} aria-hidden="true" />Guardar</button></div>
+                          </form>
+                        ) : borrado ? (
+                          <p className="msg-deleted">Mensaje eliminado</p>
+                        ) : (
+                          <p>{parseMessage(m.body).map((part, j) => part.kind === "text" ? <span key={j}>{part.text}</span> : <RefChip key={j} r={part.ref} />)}</p>
+                        )}
+                        {!borrado && editing?.id !== m.id && <time dateTime={m.created_at}>{m.edited_at ? "editado · " : ""}{time.format(new Date(m.created_at))}</time>}
+                        {acciones.length > 0 && editing?.id !== m.id && <span className="msg-menu"><Menu items={acciones} label="Opciones del mensaje" size="sm" align={g.mine ? "end" : "start"} /></span>}
+                      </article>
+                    );
+                  })}
                 </div>
               </div>
             </div>

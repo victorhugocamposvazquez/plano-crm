@@ -3143,3 +3143,39 @@ p {
 .composer-send { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 36px; height: 36px; border: 0; border-radius: var(--pl-radius-full); background: var(--pl-orange); color: #0B1720; cursor: pointer; }
 .composer-send:disabled { background: var(--pl-raised); color: var(--pl-muted); cursor: default; }
 .composer-hint { display: flex; justify-content: space-between; gap: 10px; padding: 6px 8px 0; }
+
+/* ---------- Línea de fases: pista continua ---------- */
+
+.stepper-wrap { display: flex; flex-direction: column; gap: 6px; }
+.stepper { position: relative; padding: 0 0 2px; }
+.stepper li::before { display: none; }
+/* Pista gris de centro a centro del primer y último punto, y encima el tramo hecho en verde. */
+.stepper::before, .stepper::after { content: ""; position: absolute; top: 8px; height: 2px; left: calc(100% / (var(--steps) * 2)); right: calc(100% / (var(--steps) * 2)); background: var(--pl-line); border-radius: 1px; }
+.stepper::after { right: auto; width: calc((100% - 100% / var(--steps)) * var(--progress)); background: var(--pl-success); }
+.stepper li { z-index: 1; }
+.stepper-current { display: none; font-size: var(--pl-text-sm); color: var(--pl-muted); }
+.stepper-current strong { color: var(--pl-ink); font-weight: var(--pl-weight-medium); }
+@media (max-width: 639px) {
+  .stepper-label { display: none; }
+  .stepper-current { display: block; text-align: center; }
+  .stepper li { gap: 0; }
+}
+
+/* ---------- Chat: editar y borrar ---------- */
+
+.menu-trigger-sm { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border: 0; border-radius: var(--pl-radius-full); background: var(--pl-surface); color: var(--pl-muted); box-shadow: var(--pl-shadow-1); cursor: pointer; }
+.menu-trigger-sm:hover { color: var(--pl-ink); }
+.chat-window .msg { padding-right: 12px; }
+.msg-menu { position: absolute; top: -8px; right: -6px; opacity: 0; transition: opacity 0.12s; }
+.msg[data-mine="false"] .msg-menu { right: auto; left: -6px; }
+.msg:hover .msg-menu, .msg:focus-within .msg-menu, .msg-menu:has([aria-expanded="true"]) { opacity: 1; }
+@media (hover: none) { .msg-menu { opacity: 1; } }
+.msg[data-deleted="true"] { background: transparent !important; box-shadow: none !important; border: var(--pl-hairline) dashed var(--pl-strong-line); color: var(--pl-muted) !important; }
+.msg-deleted { font-style: italic; font-size: var(--pl-text-sm); }
+.msg[data-busy="true"] { opacity: 0.6; }
+.msg-edit { display: flex; flex-direction: column; gap: 6px; min-width: min(320px, 70vw); }
+.msg-edit textarea { width: 100%; min-height: 56px; padding: 8px 10px; border: var(--pl-hairline) solid rgba(255,255,255,0.35); border-radius: 10px; background: rgba(255,255,255,0.12); color: inherit; font: inherit; font-size: 14px; line-height: 1.4; resize: vertical; }
+.msg[data-mine="false"] .msg-edit textarea { border-color: var(--pl-line); background: var(--pl-bg); }
+.msg-edit textarea:focus-visible { outline: 0; border-color: currentColor; }
+.msg-edit-actions { display: flex; justify-content: flex-end; gap: 6px; }
+.msg-edit-actions .btn-ghost { color: inherit; opacity: 0.85; }
