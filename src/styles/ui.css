@@ -2648,3 +2648,83 @@ p {
 .chips-scroll { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: none; }
 .chips-scroll::-webkit-scrollbar { display: none; }
 .chips-scroll .chip { flex: 0 0 auto; }
+
+/* ---------- Presupuestos (lista transversal) ---------- */
+
+.row-budget {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 16px;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: var(--pl-hairline) solid var(--pl-line);
+  color: inherit;
+  text-decoration: none;
+}
+.row-budget strong { display: block; font-size: var(--pl-text-sm); font-weight: var(--pl-weight-medium); }
+.row-budget small { display: block; margin-top: 2px; font-size: var(--pl-text-xs); color: var(--pl-muted); }
+.row-budget-status { display: block; margin-top: 6px; }
+.row-budget-amounts { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; text-align: right; }
+.row-budget-amounts small { margin: 0; }
+.row-budget-amounts strong { font-size: var(--pl-text-sm); font-weight: var(--pl-weight-regular); }
+.row-budget:hover { background: var(--pl-soft); margin: 0 -8px; padding-left: 8px; padding-right: 8px; border-radius: var(--pl-radius-control); }
+
+/* ---------- Clientes ---------- */
+
+.client-list { display: grid; gap: 12px; }
+.client-card { padding: 14px 16px; }
+.client-card > header { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+.client-name { display: block; font-size: var(--pl-text-h3); font-weight: var(--pl-weight-medium); }
+.client-card > header small { display: inline-flex; align-items: center; gap: 4px; margin-top: 2px; font-size: var(--pl-text-xs); }
+.client-facts { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin: 12px 0 0; padding-top: 10px; border-top: var(--pl-hairline) solid var(--pl-line); }
+.client-facts dt { font-size: var(--pl-text-xs); color: var(--pl-muted); }
+.client-facts dd { margin: 2px 0 0; font-size: var(--pl-text-sm); }
+.client-projects { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; }
+.client-projects a { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 40px; padding: 4px 0; border-top: var(--pl-hairline) solid var(--pl-line); color: inherit; text-decoration: none; font-size: var(--pl-text-sm); }
+.client-projects a > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+@media (min-width: 768px) { .client-list { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (min-width: 1280px) { .client-list { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+
+/* ---------- Documentos (lista transversal) ---------- */
+
+.row-doc-button { width: 100%; padding: 0; border: 0; border-bottom: var(--pl-hairline) solid var(--pl-line); background: transparent; text-align: left; font: inherit; cursor: pointer; }
+.row-doc-button:disabled { cursor: progress; opacity: 0.6; }
+.doc-icon { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; flex: 0 0 auto; border-radius: var(--pl-radius-icon-button); background: var(--pl-soft); color: var(--pl-muted); }
+.doc-name { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: var(--pl-weight-medium); }
+
+/* ---------- Finanzas ---------- */
+
+.summary > div { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border: var(--pl-hairline) solid var(--pl-line); border-radius: var(--pl-radius-panel); }
+.summary-4 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.summary-4 strong { font-size: var(--pl-text-h3); }
+@media (min-width: 768px) { .summary-4 { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+
+.fin-table { display: flex; flex-direction: column; border-top: var(--pl-hairline) solid var(--pl-line); }
+.fin-row { display: grid; grid-template-columns: minmax(0, 1fr); gap: 4px 12px; padding: 12px 0; border-bottom: var(--pl-hairline) solid var(--pl-line); color: inherit; text-decoration: none; font-size: var(--pl-text-sm); }
+.fin-row strong { display: block; font-weight: var(--pl-weight-medium); }
+.fin-row small { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: var(--pl-text-xs); }
+.fin-row [data-label]::before { content: attr(data-label); display: inline-block; width: 96px; font-family: var(--pl-font-sans); font-size: var(--pl-text-xs); color: var(--pl-muted); }
+.fin-head { display: none; }
+.fin-arrow { display: none; }
+
+@media (min-width: 768px) {
+  .fin-row { grid-template-columns: minmax(0, 2fr) repeat(4, minmax(0, 1fr)); align-items: center; }
+  .fin-row [data-label] { text-align: right; }
+  .fin-row [data-label]::before { content: none; }
+  .fin-head { display: grid; padding: 6px 0; font-size: var(--pl-text-xs); letter-spacing: 0.04em; text-transform: uppercase; color: var(--pl-muted); }
+  .fin-head span + span { text-align: right; }
+  .fin-arrow { display: inline-block; margin-left: 8px; vertical-align: middle; color: var(--pl-muted); }
+  .fin-row:hover { background: var(--pl-soft); }
+}
+
+/* ---------- Más ---------- */
+
+.more-account { display: flex; align-items: center; gap: 14px; width: 100%; padding: 14px 16px; border: 0; color: inherit; text-align: left; font: inherit; cursor: pointer; }
+.more-account strong { display: block; font-size: var(--pl-text-md); font-weight: var(--pl-weight-medium); }
+.more-account small { display: block; font-size: var(--pl-text-xs); }
+.more-list { display: flex; flex-direction: column; border-top: var(--pl-hairline) solid var(--pl-line); }
+.more-item { display: flex; align-items: center; gap: 14px; min-height: 60px; padding: 8px 0; border-bottom: var(--pl-hairline) solid var(--pl-line); color: inherit; text-decoration: none; }
+.more-item strong { display: block; font-size: var(--pl-text-md); font-weight: var(--pl-weight-medium); }
+.more-item small { display: block; margin-top: 2px; font-size: var(--pl-text-xs); }
+.more-icon { display: inline-flex; align-items: center; justify-content: center; width: 38px; height: 38px; flex: 0 0 auto; border-radius: var(--pl-radius-icon-button); background: var(--pl-soft); color: var(--pl-ink); }
