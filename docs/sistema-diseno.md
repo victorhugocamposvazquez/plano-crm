@@ -213,3 +213,12 @@ La **hoja de pedido** (`/imprimir/pedido/<proyecto>?p=<proveedor>`) usa la misma
 ### Importación del catálogo
 
 «Importar CSV» en Catálogo abre un cajón ancho en tres pasos: pegar o subir el CSV (separador detectado, cabecera reconocida), revisar el mapeo de columnas con el selector propio y la tabla de filas con su estado (entra / ya existe / error con motivo), e importar en lote con barra de progreso. Nada se guarda hasta el último paso y las filas con problemas nunca se importan a medias. «Exportar CSV» devuelve el catálogo en el mismo formato (punto y coma, coma decimal, UTF-8 con BOM) para editarlo en Excel y volver a importarlo. Lógica en `src/lib/importar-catalogo.ts`.
+
+### Revisión de usabilidad (octubre 2026)
+
+- Toda fila que se desplaza en horizontal en móvil (pestañas, pasos, chips) lleva un degradado en el borde derecho que avisa de que hay más; el paso actual de la visita se desplaza solo a la vista.
+- Las cifras de la ficha pasan a una por fila por debajo de 640 px (etiqueta a la izquierda, importe a la derecha), los chips de versión se apilan por debajo de 480 px y la fila de acciones del presupuesto se reparte en dos columnas con el botón principal abajo a todo el ancho.
+- Los filtros de la agenda van en dos columnas en móvil.
+- Foco visible con teclado (anillo azul) en botones, enlaces, pestañas y opciones de menú.
+- El acceso rápido de la barra superior es un «+» en círculo con el color de acción.
+- «Primeros pasos» en Hoy para una organización nueva (`src/lib/primeros-pasos.ts`): identidad, catálogo, primer proyecto y primer presupuesto, con enlace a cada pantalla; se oculta al completarse, al pasar de tres proyectos o a mano.

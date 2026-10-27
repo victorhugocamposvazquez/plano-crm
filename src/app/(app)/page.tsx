@@ -6,6 +6,7 @@ import { useWorkspace } from "@/components/workspace-provider";
 import { Status, type Tone } from "@/components/ui/status";
 import { TaskRow } from "@/components/project/task-row";
 import { TaskDialog } from "@/components/project/task-dialog";
+import { Onboarding } from "@/components/onboarding";
 import { can, dateLabel, type Task } from "@/lib/domain";
 import { buildAgenda, buildAlerts, greeting, localDate, longDate, type AgendaTask } from "@/lib/hoy";
 
@@ -51,6 +52,8 @@ export default function HoyPage() {
           {loading ? "Cargando el espacio de trabajo…" : `${agenda.today.length} tareas para hoy · ${agenda.overdue.length} atrasadas · ${alerts.length} avisos`}
         </p>
       </div>
+
+      <Onboarding />
 
       <div className="summary">
         <Link href="/proyectos?f=active"><strong>{data.projects.filter(p => p.status === "active").length}</strong><small>proyectos en obra</small></Link>
