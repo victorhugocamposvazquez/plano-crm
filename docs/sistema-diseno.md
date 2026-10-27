@@ -223,3 +223,9 @@ La **hoja de pedido** (`/imprimir/pedido/<proyecto>?p=<proveedor>`) usa la misma
 - El acceso rápido de la barra superior es un «+» en círculo con el color de acción.
 - «Primeros pasos» en Hoy para una organización nueva (`src/lib/primeros-pasos.ts`): identidad, catálogo, primer proyecto y primer presupuesto, con enlace a cada pantalla; se oculta al completarse, al pasar de tres proyectos o a mano.
 - Segunda pasada: el carril de tablet mostraba solo el recuadro del elemento activo, sin iconos (la regla que oculta las etiquetas ocultaba también el icono); corregido. La lista de proyectos en escritorio gana jerarquía: título con código, columna «Tipo» en vez de una «Fase» que repetía el estado, fila con hover. En el chat, Enter envía y Mayús+Enter hace salto de línea.
+
+## 12. Qué toca ahora, buscador global y chat
+
+- **Siguiente paso** (`src/lib/siguiente-paso.ts`): cada proyecto tiene una fase visible (Visita → Presupuesto → Aprobación → Obra → Entrega) y una sola acción principal deducida de su estado real (presupuesto, tareas, certificaciones). En la ficha va arriba, con la línea de fases y un botón primario que ejecuta la acción sin salir de la pantalla; en Hoy, «Qué toca en cada proyecto» lista las más urgentes. Si el proyecto ya está en planificación u obra, manda la obra aunque el presupuesto siga en revisión.
+- **Buscador global** (`⌘K` / `Ctrl+K`, lupa en la barra y en el menú): proyectos, clientes, presupuestos, documentos, artículos, acciones y pantallas (`src/lib/buscador.ts`), con teclado. En móvil ocupa la pantalla.
+- **Chat**: bloques por autor con avatar de iniciales y tono estable, burbujas (las propias a la derecha en color de acción), separadores «Hoy / Ayer / fecha», compositor redondeado con `#`, adjuntar (deshabilitado hasta que el dominio lo permita) y botón de enviar en naranja. Enter envía, Mayús+Enter salto de línea. El fondo del hilo es `--pl-raised` para separarlo del resto del cajón.

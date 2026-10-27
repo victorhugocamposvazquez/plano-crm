@@ -1,8 +1,9 @@
 "use client";
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { House, Layers2, CalendarDays, FileText, BookOpen, Users, Package, FolderOpen, Wallet, Menu, Plus } from "lucide-react";
+import { House, Layers2, CalendarDays, FileText, BookOpen, Users, Package, FolderOpen, Wallet, Menu, Plus, Search } from "lucide-react";
+import { CommandPalette } from "@/components/command-palette";
 import { Brand } from "@/components/ui/brand";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { AccountDialog } from "@/components/account-dialog";
@@ -29,6 +30,13 @@ export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const { actor, notice } = useWorkspace();
   const [account, setAccount] = useState(false);
+  const [search, setSearch] = useState(false);
+  // ⌘K / Ctrl+K abre el buscador desde cualquier pantalla.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setSearch(v => !v); } };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, []);
   const initials = actor.name.split(/[\s·]+/).filter(Boolean).slice(0, 2).map(w => w[0]?.toUpperCase()).join("");
   const isActive = (href: string, exact?: boolean) => (exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`));
 
@@ -36,6 +44,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="shell">
       <nav className="nav" aria-label="Principal">
         <Link href="/" className="nav-brand" aria-label="Inicio"><Brand /></Link>
+        <button type="button" className="nav-search" onClick={() => setSearch(true)} aria-label="Buscar en Plano" title="Buscar (⌘K)"><Search size={17} strokeWidth={1.7} aria-hidden="true" /><span>Buscar…</span><span className="pl-mono">⌘K</span></button>
         {items.map(item => {
           const Icon = item.icon;
           const active = isActive(item.href, item.exact);
@@ -59,6 +68,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <header className="topbar">
           <Link href="/" aria-label="Inicio" style={{ color: "inherit", textDecoration: "none" }}><Brand /></Link>
           <div className="topbar-tools">
+            <button type="button" className="topbar-search" onClick={() => setSearch(true)} aria-label="Buscar en Plano"><Search size={19} strokeWidth={1.6} aria-hidden="true" /></button>
             <Link href="/proyectos?nuevo=1" aria-label="Nuevo proyecto" title="Nuevo proyecto" className="topbar-new"><Plus size={18} strokeWidth={1.9} aria-hidden="true" /></Link>
             <ThemeToggle />
             <button type="button" className="avatar avatar-button" onClick={() => setAccount(true)} aria-label={`Tu cuenta · ${actor.name}`} aria-haspopup="dialog" aria-expanded={account}>{initials || "·"}</button>
@@ -68,6 +78,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
 
       <AccountDialog open={account} onClose={() => setAccount(false)} />
+      <CommandPalette open={search} onClose={() => setSearch(false)} />
       {notice && <div className="notice" role="status">{notice}</div>}
     </div>
   );

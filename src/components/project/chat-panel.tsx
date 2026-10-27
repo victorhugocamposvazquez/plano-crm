@@ -1,20 +1,22 @@
 "use client";
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import Link from "next/link";
-import { ArrowUp, Hash, FileText, ListChecks, Package, Receipt, X } from "lucide-react";
+import { ArrowUp, Hash, FileText, ListChecks, Package, Receipt, X, Paperclip } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
 import { TaskDialog } from "@/components/project/task-dialog";
 import { can, type Message, type Task } from "@/lib/domain";
 import { parseMessage, encodeRef, referenciables, filtrarReferencias, destinoRef, type Ref, type RefOption } from "@/lib/chat-refs";
+import { agruparMensajes, iniciales, tonoAutor } from "@/lib/chat-grupos";
 
 const time = new Intl.DateTimeFormat("es-ES", { hour: "2-digit", minute: "2-digit" });
 const day = new Intl.DateTimeFormat("es-ES", { weekday: "long", day: "numeric", month: "long" });
 const iconFor = (type: Ref["type"]) => type === "v" ? Receipt : type === "d" ? FileText : type === "t" ? ListChecks : type === "c" ? Package : Hash;
+const etiquetaDia = (iso: string) => { const hoy = new Date().toISOString().slice(0, 10); const ayer = new Date(Date.now() - 864e5).toISOString().slice(0, 10); return iso === hoy ? "Hoy" : iso === ayer ? "Ayer" : day.format(new Date(`${iso}T12:00:00`)).replace(/^./, c => c.toUpperCase()); };
 
 /**
- * Conversación del proyecto. Los mensajes pueden referenciar revisiones del presupuesto, documentos, tareas y
- * compras del propio proyecto (botón # o tecla #): la referencia abre el destino sin salir de la ficha.
- * Editar, borrar y reaccionar llegarán con los comandos del dominio; aquí no se simulan.
+ * Conversación del proyecto con aspecto de chat: bloques por autor con avatar, burbujas (las propias a la
+ * derecha en color de acción), separadores de día, y compositor redondeado con # para enlazar revisiones,
+ * documentos, tareas y compras. Editar, borrar, reaccionar y adjuntar llegarán con los comandos del dominio.
  */
 export function ChatPanel({ projectId, messages }: { projectId: string; messages: Message[] }) {
   const { data, actor, busy, send, notify, fileUrl } = useWorkspace();
@@ -25,11 +27,12 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
   const [openTask, setOpenTask] = useState<Task | null>(null);
   const end = useRef<HTMLDivElement>(null);
   const textarea = useRef<HTMLTextAreaElement>(null);
-  const ordered = [...messages].sort((a, b) => a.created_at.localeCompare(b.created_at));
+  const grupos = useMemo(() => agruparMensajes(messages, actor.name), [messages, actor.name]);
   const options = useMemo(() => referenciables(data, projectId), [data, projectId]);
   const matches = useMemo(() => filtrarReferencias(options, picker.query).slice(0, 8), [options, picker.query]);
+  const participantes = useMemo(() => [...new Set(messages.map(m => m.author_name))], [messages]);
 
-  useEffect(() => { end.current?.scrollIntoView({ block: "nearest" }); }, [ordered.length]);
+  useEffect(() => { end.current?.scrollIntoView({ block: "end" }); }, [messages.length]);
 
   async function submit(event?: FormEvent) {
     event?.preventDefault();
@@ -38,17 +41,12 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
     setSending(true);
     try { await send({ type: "message.send", project_id: projectId, body: text }); setBody(""); setPicker({ open: false, query: "", active: 0 }); }
     catch (e) { notify(e instanceof Error ? e.message : "No se ha podido enviar el mensaje."); }
-    finally { setSending(false); }
+    finally { setSending(false); textarea.current?.focus(); }
   }
 
   function insert(option: RefOption) {
     const token = encodeRef(option);
-    setBody(prev => {
-      // Sustituye el «#consulta» que se estaba escribiendo por la referencia elegida.
-      const at = prev.lastIndexOf("#");
-      const base = picker.open && at >= 0 ? prev.slice(0, at) : prev;
-      return `${base}${base && !base.endsWith(" ") ? " " : ""}${token} `;
-    });
+    setBody(prev => { const at = prev.lastIndexOf("#"); const base = picker.open && at >= 0 ? prev.slice(0, at) : prev; return `${base}${base && !base.endsWith(" ") ? " " : ""}${token} `; });
     setPicker({ open: false, query: "", active: 0 });
     textarea.current?.focus();
   }
@@ -93,21 +91,26 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
 
   let lastDay = "";
   return (
-    <div className="chat">
+    <div className="chat chat-window">
       <div className="chat-list" role="log" aria-label="Mensajes del proyecto" aria-live="polite">
-        {ordered.length === 0 && <div className="empty"><strong>Sin mensajes</strong><span className="muted text-sm">Lo que se escriba aquí lo ve todo el equipo del proyecto. Escribe # para enlazar un presupuesto, un documento, una tarea o una compra.</span></div>}
-        {ordered.map(message => {
-          const date = new Date(message.created_at);
-          const label = day.format(date);
-          const showDay = label !== lastDay; lastDay = label;
-          const mine = message.author_name === actor.name;
+        {grupos.length === 0 && <div className="chat-empty"><strong>Sin mensajes todavía</strong><span className="muted text-sm">Lo que se escriba aquí lo ve todo el equipo del proyecto. Escribe # para enlazar un presupuesto, un documento, una tarea o una compra.</span></div>}
+        {grupos.map(g => {
+          const showDay = g.day !== lastDay; lastDay = g.day;
           return (
-            <div key={message.id}>
-              {showDay && <div className="chat-day"><span>{label.replace(/^./, c => c.toUpperCase())}</span></div>}
-              <article className="msg" data-mine={mine}>
-                <header><strong>{mine ? "Tú" : message.author_name}</strong><time dateTime={message.created_at}>{time.format(date)}</time></header>
-                <p>{parseMessage(message.body).map((part, i) => part.kind === "text" ? <span key={i}>{part.text}</span> : <RefChip key={i} r={part.ref} />)}</p>
-              </article>
+            <div key={g.id}>
+              {showDay && <div className="chat-day"><span>{etiquetaDia(g.day)}</span></div>}
+              <div className="msg-group" data-mine={g.mine}>
+                {!g.mine && <span className="msg-avatar" data-tone={tonoAutor(g.author)} aria-hidden="true">{iniciales(g.author)}</span>}
+                <div className="msg-stack">
+                  {!g.mine && <span className="msg-author">{g.author}</span>}
+                  {g.items.map((m, i) => (
+                    <article key={m.id} className="msg" data-mine={g.mine} data-first={i === 0} data-last={i === g.items.length - 1}>
+                      <p>{parseMessage(m.body).map((part, j) => part.kind === "text" ? <span key={j}>{part.text}</span> : <RefChip key={j} r={part.ref} />)}</p>
+                      <time dateTime={m.created_at}>{time.format(new Date(m.created_at))}</time>
+                    </article>
+                  ))}
+                </div>
+              </div>
             </div>
           );
         })}
@@ -130,9 +133,11 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
           )}
           <div className="composer">
             <button type="button" className="composer-tool" aria-label="Insertar referencia" title="Enlazar presupuesto, documento, tarea o compra" onClick={() => { setPicker({ open: true, query: "", active: 0 }); setBody(b => `${b}${b && !b.endsWith(" ") ? " " : ""}#`); textarea.current?.focus(); }}><Hash size={17} strokeWidth={1.7} aria-hidden="true" /></button>
-            <textarea ref={textarea} value={body} onChange={e => onChange(e.target.value)} onKeyDown={onKey} rows={1} placeholder="Escribe al equipo… # para enlazar · Mayús+Enter salto de línea" aria-label="Nuevo mensaje" maxLength={5000} />
-            <button type="submit" className="btn btn-round" aria-label="Enviar mensaje" disabled={!body.trim() || sending || busy}><ArrowUp size={16} strokeWidth={1.8} aria-hidden="true" /></button>
+            <button type="button" className="composer-tool" aria-label="Adjuntar (próximamente)" title="Adjuntar fotos y PDF llegará con el dominio; de momento, súbelos en Documentos y enlázalos con #" disabled><Paperclip size={16} strokeWidth={1.7} aria-hidden="true" /></button>
+            <textarea ref={textarea} value={body} onChange={e => onChange(e.target.value)} onKeyDown={onKey} rows={1} placeholder="Escribe al equipo…" aria-label="Nuevo mensaje" maxLength={5000} />
+            <button type="submit" className="composer-send" aria-label="Enviar mensaje" disabled={!body.trim() || sending || busy}><ArrowUp size={17} strokeWidth={2} aria-hidden="true" /></button>
           </div>
+          <div className="composer-hint muted text-xs"><span>Enter envía · Mayús+Enter salto de línea · # enlaza</span>{participantes.length > 0 && <span>{participantes.length} participante{participantes.length === 1 ? "" : "s"}</span>}</div>
         </form>
       ) : <p className="muted text-xs">Tu perfil puede leer la conversación pero no escribir.</p>}
 

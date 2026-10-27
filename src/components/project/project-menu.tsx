@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import { Footprints, ListPlus, Receipt, ArrowLeftRight, MessageSquare } from "lucide-react";
 import { Menu } from "@/components/ui/menu";
@@ -19,7 +19,7 @@ const estados = Object.keys(projectStatus) as Project["status"][];
  * Menú «···» de la ficha: lo que se hace con el proyecto y no cabe en la cabecera.
  * Cambiar de fase, planificar una tarea, abrir un borrador de certificación, ir a la visita o al chat.
  */
-export function ProjectMenu({ project, approvedVersion, puedeEstimar, onChat }: { project: Project; approvedVersion?: BudgetVersion; puedeEstimar: boolean; onChat: () => void }) {
+export function ProjectMenu({ project, approvedVersion, puedeEstimar, onChat, solicitud, onAtendida }: { project: Project; approvedVersion?: BudgetVersion; puedeEstimar: boolean; onChat: () => void; solicitud?: Dialogo | null; onAtendida?: () => void }) {
   const router = useRouter();
   const { data, actor, busy, send, notify } = useWorkspace();
   const [dialogo, setDialogo] = useState<Dialogo>("");
@@ -34,6 +34,8 @@ export function ProjectMenu({ project, approvedVersion, puedeEstimar, onChat }: 
   const importe = eurosACentimos(cert.amount);
 
   function abrir(d: Dialogo) { setEstado(project.status); setDialogo(d); }
+  // La ficha puede pedir que se abra un diálogo (desde «Siguiente paso»).
+  useEffect(() => { if (solicitud) { setEstado(project.status); setDialogo(solicitud); onAtendida?.(); } }, [solicitud]); // eslint-disable-line react-hooks/exhaustive-deps
   function cerrar() { setDialogo(""); setPending(false); }
 
   async function cambiarEstado() {
