@@ -16,7 +16,7 @@ export type BudgetVersion = { id: string; organization_id: string; budget_id: st
 export type Task = { id: string; organization_id: string; project_id: string; title: string; trade: string; assignee: string; due_date: string; status: "pending" | "done"; weight: number };
 export type Purchase = { id: string; organization_id: string; project_id: string; name: string; supplier: string; quantity: number; received_quantity: number; delivered_quantity: number; unit: string; status: "planned" | "ordered" | "received" | "delivered" };
 export type Document = { id: string; organization_id: string; project_id: string; name: string; category: "plan" | "contract" | "technical" | "before" | "during" | "after" | "other"; storage_path: string; mime_type: string; size_bytes: number; created_at: string };
-export type Message = { id: string; organization_id: string; project_id: string; body: string; author_name: string; created_at: string };
+export type Message = { id: string; organization_id: string; project_id: string; body: string; author_name: string; created_at: string; edited_at?: string | null; deleted_at?: string | null };
 export type Activity = { id: string; organization_id: string; project_id: string | null; text: string; actor_name: string; created_at: string };
 export type Certification = { id: string; organization_id: string; project_id: string; budget_version_id: string; title: string; amount: number; status: "draft"; created_at: string };
 export type Workspace = { organization_id: string; organization_name: string; projects: Project[]; articles: Article[]; budgets: Budget[]; versions: BudgetVersion[]; tasks: Task[]; purchases: Purchase[]; documents: Document[]; messages: Message[]; activities: Activity[]; certifications: Certification[] };
@@ -36,6 +36,8 @@ export const commandSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("purchase.create"), project_id: z.uuid(), name: text, supplier: text, quantity: z.number().positive().max(1000000), unit: z.enum(["m²", "ml", "ud", "h", "global"]) }),
   z.object({ type: z.literal("purchase.update"), id: z.uuid(), status: z.enum(["planned", "ordered", "received", "delivered"]), received_quantity: z.number().min(0), delivered_quantity: z.number().min(0) }),
   z.object({ type: z.literal("message.send"), project_id: z.uuid(), body: z.string().trim().min(1).max(5000) }),
+  z.object({ type: z.literal("message.edit"), id: z.uuid(), body: z.string().trim().min(1).max(5000) }),
+  z.object({ type: z.literal("message.delete"), id: z.uuid() }),
   z.object({ type: z.literal("document.add"), project_id: z.uuid(), name: text, category: z.enum(["plan", "contract", "technical", "before", "during", "after", "other"]), storage_path: text, mime_type: text, size_bytes: z.number().int().positive().max(52428800) }),
   z.object({ type: z.literal("certification.create"), project_id: z.uuid(), budget_version_id: z.uuid(), title: text, amount: z.number().int().positive().max(100000000) })
 ]);
@@ -80,7 +82,7 @@ export function compareVersions(before: BudgetVersion, after: BudgetVersion): It
 }
 export function can(role: Role, action: Command["type"]) {
   if (role === "viewer") return false;
-  if (role === "site") return ["task.toggle", "message.send", "document.add", "purchase.update"].includes(action);
+  if (role === "site") return ["task.toggle", "message.send", "message.edit", "message.delete", "document.add", "purchase.update"].includes(action);
   if (action === "budget.approve" || action === "certification.create") return role === "admin" || role === "office";
   return true;
 }
@@ -160,6 +162,16 @@ export function applyCommand(previous: Workspace, input: Command, actor: Actor, 
       p.status = command.status; p.received_quantity = command.received_quantity; p.delivered_quantity = command.delivered_quantity; projectId = p.project_id; activity = `${p.name}: ${purchaseStatus[p.status]}`; break;
     }
     case "message.send": state.messages.push({ id: uuid(), organization_id: org, project_id: command.project_id, body: command.body, author_name: actor.name, created_at: now }); activity = "Mensaje en la conversación del proyecto"; break;
+    case "message.edit": {
+      const m = state.messages.find(x => x.id === command.id); if (!m || m.deleted_at) throw new Error("Mensaje no encontrado.");
+      if (m.author_name !== actor.name) throw new Error("Solo quien escribió el mensaje puede editarlo.");
+      m.body = command.body; m.edited_at = now; projectId = m.project_id; activity = "Mensaje editado en la conversación"; break;
+    }
+    case "message.delete": {
+      const m = state.messages.find(x => x.id === command.id); if (!m || m.deleted_at) throw new Error("Mensaje no encontrado.");
+      if (m.author_name !== actor.name && actor.role !== "admin" && actor.role !== "office") throw new Error("Solo quien escribió el mensaje, oficina o administración pueden borrarlo.");
+      m.deleted_at = now; m.body = ""; projectId = m.project_id; activity = "Mensaje eliminado de la conversación"; break;
+    }
     case "document.add": {
       const { type: _, ...fields } = command; void _;
       if (!command.storage_path.startsWith(`${org}/${command.project_id}/`)) throw new Error("Ruta de archivo no válida.");

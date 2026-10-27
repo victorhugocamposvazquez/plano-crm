@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Camera, Mic, MicOff, Plus, Trash2, X } from "lucide-react";
+import { Modal } from "@/components/ui/modal";
 import { useWorkspace } from "@/components/workspace-provider";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -39,6 +40,10 @@ export default function NuevaVisitaPage() {
   const [margen, setMargen] = useState(0.15);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [confirmarSalida, setConfirmarSalida] = useState(false);
+  const destinoSalida = existente ? `/proyectos/${existente.id}` : "/proyectos";
+  const hayCambios = fotos.length > 0 || lineas.length > 0 || alcance.trim().length > 0 || (!existente && (datos.name.trim().length > 0 || datos.client_name.trim().length > 0));
+  function salir() { if (hayCambios) setConfirmarSalida(true); else router.push(destinoSalida); }
   const [dictando, setDictando] = useState(false);
   const recognition = useRef<Recognition | null>(null);
   const Factory = useMemo(recognitionFactory, []);
@@ -120,6 +125,12 @@ export default function NuevaVisitaPage() {
     return <div className="empty"><strong>Ese proyecto ya no existe</strong><span className="muted text-sm">Puedes empezar la visita como proyecto nuevo o volver a la lista.</span><div style={{ display: "flex", gap: 8 }}><Link href="/proyectos/nueva" className="btn btn-primary">Visita nueva</Link><Link href="/proyectos" className="btn btn-secondary">Proyectos</Link></div></div>;
   }
 
+  const modalSalida = (
+    <Modal open={confirmarSalida} onClose={() => setConfirmarSalida(false)} title="Salir sin guardar" footer={<><Button variant="secondary" onClick={() => setConfirmarSalida(false)}>Seguir en la visita</Button><Button variant="primary" onClick={() => router.push(destinoSalida)}>Salir</Button></>}>
+      <p className="text-sm">Las fotos, el alcance y las partidas de esta visita no se han guardado todavía. Si sales, se pierden{existente ? "; el proyecto se queda como estaba" : ""}.</p>
+    </Modal>
+  );
+
   if (!allowed) {
     return <div className="empty"><strong>Tu perfil no puede crear proyectos ni presupuestos</strong><span className="muted text-sm">Pide a oficina o administración que registren la visita.</span><Link href="/proyectos" className="btn btn-secondary">Volver a proyectos</Link></div>;
   }
@@ -128,7 +139,10 @@ export default function NuevaVisitaPage() {
     <div className="page">
       <div>
         <div className="eyebrow"><Link href="/proyectos" className="muted" style={{ display: "inline-flex", alignItems: "center", gap: 6, textDecoration: "none" }}><ArrowLeft size={13} strokeWidth={1.8} aria-hidden="true" />Proyectos</Link><span>· {existente ? `Visita a ${existente.name}` : "Nueva visita"}</span></div>
-        <h1 className="h1">Estimar en la visita.</h1>
+        <div className="page-head">
+          <h1 className="h1">Estimar en la visita.</h1>
+          <button type="button" className="btn btn-icon" aria-label={existente ? "Cerrar y volver al proyecto" : "Cerrar la visita"} title={existente ? "Volver al proyecto" : "Cerrar"} onClick={salir}><X size={19} strokeWidth={1.6} aria-hidden="true" /></button>
+        </div>
         <p className="subtitle">Sal de la visita con una cifra orientativa, calculada con los precios del catálogo. Lo que no se mide queda marcado como pendiente.</p>
       </div>
 
@@ -275,6 +289,7 @@ export default function NuevaVisitaPage() {
           <div className="form-actions"><Button variant="secondary" onClick={() => setStep(4)} disabled={saving}>Atrás</Button><Button variant="primary" onClick={guardar} disabled={saving || busy}>{saving ? "Guardando…" : "Guardar estimación"}</Button></div>
         </section>
       )}
+      {modalSalida}
     </div>
   );
 }
