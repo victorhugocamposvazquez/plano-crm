@@ -1,7 +1,9 @@
 "use client";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useQueryState } from "@/lib/use-query-state";
-import { Search, X, Plus, BookOpen } from "lucide-react";
+import { Search, X, Plus, BookOpen, Upload, Download } from "lucide-react";
+import { ImportDialog } from "@/components/catalog/import-dialog";
+import { aCSV } from "@/lib/importar-catalogo";
 import { useWorkspace } from "@/components/workspace-provider";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -16,6 +18,11 @@ export default function CatalogoPage() {
   const [query, setQuery] = useState(queryParam);
   useEffect(() => { const t = setTimeout(() => { if (query !== queryParam) setQueryParam(query); }, 300); return () => clearTimeout(t); }, [query, queryParam, setQueryParam]);
   const [adding, setAdding] = useState(false);
+  const [importParam, setImportParam] = useQueryState<"1" | "">("importar", "");
+  function exportar() {
+    const blob = new Blob([aCSV(data.articles)], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob); const a = document.createElement("a"); a.href = url; a.download = `catalogo-${(data.organization_name || "plano").toLowerCase().replace(/[^a-z0-9]+/gi, "-")}.csv`; a.click(); URL.revokeObjectURL(url);
+  }
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [form, setForm] = useState({ chapter: "", name: "", code: "", unit: "m²" as Unidad, price: "", vat: "21" });
@@ -52,6 +59,14 @@ export default function CatalogoPage() {
         </div>
         <p className="subtitle">{loading ? "Cargando el catálogo…" : `${data.articles.length} artículos en ${chapters.length} categorías · precios sin IVA que alimentan estimaciones y presupuestos`}</p>
       </div>
+
+      {(allowed || data.articles.length > 0) && (
+        <div className="catalog-tools">
+          {allowed && <Button variant="secondary" onClick={() => setImportParam("1")}><Upload size={16} strokeWidth={1.7} aria-hidden="true" />Importar CSV</Button>}
+          {data.articles.length > 0 && <Button variant="ghost" onClick={exportar}><Download size={15} strokeWidth={1.7} aria-hidden="true" />Exportar CSV</Button>}
+          {allowed && data.articles.length === 0 && <span className="muted text-xs">Trae el tarifario de una vez: Excel → Guardar como CSV → Importar.</span>}
+        </div>
+      )}
 
       {adding && allowed && (
         <form className="form line" onSubmit={submit} style={{ maxWidth: "none" }}>
@@ -104,6 +119,7 @@ export default function CatalogoPage() {
 
       {!allowed && <p className="muted text-xs">Tu perfil puede consultar el catálogo pero no modificarlo.</p>}
       <p className="muted text-xs">Editar o dar de baja un artículo llegará con el comando correspondiente del dominio; hoy solo se añaden.</p>
+      <ImportDialog open={importParam === "1"} onClose={() => setImportParam("")} />
     </div>
   );
 }

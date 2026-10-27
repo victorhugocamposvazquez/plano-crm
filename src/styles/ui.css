@@ -2974,3 +2974,24 @@ p {
 .doc-table .doc-item-no { vertical-align: baseline; }
 
 @media print { .doc-summary, .doc-intro { page-break-inside: avoid; } }
+
+/* ---------- Catálogo: importación ---------- */
+
+.import-drop { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 14px 16px; border: var(--pl-hairline) dashed var(--pl-strong-line); border-radius: var(--pl-radius-panel); }
+.import-map { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 10px 12px; }
+.import-summary { display: flex; gap: 14px; flex-wrap: wrap; font-size: var(--pl-text-sm); }
+.import-summary span { display: inline-flex; align-items: center; gap: 6px; }
+.import-summary [data-tone="success"] { color: var(--pl-success); }
+.import-summary [data-tone="warning"] { color: var(--pl-warning); }
+.import-summary [data-tone="muted"] { color: var(--pl-muted); }
+.import-table-wrap { overflow: auto; max-height: 420px; border: var(--pl-hairline) solid var(--pl-line); border-radius: var(--pl-radius-panel); }
+.import-table { width: 100%; border-collapse: collapse; font-size: var(--pl-text-xs); }
+.import-table th, .import-table td { padding: 6px 8px; text-align: left; vertical-align: top; border-bottom: var(--pl-hairline) solid var(--pl-line); }
+.import-table thead th { position: sticky; top: 0; background: var(--pl-surface); color: var(--pl-muted); font-weight: var(--pl-weight-medium); }
+.import-table .num { text-align: right; white-space: nowrap; }
+.import-table .import-desc { min-width: 200px; }
+.import-table tr[data-state="error"] td { background: var(--pl-warning-bg); }
+.import-table tr[data-state="dup"] td { color: var(--pl-muted); }
+.import-progress { height: 8px; border-radius: 4px; background: var(--pl-raised); overflow: hidden; }
+.import-progress i { display: block; height: 100%; background: var(--pl-success); transition: width 0.2s; }
+.catalog-tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
