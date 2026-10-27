@@ -7,6 +7,7 @@ import { Status, type Tone } from "@/components/ui/status";
 import { TaskRow } from "@/components/project/task-row";
 import { TaskDialog } from "@/components/project/task-dialog";
 import { Onboarding } from "@/components/onboarding";
+import { queToca, etapas } from "@/lib/siguiente-paso";
 import { can, dateLabel, type Task } from "@/lib/domain";
 import { buildAgenda, buildAlerts, greeting, localDate, longDate, type AgendaTask } from "@/lib/hoy";
 
@@ -15,6 +16,7 @@ export default function HoyPage() {
   const today = localDate();
   const agenda = useMemo(() => buildAgenda(data, today), [data, today]);
   const alerts = useMemo(() => buildAlerts(data, today), [data, today]);
+  const toca = useMemo(() => queToca(data, today).slice(0, 6), [data, today]);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const canToggle = can(actor.role, "task.toggle");
   const firstName = actor.name.split(/[\s·]+/)[0] ?? "";
@@ -63,6 +65,19 @@ export default function HoyPage() {
 
       <div className="detail">
         <section style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          {toca.length > 0 && (
+            <>
+              <div className="section-label" style={{ marginTop: 0 }}><span>Qué toca en cada proyecto</span><span className="pl-mono">{toca.length}</span></div>
+              <div className="toca-list">
+                {toca.map(({ project, paso }) => (
+                  <Link key={project.id} href={`/proyectos/${project.id}`} className="toca-row" data-urgencia={paso.urgencia}>
+                    <span style={{ minWidth: 0 }}><strong>{paso.titulo}</strong><small>{project.name} · {etapas.find(e => e.id === paso.etapa)?.label}</small></span>
+                    <span className="btn btn-ghost" style={{ height: 32, pointerEvents: "none" }}>{paso.label}<ArrowUpRight size={14} strokeWidth={1.7} aria-hidden="true" /></span>
+                  </Link>
+                ))}
+              </div>
+            </>
+          )}
           {agenda.overdue.length > 0 && (
             <>
               <div className="section-label"><span className="warning">Atrasadas</span><span className="pl-mono">{agenda.overdue.length}</span></div>

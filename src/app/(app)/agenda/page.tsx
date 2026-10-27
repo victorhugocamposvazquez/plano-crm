@@ -1,5 +1,5 @@
 "use client";
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { CalendarDays, ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,8 @@ export default function AgendaPage() {
   const mes = primerDiaMes(dia);
   const [carga, setCarga] = useState<"trade" | "assignee">("trade");
   const [adding, setAdding] = useState(false);
+  const [nuevaParam, setNuevaParam] = useQueryState<"1" | "">("nueva", "");
+  useEffect(() => { if (nuevaParam === "1") { setAdding(true); setNuevaParam(""); } }, [nuevaParam, setNuevaParam]);
   const [pending, setPending] = useState<string | null>(null);
   const [abierta, setAbierta] = useState<Task | null>(null);
   const [form, setForm] = useState({ project_id: "", title: "", trade: "", assignee: "", due_date: hoy, weight: "10" });

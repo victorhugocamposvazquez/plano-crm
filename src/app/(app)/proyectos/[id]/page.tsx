@@ -18,6 +18,8 @@ import { PurchasesPanel } from "@/components/project/purchases-panel";
 import { BudgetEditor } from "@/components/project/budget-editor";
 import { BudgetActions } from "@/components/project/budget-actions";
 import { ProjectMenu } from "@/components/project/project-menu";
+import { NextStep } from "@/components/project/next-step";
+import { siguientePaso, type TipoAccion } from "@/lib/siguiente-paso";
 import { projectProgress, money, totals, dateLabel, compareVersions, kindNames, lineTotal, can, type Budget, type BudgetVersion, type ItemChange, type Task, type Workspace } from "@/lib/domain";
 
 type Section = "budget" | "documents" | "purchases";
@@ -41,6 +43,7 @@ export default function ObraPage() {
   const [chatParam, setChatParam] = useQueryState<string>("chat", "");
   const [editParam, setEditParam] = useQueryState<string>("editar", "");
   const [pendingEdit, setPendingEdit] = useState(false);
+  const [solicitud, setSolicitud] = useState<"tarea" | "certificacion" | "estado" | null>(null);
   const chatAbierto = chatParam === "1";
   const [pendingTask, setPendingTask] = useState<string | null>(null);
   const { actor, busy, send, notify } = useWorkspace();
@@ -86,6 +89,23 @@ export default function ObraPage() {
   const editando = editParam === "1" && Boolean(editable) && canSave;
   // «Estimar en visita» tiene sentido mientras nadie ha puesto una sola partida en el proyecto.
   const sinPartidas = data.versions.filter(v => budgets.some(b => b.id === v.budget_id)).every(v => v.items.length === 0);
+  const paso = project ? siguientePaso(data, project) : null;
+  async function cambiarFase(status: "planning" | "active" | "completed", aviso: string) {
+    if (!project || busy) return;
+    try { await send({ type: "project.status", id: project.id, status }); notify(aviso); }
+    catch (e) { notify(e instanceof Error ? e.message : "No se ha podido cambiar la fase."); }
+  }
+  function accionPaso(tipo: TipoAccion) {
+    if (tipo === "presupuesto") { void crearPresupuesto(); return; }
+    if (tipo === "editar") { setSection("budget"); setEditParam("1"); return; }
+    if (tipo === "cerrar" || tipo === "aprobar") { setSection("budget"); setTimeout(() => document.getElementById("acciones-presupuesto")?.scrollIntoView({ behavior: "smooth", block: "center" }), 50); return; }
+    if (tipo === "planificar") { void cambiarFase("planning", "Proyecto en planificación"); return; }
+    if (tipo === "iniciar-obra") { void cambiarFase("active", "Proyecto en obra"); return; }
+    if (tipo === "finalizar") { void cambiarFase("completed", "Proyecto finalizado"); return; }
+    if (tipo === "tareas") { setSolicitud("tarea"); return; }
+    if (tipo === "certificar") { setSolicitud("certificacion"); return; }
+    if (tipo === "tarea" && paso?.tarea) { setAbierta(paso.tarea); }
+  }
 
   // El total de la obra suma la base aprobada de todos sus ámbitos (apartamento, piso, terraza…).
   const approvedProjectBase = budgets.reduce((sum, b) => { const v = approvedOf(data, b); return sum + (v ? totals(v.items).base : 0); }, 0);
@@ -118,7 +138,7 @@ export default function ObraPage() {
           <div className="head-actions">
             {canBudget && sinPartidas && (project.status === "lead" || project.status === "estimating") && <LinkButton href={`/proyectos/nueva?proyecto=${project.id}`} variant="secondary"><Footprints size={17} strokeWidth={1.6} aria-hidden="true" />Estimar en visita</LinkButton>}
             <Button variant="secondary" className="chat-launcher" onClick={() => setChatParam("1")} aria-haspopup="dialog" aria-expanded={chatAbierto}><MessageSquare size={17} strokeWidth={1.6} aria-hidden="true" />Chat<span className="pl-mono">{messages.length}</span></Button>
-            <ProjectMenu project={project} approvedVersion={approved} puedeEstimar={canBudget && sinPartidas && (project.status === "lead" || project.status === "estimating")} onChat={() => setChatParam("1")} />
+            <ProjectMenu project={project} approvedVersion={approved} puedeEstimar={canBudget && sinPartidas && (project.status === "lead" || project.status === "estimating")} onChat={() => setChatParam("1")} solicitud={solicitud} onAtendida={() => setSolicitud(null)} />
           </div>
         </div>
         <p className="subtitle">{[project.client_name, project.location, `desde ${dateLabel(project.created_at)}`].filter(Boolean).join(" · ")}</p>
@@ -126,6 +146,7 @@ export default function ObraPage() {
 
       <div className="detail">
         <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+          {paso && <NextStep paso={paso} busy={busy} onAccion={accionPaso} />}
           <div className="panel">
             <div className="panel-body">
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
@@ -221,7 +242,7 @@ export default function ObraPage() {
                 </div>
               )}
 
-              {budget && <BudgetActions budget={budget} approved={approved} working={working} shown={shown} onEdit={() => setEditParam("1")} />}
+              {budget && <div id="acciones-presupuesto"><BudgetActions budget={budget} approved={approved} working={working} shown={shown} onEdit={() => setEditParam("1")} /></div>}
             </div>
           )}
 
