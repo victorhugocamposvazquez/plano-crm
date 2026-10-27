@@ -2499,3 +2499,10 @@ p {
   text-decoration: none;
   border-bottom: var(--pl-hairline) solid currentColor;
 }
+
+@media (max-width: 767px) {
+  /* En móvil el título ocupa su línea y el botón de crear baja, compacto y a la izquierda. */
+  .page-head:has(.btn-new) { flex-wrap: wrap; }
+  .page-head:has(.btn-new) .h1 { flex: 1 1 100%; }
+  .page-head .btn-new { height: 38px; font-size: var(--pl-text-sm); }
+}

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { Ellipsis, MessageSquare } from "lucide-react";
+import { Ellipsis, MessageSquare, Plus } from "lucide-react";
 import { Drawer } from "@/components/ui/drawer";
 import { BackLink } from "@/components/ui/back-link";
 import { TaskRow } from "@/components/project/task-row";
@@ -49,6 +49,21 @@ export default function ObraPage() {
   }
 
   const project = data.projects.find(p => p.id === id);
+  const canBudget = can(actor.role, "budget.create");
+  const [creatingBudget, setCreatingBudget] = useState(false);
+  /** Abre el primer presupuesto de un proyecto dado de alta en oficina; queda en borrador y seleccionado. */
+  async function crearPresupuesto() {
+    if (!project || busy || creatingBudget) return;
+    setCreatingBudget(true);
+    try {
+      const ws = await send({ type: "budget.create", project_id: project.id, title: "Presupuesto de reforma" });
+      const nuevo = ws.budgets.filter(b => b.project_id === project.id).sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
+      if (project.status === "lead") await send({ type: "project.status", id: project.id, status: "estimating" });
+      if (nuevo) setBudgetId(nuevo.id);
+      notify("Presupuesto abierto en borrador.");
+    } catch (e) { notify(e instanceof Error ? e.message : "No se ha podido abrir el presupuesto."); }
+    finally { setCreatingBudget(false); }
+  }
   const budgets = useMemo(() => data.budgets.filter(b => b.project_id === id).sort((a, b) => a.created_at.localeCompare(b.created_at)), [data.budgets, id]);
   useEffect(() => { if (budgetId && budgets.length && !budgets.some(b => b.id === budgetId)) setBudgetId(null); }, [budgets, budgetId]); // eslint-disable-line react-hooks/exhaustive-deps
   const budget = budgets.find(b => b.id === budgetId) ?? budgets[0];
@@ -92,7 +107,7 @@ export default function ObraPage() {
             <Button variant="icon" aria-label="Más acciones"><Ellipsis size={19} strokeWidth={1.55} aria-hidden="true" /></Button>
           </div>
         </div>
-        <p className="subtitle">{project.client_name} · {project.location} · desde {dateLabel(project.created_at)}</p>
+        <p className="subtitle">{[project.client_name, project.location, `desde ${dateLabel(project.created_at)}`].filter(Boolean).join(" · ")}</p>
       </div>
 
       <div className="detail">
@@ -121,7 +136,13 @@ export default function ObraPage() {
 
           {section === "budget" && (
             <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              {budgets.length === 0 && <div className="empty"><strong>Esta obra aún no tiene presupuesto</strong><span className="muted text-sm">Se crea desde la visita o desde el catálogo de artículos.</span></div>}
+              {budgets.length === 0 && (
+                <div className="empty">
+                  <strong>Este proyecto aún no tiene presupuesto</strong>
+                  <span className="muted text-sm">{canBudget ? "Ábrelo aquí con los precios del catálogo; también puede salir de una estimación en la visita." : "Lo abrirá oficina con los precios del catálogo o desde una estimación en la visita."}</span>
+                  {canBudget && <Button variant="primary" className="btn-new" disabled={busy || creatingBudget} onClick={crearPresupuesto}><Plus size={17} strokeWidth={1.8} aria-hidden="true" />{creatingBudget ? "Abriendo…" : "Nuevo presupuesto"}</Button>}
+                </div>
+              )}
 
               {budgets.length > 1 && (
                 <div className="segments" role="tablist" aria-label="Ámbito del presupuesto">
