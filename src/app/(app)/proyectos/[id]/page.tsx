@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { Ellipsis, MessageSquare, Plus } from "lucide-react";
+import { Ellipsis, MessageSquare, Plus, PenLine, Footprints } from "lucide-react";
 import { Drawer } from "@/components/ui/drawer";
 import { BackLink } from "@/components/ui/back-link";
 import { TaskRow } from "@/components/project/task-row";
@@ -15,6 +15,7 @@ import { localDate } from "@/lib/hoy";
 import { DocumentsPanel } from "@/components/project/documents-panel";
 import { ChatPanel } from "@/components/project/chat-panel";
 import { PurchasesPanel } from "@/components/project/purchases-panel";
+import { BudgetEditor } from "@/components/project/budget-editor";
 import { projectProgress, money, totals, dateLabel, compareVersions, kindNames, lineTotal, can, type Budget, type BudgetVersion, type ItemChange, type Task, type Workspace } from "@/lib/domain";
 
 type Section = "budget" | "documents" | "purchases";
@@ -36,6 +37,8 @@ export default function ObraPage() {
   const setBudgetId = (id: string | null) => setBudgetParam(id ?? "");
   const [abierta, setAbierta] = useState<Task | null>(null);
   const [chatParam, setChatParam] = useQueryState<string>("chat", "");
+  const [editParam, setEditParam] = useQueryState<string>("editar", "");
+  const [pendingEdit, setPendingEdit] = useState(false);
   const chatAbierto = chatParam === "1";
   const [pendingTask, setPendingTask] = useState<string | null>(null);
   const { actor, busy, send, notify } = useWorkspace();
@@ -60,12 +63,15 @@ export default function ObraPage() {
       const nuevo = ws.budgets.filter(b => b.project_id === project.id).sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
       if (project.status === "lead") await send({ type: "project.status", id: project.id, status: "estimating" });
       if (nuevo) setBudgetId(nuevo.id);
+      setPendingEdit(true);
       notify("Presupuesto abierto en borrador.");
     } catch (e) { notify(e instanceof Error ? e.message : "No se ha podido abrir el presupuesto."); }
     finally { setCreatingBudget(false); }
   }
   const budgets = useMemo(() => data.budgets.filter(b => b.project_id === id).sort((a, b) => a.created_at.localeCompare(b.created_at)), [data.budgets, id]);
   useEffect(() => { if (budgetId && budgets.length && !budgets.some(b => b.id === budgetId)) setBudgetId(null); }, [budgets, budgetId]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Tras abrir el primer presupuesto, el editor se abre con la guía en cuanto la URL apunta a él.
+  useEffect(() => { if (pendingEdit && budgetParam) { setEditParam("1"); setPendingEdit(false); } }, [pendingEdit, budgetParam, setEditParam]);
   const budget = budgets.find(b => b.id === budgetId) ?? budgets[0];
   const versions = useMemo(() => data.versions.filter(v => v.budget_id === budget?.id).sort((a, b) => b.number - a.number), [data.versions, budget?.id]);
   const approved = approvedOf(data, budget);
@@ -73,6 +79,11 @@ export default function ObraPage() {
   const changes: ItemChange[] = approved && working ? compareVersions(approved, working) : [];
   const deltaBase = changes.reduce((sum, c) => sum + c.delta, 0);
   const shown: BudgetVersion | undefined = working ?? approved ?? versions[0];
+  const canSave = can(actor.role, "budget.save");
+  const editable = working && working.status === "draft" ? working : undefined;
+  const editando = editParam === "1" && Boolean(editable) && canSave;
+  // «Estimar en visita» tiene sentido mientras nadie ha puesto una sola partida en el proyecto.
+  const sinPartidas = data.versions.filter(v => budgets.some(b => b.id === v.budget_id)).every(v => v.items.length === 0);
 
   // El total de la obra suma la base aprobada de todos sus ámbitos (apartamento, piso, terraza…).
   const approvedProjectBase = budgets.reduce((sum, b) => { const v = approvedOf(data, b); return sum + (v ? totals(v.items).base : 0); }, 0);
@@ -102,7 +113,8 @@ export default function ObraPage() {
         </div>
         <div className="page-head">
           <h1 className="h2" style={{ fontSize: "var(--pl-text-h1)" }}>{project.name}</h1>
-          <div style={{ display: "flex", gap: 8 }}>
+          <div className="head-actions">
+            {canBudget && sinPartidas && (project.status === "lead" || project.status === "estimating") && <LinkButton href={`/proyectos/nueva?proyecto=${project.id}`} variant="secondary"><Footprints size={17} strokeWidth={1.6} aria-hidden="true" />Estimar en visita</LinkButton>}
             <Button variant="secondary" className="chat-launcher" onClick={() => setChatParam("1")} aria-haspopup="dialog" aria-expanded={chatAbierto}><MessageSquare size={17} strokeWidth={1.6} aria-hidden="true" />Chat<span className="pl-mono">{messages.length}</span></Button>
             <Button variant="icon" aria-label="Más acciones"><Ellipsis size={19} strokeWidth={1.55} aria-hidden="true" /></Button>
           </div>
@@ -168,7 +180,8 @@ export default function ObraPage() {
 
               {shown && (
                 <div>
-                  <div className="section-label"><span>Partidas de la V{shown.number}{approved && working ? " · cambios respecto a la aprobada" : ""}</span><span className="pl-mono">{shown.items.length}</span></div>
+                  <div className="section-label"><span>Partidas de la V{shown.number}{approved && working ? " · cambios respecto a la aprobada" : ""}</span><span style={{ display: "inline-flex", alignItems: "center", gap: 10 }}>{editable && canSave && shown.id === editable.id && <button type="button" className="btn btn-ghost" style={{ height: 30 }} onClick={() => setEditParam("1")}><PenLine size={14} strokeWidth={1.8} aria-hidden="true" />Editar partidas</button>}<span className="pl-mono">{shown.items.length}</span></span></div>
+                  {shown.items.length === 0 && editable && canSave && shown.id === editable.id && <div className="empty" style={{ padding: "22px 16px" }}><strong>La V{shown.number} está vacía</strong><span className="muted text-sm">Añade partidas del catálogo con la guía por capítulos, o estímalas en la visita.</span><Button variant="primary" className="btn-new" onClick={() => setEditParam("1")}><Plus size={17} strokeWidth={1.8} aria-hidden="true" />Añadir partidas</Button></div>}
                   <div style={{ borderTop: "var(--pl-hairline) solid var(--pl-line)" }}>
                     {shown.items.map(item => {
                       const change = changeFor(item.id);
@@ -237,6 +250,7 @@ export default function ObraPage() {
         </aside>
       </div>
       <TaskDialog task={abierta ? data.tasks.find(t => t.id === abierta.id) ?? null : null} onClose={() => setAbierta(null)} />
+      {editable && <BudgetEditor open={editando} onClose={() => setEditParam("")} project={project} version={editable} guiaInicial={editable.items.length === 0} />}
       <Drawer open={chatAbierto} onClose={() => setChatParam("")} title="Chat del proyecto" subtitle={`${project.name} · lo ve todo el equipo con acceso`}>
         <ChatPanel projectId={project.id} messages={messages} />
       </Drawer>

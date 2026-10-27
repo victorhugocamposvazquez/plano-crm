@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { ArrowLeft, Camera, Mic, MicOff, Plus, Trash2, X } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
 import { Button } from "@/components/ui/button";
@@ -22,8 +22,12 @@ function recognitionFactory(): (new () => Recognition) | null {
 
 export default function NuevaVisitaPage() {
   const router = useRouter();
-  const { data, actor, busy, send, upload, notify } = useWorkspace();
-  const allowed = can(actor.role, "project.create") && can(actor.role, "budget.create");
+  const params = useSearchParams();
+  const proyectoId = params.get("proyecto");
+  const { data, actor, busy, loading, send, upload, notify } = useWorkspace();
+  // Con «?proyecto=» la visita estima sobre un proyecto ya dado de alta en oficina: no crea otro.
+  const existente = useMemo(() => (proyectoId ? data.projects.find(p => p.id === proyectoId) ?? null : null), [data.projects, proyectoId]);
+  const allowed = (existente ? true : can(actor.role, "project.create")) && can(actor.role, "budget.create");
   const [step, setStep] = useState<Step>(1);
   const [datos, setDatos] = useState({ name: "", client_name: "", location: "", kind: "integral" as Project["kind"] });
   const [fotos, setFotos] = useState<{ file: File; url: string }[]>([]);
@@ -44,7 +48,7 @@ export default function NuevaVisitaPage() {
   const items = useMemo(() => partidasDesdeLineas(lineas, data.articles), [lineas, data.articles]);
   const rango = useMemo(() => rangoEstimacion(items, margen), [items, margen]);
   const pendientes = comprobaciones.filter(c => !comprobado.includes(c));
-  const datosOk = datos.name.trim() && datos.client_name.trim();
+  const datosOk = existente ? true : Boolean(datos.name.trim() && datos.client_name.trim());
 
   function addFotos(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []).filter(f => f.type.startsWith("image/"));
@@ -77,20 +81,29 @@ export default function NuevaVisitaPage() {
     setSaving(true); setError("");
     let projectId: string | null = null;
     try {
-      let ws = await send({ type: "project.create", name: datos.name.trim(), client_name: datos.client_name.trim(), location: datos.location.trim(), kind: datos.kind });
-      const project = ws.projects.filter(p => p.name === datos.name.trim() && p.client_name === datos.client_name.trim()).sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
-      if (!project) throw new Error("La obra se ha creado pero no se ha podido localizar. Recarga y busca por el cliente.");
-      projectId = project.id;
-      for (const foto of fotos) await upload(foto.file, project.id, "before");
-      ws = await send({ type: "budget.create", project_id: project.id, title: "Estimación de visita" });
-      const budget = ws.budgets.filter(b => b.project_id === project.id).sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
-      const version = budget && ws.versions.find(v => v.budget_id === budget.id && v.status === "draft");
+      let ws = data;
+      let project: Project | undefined = existente ?? undefined;
+      if (!project) {
+        ws = await send({ type: "project.create", name: datos.name.trim(), client_name: datos.client_name.trim(), location: datos.location.trim(), kind: datos.kind });
+        project = ws.projects.filter(p => p.name === datos.name.trim() && p.client_name === datos.client_name.trim()).sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
+        if (!project) throw new Error("El proyecto se ha creado pero no se ha podido localizar. Recarga y busca por el cliente.");
+      }
+      const pid = project.id;
+      projectId = pid;
+      for (const foto of fotos) await upload(foto.file, pid, "before");
+      // Si el proyecto ya tiene un presupuesto vacío abierto en oficina, la estimación lo rellena en vez de abrir otro.
+      let version = ws.versions.find(v => v.status === "draft" && v.items.length === 0 && ws.budgets.some(b => b.id === v.budget_id && b.project_id === pid));
+      if (!version) {
+        ws = await send({ type: "budget.create", project_id: pid, title: "Estimación de visita" });
+        const budget = ws.budgets.filter(b => b.project_id === pid).sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
+        version = budget ? ws.versions.find(v => v.budget_id === budget.id && v.status === "draft") : undefined;
+      }
       if (!version) throw new Error("No se ha podido abrir el borrador del presupuesto.");
       const notes = notasDeVisita(alcance, pendientes, dateLabel(new Date().toISOString()), margen);
       await send({ type: "budget.save", version_id: version.id, expected_revision: version.draft_revision, items, notes });
-      await send({ type: "project.status", id: project.id, status: "estimating" });
+      if (project.status === "lead") await send({ type: "project.status", id: pid, status: "estimating" });
       notify(`Estimación guardada · ${project.name}`);
-      router.push(`/proyectos/${project.id}`);
+      router.push(`/proyectos/${pid}`);
     } catch (e) {
       const message = e instanceof Error ? e.message : "No se ha podido guardar la estimación.";
       setError(projectId ? `${message} La obra ya existe; puedes completar el presupuesto desde su ficha.` : message);
@@ -100,6 +113,11 @@ export default function NuevaVisitaPage() {
     }
   }
 
+  if (proyectoId && loading) return <p className="muted">Cargando el proyecto…</p>;
+  if (proyectoId && !loading && !existente) {
+    return <div className="empty"><strong>Ese proyecto ya no existe</strong><span className="muted text-sm">Puedes empezar la visita como proyecto nuevo o volver a la lista.</span><div style={{ display: "flex", gap: 8 }}><Link href="/proyectos/nueva" className="btn btn-primary">Visita nueva</Link><Link href="/proyectos" className="btn btn-secondary">Proyectos</Link></div></div>;
+  }
+
   if (!allowed) {
     return <div className="empty"><strong>Tu perfil no puede crear proyectos ni presupuestos</strong><span className="muted text-sm">Pide a oficina o administración que registren la visita.</span><Link href="/proyectos" className="btn btn-secondary">Volver a proyectos</Link></div>;
   }
@@ -107,7 +125,7 @@ export default function NuevaVisitaPage() {
   return (
     <div className="page">
       <div>
-        <div className="eyebrow"><Link href="/proyectos" className="muted" style={{ display: "inline-flex", alignItems: "center", gap: 6, textDecoration: "none" }}><ArrowLeft size={13} strokeWidth={1.8} aria-hidden="true" />Proyectos</Link><span>· Nueva visita</span></div>
+        <div className="eyebrow"><Link href="/proyectos" className="muted" style={{ display: "inline-flex", alignItems: "center", gap: 6, textDecoration: "none" }}><ArrowLeft size={13} strokeWidth={1.8} aria-hidden="true" />Proyectos</Link><span>· {existente ? `Visita a ${existente.name}` : "Nueva visita"}</span></div>
         <h1 className="h1">Estimar en la visita.</h1>
         <p className="subtitle">Sal de la visita con una cifra orientativa, calculada con los precios del catálogo. Lo que no se mide queda marcado como pendiente.</p>
       </div>
@@ -116,7 +134,19 @@ export default function NuevaVisitaPage() {
         {steps.map(s => <li key={s.id}><button type="button" className="step" aria-current={s.id === step ? "step" : undefined} data-done={s.id < step} onClick={() => s.id < step && setStep(s.id)} disabled={s.id > step}><span className="pl-mono">{s.id}</span>{s.label}</button></li>)}
       </ol>
 
-      {step === 1 && (
+      {step === 1 && existente && (
+        <section className="form">
+          <div className="panel"><div className="panel-body">
+            <small className="muted text-xs">Proyecto dado de alta en oficina</small>
+            <strong style={{ display: "block", marginTop: 4, fontSize: "var(--pl-text-h3)", fontWeight: "var(--pl-weight-medium)" }}>{existente.name}</strong>
+            <span className="muted text-sm">{[existente.client_name, existente.location, kindNames[existente.kind], existente.code].filter(Boolean).join(" · ")}</span>
+          </div></div>
+          <p className="muted text-xs">La estimación se guardará en este proyecto. Si no es el que estás visitando, vuelve a <Link href="/proyectos" className="link-inline">Proyectos</Link> y elige el correcto.</p>
+          <div className="form-actions"><Button variant="primary" onClick={() => setStep(2)}>Seguir con las fotos</Button></div>
+        </section>
+      )}
+
+      {step === 1 && !existente && (
         <section className="form">
           <label className="field"><span>Proyecto</span><input type="text" value={datos.name} onChange={e => setDatos({ ...datos, name: e.target.value })} placeholder="Reforma de baño · C/ Mayor 12" autoFocus /></label>
           <label className="field"><span>Cliente</span><input type="text" value={datos.client_name} onChange={e => setDatos({ ...datos, client_name: e.target.value })} autoComplete="name" /></label>

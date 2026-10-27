@@ -12,6 +12,7 @@ export default function CatalogoPage() {
   const { data, actor, busy, loading, send, notify } = useWorkspace();
   const allowed = can(actor.role, "article.create");
   const [queryParam, setQueryParam] = useQueryState<string>("q", "");
+  const [chapterParam, setChapterParam] = useQueryState<string>("c", "");
   const [query, setQuery] = useState(queryParam);
   useEffect(() => { const t = setTimeout(() => { if (query !== queryParam) setQueryParam(query); }, 300); return () => clearTimeout(t); }, [query, queryParam, setQueryParam]);
   const [adding, setAdding] = useState(false);
@@ -20,7 +21,7 @@ export default function CatalogoPage() {
   const [form, setForm] = useState({ chapter: "", name: "", code: "", unit: "m²" as Unidad, price: "", vat: "21" });
 
   const chapters = useMemo(() => capitulos(data.articles), [data.articles]);
-  const found = useMemo(() => buscarArticulos(data.articles, query), [data.articles, query]);
+  const found = useMemo(() => buscarArticulos(data.articles, query).filter(a => !chapterParam || a.chapter === chapterParam), [data.articles, query, chapterParam]);
   const groups = useMemo(() => agruparPorCapitulo(found), [found]);
   const cents = eurosACentimos(form.price);
   const suggested = form.chapter.trim() ? codigoSugerido(form.chapter.trim(), data.articles) : "";
@@ -46,10 +47,10 @@ export default function CatalogoPage() {
       <div>
         <div className="eyebrow"><BookOpen size={13} strokeWidth={1.8} aria-hidden="true" /><span>{data.organization_name || "Espacio de trabajo"}</span></div>
         <div className="page-head">
-          <h1 className="h1">Catálogo de precios.</h1>
+          <h1 className="h1">Catálogo.</h1>
           {allowed && <Button variant={adding ? "secondary" : "primary"} className="btn-new" aria-expanded={adding} onClick={() => setAdding(v => !v)}>{adding ? <X size={17} strokeWidth={1.8} aria-hidden="true" /> : <Plus size={17} strokeWidth={1.8} aria-hidden="true" />}{adding ? "Cerrar" : "Nuevo artículo"}</Button>}
         </div>
-        <p className="subtitle">{loading ? "Cargando el catálogo…" : `${data.articles.length} artículos en ${chapters.length} capítulos · precios sin IVA que alimentan estimaciones y presupuestos`}</p>
+        <p className="subtitle">{loading ? "Cargando el catálogo…" : `${data.articles.length} artículos en ${chapters.length} categorías · precios sin IVA que alimentan estimaciones y presupuestos`}</p>
       </div>
 
       {adding && allowed && (
@@ -72,9 +73,16 @@ export default function CatalogoPage() {
         </form>
       )}
 
+      {chapters.length > 0 && (
+        <div className="chips chips-scroll" role="group" aria-label="Categorías">
+          <button type="button" className="chip" aria-pressed={!chapterParam} onClick={() => setChapterParam("")}>Todas <span className="pl-mono muted">{data.articles.length}</span></button>
+          {chapters.map(c => <button key={c} type="button" className="chip" aria-pressed={chapterParam === c} onClick={() => setChapterParam(chapterParam === c ? "" : c)}>{c} <span className="pl-mono muted">{data.articles.filter(a => a.chapter === c).length}</span></button>)}
+        </div>
+      )}
+
       <label className="search">
         <Search size={16} strokeWidth={1.8} aria-hidden="true" />
-        <input type="search" className="search-input" value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar por código, descripción o capítulo…" aria-label="Buscar artículos" autoComplete="off" />
+        <input type="search" className="search-input" value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar por código, descripción o categoría…" aria-label="Buscar artículos" autoComplete="off" />
         {query && <button type="button" className="search-clear" aria-label="Borrar búsqueda" onClick={() => setQuery("")}><X size={15} strokeWidth={1.8} aria-hidden="true" /></button>}
       </label>
 
