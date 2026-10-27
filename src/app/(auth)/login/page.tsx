@@ -4,6 +4,7 @@ import Link from "next/link";
 import { ArrowRight } from "lucide-react";
 import { Brand } from "@/components/ui/brand";
 import { Button } from "@/components/ui/button";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { supabaseConfigured } from "@/lib/supabase/browser";
 
 type Field = { path: string; message: string };
@@ -46,7 +47,7 @@ export default function LoginPage() {
       </aside>
 
       <section className="auth-card">
-        <h1 className="h1">Entrar.</h1>
+        <div className="page-head"><h1 className="h1">Entrar.</h1><ThemeToggle /></div>
 
         {!configured ? (
           <div className="empty">

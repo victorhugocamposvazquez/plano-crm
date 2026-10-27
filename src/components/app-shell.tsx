@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { House, Layers2, CalendarDays, FileText, BookOpen, Users, Package, FolderOpen, Wallet, Menu, SquarePen, LogOut } from "lucide-react";
 import { Brand } from "@/components/ui/brand";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { useWorkspace } from "@/components/workspace-provider";
 import { roleNames } from "@/lib/domain";
 
@@ -65,6 +66,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <div className="nav-foot">
           <span className="avatar" aria-hidden="true">{initials || "·"}</span>
           <span className="text-sm nav-user">{actor.name}<small className="muted" style={{ display: "block" }}>{roleNames[actor.role]}</small></span>
+          <ThemeToggle />
           {signOutButton}
         </div>
       </nav>
@@ -74,6 +76,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Link href="/" aria-label="Inicio" style={{ color: "inherit", textDecoration: "none" }}><Brand /></Link>
           <div className="topbar-tools">
             <Link href="/proyectos/nueva" aria-label="Nueva visita" style={{ color: "inherit", display: "inline-flex" }}><SquarePen {...iconProps} /></Link>
+            <ThemeToggle />
             {signOutButton}
             <span className="avatar" aria-label={actor.name}>{initials || "·"}</span>
           </div>

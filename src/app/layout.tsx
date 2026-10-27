@@ -6,6 +6,7 @@ import "@fontsource/ibm-plex-mono/400.css";
 import "@fontsource/ibm-plex-mono/500.css";
 import "@/styles/tokens.css";
 import "@/styles/ui.css";
+import { themeBootScript } from "@/components/ui/theme-toggle";
 
 export const metadata: Metadata = {
   title: { default: "Plano", template: "%s · Plano" },
@@ -27,6 +28,10 @@ export const viewport: Viewport = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="es" suppressHydrationWarning>
+      <head>
+        {/* Aplica el tema guardado antes del primer pintado para que no parpadee. */}
+        <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
+      </head>
       <body>{children}</body>
     </html>
   );
