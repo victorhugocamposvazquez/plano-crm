@@ -1,13 +1,14 @@
 "use client";
 import { useState, type FormEvent } from "react";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Printer } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
-import { Button } from "@/components/ui/button";
+import { Button, LinkButton } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { PurchaseStatus } from "@/components/ui/status";
 import { can, type Purchase } from "@/lib/domain";
 import { accionesPara, comandoPara, pendienteDeRecibir } from "@/lib/compras";
 import { unidades, unidadNombres, type Unidad } from "@/lib/catalogo";
+import { pedidosPorProveedor } from "@/lib/hoja-pedido";
 
 /** Lista de materiales de un proyecto con su flujo: por pedir → pedido → recibido → en obra. */
 export function PurchasesPanel({ projectId, purchases, showAdd = true }: { projectId: string; purchases: Purchase[]; showAdd?: boolean }) {
@@ -18,6 +19,7 @@ export function PurchasesPanel({ projectId, purchases, showAdd = true }: { proje
   const [form, setForm] = useState({ name: "", supplier: "", quantity: "", unit: "ud" as Unidad });
   const [receiving, setReceiving] = useState<{ id: string; value: string } | null>(null);
   const [pending, setPending] = useState<string | null>(null);
+  const proveedores = pedidosPorProveedor(purchases).filter(g => g.pendientes > 0);
 
   async function run(p: Purchase, accion: ReturnType<typeof accionesPara>[number]["id"], cantidad = 0) {
     if (busy || pending) return;
@@ -58,6 +60,13 @@ export function PurchasesPanel({ projectId, purchases, showAdd = true }: { proje
           </div>
           <div className="form-actions"><Button type="submit" variant="primary" disabled={pending === "new" || busy || !form.name.trim() || !form.supplier.trim() || !form.quantity}>{pending === "new" ? "Guardando…" : "Añadir a la lista"}</Button></div>
         </form>
+      )}
+
+      {proveedores.length > 0 && (
+        <div className="supplier-orders">
+          <small>Hoja de pedido</small>
+          {proveedores.map(g => <LinkButton key={g.slug} href={`/imprimir/pedido/${projectId}?p=${g.slug}`} variant="secondary" target="_blank" rel="noopener" style={{ height: 36 }}><Printer size={15} strokeWidth={1.7} aria-hidden="true" />{g.supplier}<span className="pl-mono muted text-xs">{g.pendientes}</span></LinkButton>)}
+        </div>
       )}
 
       {purchases.length === 0 && <div className="empty"><strong>Sin materiales previstos</strong><span className="muted text-sm">La lista de compras se vincula al presupuesto aprobado: pavimentos, sanitarios, carpinterías, iluminación…</span></div>}
