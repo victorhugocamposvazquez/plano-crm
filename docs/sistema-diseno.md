@@ -165,3 +165,7 @@ Principio: **la pantalla en la que trabajas no se pierde**. Reglas:
 3. **«Volver» es volver.** `BackLink` usa el historial cuando se viene de dentro de Plano y el destino de respaldo cuando se entra directo. El enlace al proyecto desde un diálogo es una acción explícita («Abrir proyecto»), nunca el comportamiento por defecto de tocar una fila.
 4. **Las acciones no te mueven.** Completar una tarea, registrar una recepción o enviar un mensaje actualizan la vista en sitio y lo confirman con el toast; solo «Guardar estimación» navega, porque crea la entidad a la que ir.
 5. **Controles propios.** Selectores (`Select`), conmutadores de vista (`.view-toggle`) y segmentos del sistema, no los nativos del navegador: misma altura que los campos, teclado completo, lista con elevación 2.
+
+### Botones de creación
+
+Todo botón que crea algo lleva icono `Plus` (17 px, trazo 1,8) **y** texto «Nuevo/Nueva + sustantivo» («Nuevo proyecto», «Nueva tarea», «Nuevo artículo»): nunca solo el «+». Variante `btn-primary btn-new` en la cabecera de página; mientras el formulario de alta está abierto pasa a `btn-secondary` con `X` y «Cerrar». El alta de proyecto desde oficina abre un `Modal` sobre la lista (`/proyectos?nuevo=1`); «Estimar en la visita» es la otra entrada, no la única.

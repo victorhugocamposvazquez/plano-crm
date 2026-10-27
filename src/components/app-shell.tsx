@@ -75,7 +75,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <header className="topbar">
           <Link href="/" aria-label="Inicio" style={{ color: "inherit", textDecoration: "none" }}><Brand /></Link>
           <div className="topbar-tools">
-            <Link href="/proyectos/nueva" aria-label="Nueva visita" style={{ color: "inherit", display: "inline-flex" }}><SquarePen {...iconProps} /></Link>
+            <Link href="/proyectos?nuevo=1" aria-label="Nuevo proyecto" title="Nuevo proyecto" style={{ color: "inherit", display: "inline-flex" }}><SquarePen {...iconProps} /></Link>
             <ThemeToggle />
             {signOutButton}
             <span className="avatar" aria-label={actor.name}>{initials || "·"}</span>

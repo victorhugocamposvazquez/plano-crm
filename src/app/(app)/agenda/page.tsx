@@ -83,7 +83,7 @@ export default function AgendaPage() {
         <div className="eyebrow"><CalendarDays size={13} strokeWidth={1.8} aria-hidden="true" /><span>{data.organization_name || "Espacio de trabajo"}</span></div>
         <div className="page-head">
           <h1 className="h1">Agenda de oficios.</h1>
-          {canCreate && <Button variant="icon" aria-label={adding ? "Cerrar" : "Nueva tarea"} aria-expanded={adding} onClick={() => { setAdding(v => !v); setForm(f => ({ ...f, due_date: diaVisible, project_id: f.project_id || data.projects.find(p => p.status === "active")?.id || data.projects[0]?.id || "" })); }}>{adding ? <X size={19} strokeWidth={1.55} aria-hidden="true" /> : <Plus size={19} strokeWidth={1.55} aria-hidden="true" />}</Button>}
+          {canCreate && <Button variant={adding ? "secondary" : "primary"} className="btn-new" aria-expanded={adding} onClick={() => { setAdding(v => !v); setForm(f => ({ ...f, due_date: diaVisible, project_id: f.project_id || data.projects.find(p => p.status === "active")?.id || data.projects[0]?.id || "" })); }}>{adding ? <X size={17} strokeWidth={1.8} aria-hidden="true" /> : <Plus size={17} strokeWidth={1.8} aria-hidden="true" />}{adding ? "Cerrar" : "Nueva tarea"}</Button>}
         </div>
         <p className="subtitle">{loading ? "Cargando…" : "Quién está en qué proyecto cada día. La disponibilidad por trabajador y las horas llegarán con el dominio."}</p>
       </div>
