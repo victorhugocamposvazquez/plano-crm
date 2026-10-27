@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 import { money, totals, lineTotal, kindNames, type Budget, type BudgetVersion, type Project } from "@/lib/domain";
 import { capitulosDocumento, alternativas, excluidas, numeroDocumento, desgloseIva, estadoDocumento, fechaDocumento, unidadLarga } from "@/lib/documento-presupuesto";
 import { lineasLegales, textoSobre, type Branding } from "@/lib/branding";
+import { presentacionVacia, type Presentacion } from "@/lib/presentacion";
 
 /** Variables de color del documento a partir de la identidad de la organización. */
 export function estiloDocumento(branding: Branding): CSSProperties {
@@ -14,12 +15,15 @@ export function DocBrand({ branding, size = "md" }: { branding: Branding; size?:
   return <strong className="doc-issuer" data-size={size}>{branding.trade_name || "Tu empresa"}</strong>;
 }
 
+const dos = (n: number) => String(n).padStart(2, "0");
+
 /**
- * Presupuesto tal y como se entrega al cliente, con la identidad de la organización: portada opcional,
- * cabecera con logo y datos de contacto, partidas por capítulo, alternativas y exclusiones aparte,
- * totales con desglose de IVA, condiciones (propias y generales), aceptación, firmas y pie legal. Pensado para A4.
+ * Presupuesto tal y como se entrega al cliente, con la identidad de la organización y la presentación
+ * propia de este presupuesto (logo del cliente, portada, carta). Portada opcional, cabecera con logo y
+ * contacto, carta de presentación, resumen por capítulos, partidas numeradas, alternativas y exclusiones
+ * aparte, totales con desglose de IVA, condiciones, aceptación, firmas y pie legal. Pensado para A4.
  */
-export function BudgetDocument({ branding, project, budget, version, ambito, cover }: { branding: Branding; project: Project; budget: Budget; version: BudgetVersion; ambito?: number; cover?: boolean }) {
+export function BudgetDocument({ branding, project, budget, version, ambito, cover, presentacion = presentacionVacia }: { branding: Branding; project: Project; budget: Budget; version: BudgetVersion; ambito?: number; cover?: boolean; presentacion?: Presentacion }) {
   const capitulos = capitulosDocumento(version.items);
   const opcionales = alternativas(version.items);
   const fuera = excluidas(version.items);
@@ -30,15 +34,21 @@ export function BudgetDocument({ branding, project, budget, version, ambito, cov
   const contacto = [branding.phone, branding.email, branding.website].filter(Boolean).join(" · ");
   const legales = lineasLegales(branding);
   const numero = numeroDocumento(project, version, ambito);
+  const portadaImagen = presentacion.cover_image_data_url || branding.cover_image_data_url;
+  const tituloPortada = presentacion.cover_title.trim() || budget.title;
+  const mayor = Math.max(1, ...capitulos.map(c => c.subtotal));
 
   return (
     <div className="doc-pages" style={estiloDocumento(branding)}>
       {cover && (
-        <section className="doc doc-cover" data-image={Boolean(branding.cover_image_data_url)} style={branding.cover_image_data_url ? { backgroundImage: `url(${branding.cover_image_data_url})` } : undefined}>
-          <div className="doc-cover-top"><DocBrand branding={branding} size="lg" /></div>
+        <section className="doc doc-cover" data-image={Boolean(portadaImagen)} style={portadaImagen ? { backgroundImage: `url(${portadaImagen})` } : undefined}>
+          <div className="doc-cover-top">
+            <DocBrand branding={branding} size="lg" />
+            {presentacion.client_logo_data_url && <span className="doc-cover-for"><small>para</small><img src={presentacion.client_logo_data_url} alt={project.client_name} className="doc-client-logo" data-size="lg" /></span>}
+          </div>
           <div className="doc-cover-body">
             <span className="doc-cover-kicker">{estadoDocumento(version)}</span>
-            <h1>{budget.title}</h1>
+            <h1>{tituloPortada}</h1>
             <p className="doc-cover-client">{project.client_name}</p>
             <p>{project.name}{project.location ? ` · ${project.location}` : ""}</p>
           </div>
@@ -63,23 +73,48 @@ export function BudgetDocument({ branding, project, budget, version, ambito, cov
         </header>
 
         <h1 className="doc-title">{budget.title}</h1>
-        <dl className="doc-meta">
+        <dl className="doc-meta" data-client-logo={Boolean(presentacion.client_logo_data_url)}>
           <div><dt>Cliente</dt><dd>{project.client_name}</dd></div>
           <div><dt>Obra</dt><dd>{project.name}{project.location ? ` · ${project.location}` : ""}</dd></div>
           <div><dt>Tipo</dt><dd>{kindNames[project.kind]}</dd></div>
           <div><dt>Revisión</dt><dd>V{version.number} · {version.change_reason}</dd></div>
+          {presentacion.client_logo_data_url && <div className="doc-meta-logo"><img src={presentacion.client_logo_data_url} alt="" className="doc-client-logo" /></div>}
         </dl>
+
+        {presentacion.intro.trim() && (
+          <section className="doc-intro">
+            <p>{presentacion.intro.trim()}</p>
+            <span className="doc-intro-sign">{branding.trade_name}</span>
+          </section>
+        )}
+
+        {capitulos.length > 1 && (
+          <section className="doc-summary">
+            <h2>Resumen por capítulos</h2>
+            <ol>
+              {capitulos.map((c, i) => (
+                <li key={c.chapter}>
+                  <span className="pl-mono doc-chapter-no">{dos(i + 1)}</span>
+                  <span className="doc-summary-name">{c.chapter}</span>
+                  <span className="doc-summary-bar" aria-hidden="true"><i style={{ width: `${Math.round((c.subtotal / mayor) * 100)}%` }} /></span>
+                  <span className="pl-mono num">{money(c.subtotal)}</span>
+                </li>
+              ))}
+            </ol>
+            <div className="doc-summary-total"><span>Base imponible</span><strong className="pl-mono">{money(t.base)}</strong></div>
+          </section>
+        )}
 
         <table className="doc-table">
           <thead>
             <tr><th>Partida</th><th className="num">Cantidad</th><th className="num">Precio</th><th className="num">Importe</th></tr>
           </thead>
-          {capitulos.map(c => (
+          {capitulos.map((c, i) => (
             <tbody key={c.chapter}>
-              <tr className="doc-chapter"><th colSpan={3}>{c.chapter}</th><td className="num pl-mono">{money(c.subtotal)}</td></tr>
-              {c.items.map(item => (
+              <tr className="doc-chapter"><th colSpan={3}><span className="pl-mono doc-chapter-no">{dos(i + 1)}</span>{c.chapter}</th><td className="num pl-mono">{money(c.subtotal)}</td></tr>
+              {c.items.map((item, j) => (
                 <tr key={item.id}>
-                  <td>{item.description}{item.adjustment_percent ? <small> · ajuste {item.adjustment_percent > 0 ? "+" : ""}{item.adjustment_percent} %</small> : null}</td>
+                  <td><span className="pl-mono doc-item-no">{dos(i + 1)}.{dos(j + 1)}</span>{item.description}{item.adjustment_percent ? <small> · ajuste {item.adjustment_percent > 0 ? "+" : ""}{item.adjustment_percent} %</small> : null}</td>
                   <td className="num pl-mono">{item.quantity} {unidadLarga[item.unit]}</td>
                   <td className="num pl-mono">{money(item.unit_price)}</td>
                   <td className="num pl-mono">{money(lineTotal(item))}</td>
