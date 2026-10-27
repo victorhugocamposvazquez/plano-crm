@@ -29,6 +29,8 @@ export default function NuevaVisitaPage() {
   const existente = useMemo(() => (proyectoId ? data.projects.find(p => p.id === proyectoId) ?? null : null), [data.projects, proyectoId]);
   const allowed = (existente ? true : can(actor.role, "project.create")) && can(actor.role, "budget.create");
   const [step, setStep] = useState<Step>(1);
+  // En móvil la fila de pasos se desplaza: el paso actual siempre queda a la vista.
+  useEffect(() => { document.querySelector('.step[aria-current="step"]')?.scrollIntoView({ inline: "center", block: "nearest" }); }, [step]);
   const [datos, setDatos] = useState({ name: "", client_name: "", location: "", kind: "integral" as Project["kind"] });
   const [fotos, setFotos] = useState<{ file: File; url: string }[]>([]);
   const [alcance, setAlcance] = useState("");

@@ -58,7 +58,7 @@ export default function ObrasPage() {
 
       <label className="search">
         <Search size={16} strokeWidth={1.8} aria-hidden="true" />
-        <input type="search" className="search-input" value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar por calle, cliente, partida, proveedor…" aria-label="Buscar proyectos" autoComplete="off" />
+        <input type="search" className="search-input" value={query} onChange={e => setQuery(e.target.value)} placeholder="Calle, cliente, partida, proveedor…" aria-label="Buscar proyectos" autoComplete="off" />
         {query && <button type="button" className="search-clear" aria-label="Borrar búsqueda" onClick={() => setQuery("")}><X size={15} strokeWidth={1.8} aria-hidden="true" /></button>}
       </label>
 

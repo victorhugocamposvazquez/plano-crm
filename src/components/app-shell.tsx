@@ -2,7 +2,7 @@
 import { useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { House, Layers2, CalendarDays, FileText, BookOpen, Users, Package, FolderOpen, Wallet, Menu, SquarePen } from "lucide-react";
+import { House, Layers2, CalendarDays, FileText, BookOpen, Users, Package, FolderOpen, Wallet, Menu, Plus } from "lucide-react";
 import { Brand } from "@/components/ui/brand";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { AccountDialog } from "@/components/account-dialog";
@@ -59,7 +59,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <header className="topbar">
           <Link href="/" aria-label="Inicio" style={{ color: "inherit", textDecoration: "none" }}><Brand /></Link>
           <div className="topbar-tools">
-            <Link href="/proyectos?nuevo=1" aria-label="Nuevo proyecto" title="Nuevo proyecto" style={{ color: "inherit", display: "inline-flex" }}><SquarePen {...iconProps} /></Link>
+            <Link href="/proyectos?nuevo=1" aria-label="Nuevo proyecto" title="Nuevo proyecto" className="topbar-new"><Plus size={18} strokeWidth={1.9} aria-hidden="true" /></Link>
             <ThemeToggle />
             <button type="button" className="avatar avatar-button" onClick={() => setAccount(true)} aria-label={`Tu cuenta · ${actor.name}`} aria-haspopup="dialog" aria-expanded={account}>{initials || "·"}</button>
           </div>
