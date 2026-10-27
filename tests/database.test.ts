@@ -181,3 +181,21 @@ describe("Reacciones en PostgreSQL",()=>{
     await expect(command({type:"message.react",id,emoji:"🦄"},admin)).rejects.toThrow(/no admitida/);
   });
 });
+
+describe("Editar y eliminar tareas en PostgreSQL",()=>{
+  async function tarea(){const p=await project();await command({type:"task.create",project_id:p,title:"Replantear",trade:"Albañilería",assignee:"",due_date:"2026-11-02",weight:20});return (await db.query<{id:string}>("select id from tasks")).rows[0].id;}
+  it("cambia solo los campos enviados y respeta los límites",async()=>{
+    const id=await tarea();
+    await command({type:"task.update",id,due_date:"2026-11-09",assignee:"Dani"},manager);
+    expect((await db.query<{title:string;assignee:string;due:string;weight:number}>("select title,assignee,to_char(due_date,'YYYY-MM-DD') as due,weight from tasks")).rows[0]).toEqual({title:"Replantear",assignee:"Dani",due:"2026-11-09",weight:20});
+    await expect(command({type:"task.update",id,weight:0},manager)).rejects.toThrow(/weight/);
+    await expect(command({type:"task.update",id,title:"X"},site)).rejects.toThrow(/permiso/);
+  });
+  it("elimina la tarea y deja actividad",async()=>{
+    const id=await tarea();
+    await expect(command({type:"task.delete",id},site)).rejects.toThrow(/permiso/);
+    await command({type:"task.delete",id},admin);
+    expect((await db.query("select id from tasks")).rows).toHaveLength(0);
+    expect((await db.query<{text:string}>("select text from activities order by created_at desc limit 1")).rows[0].text).toMatch(/Tarea eliminada/);
+  });
+});

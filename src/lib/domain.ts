@@ -33,6 +33,8 @@ export const commandSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("article.create"), code: text, name: text, chapter: z.string().trim().min(1).max(120), unit: z.enum(["m²", "ml", "ud", "h", "global"]), unit_price: z.number().int().min(0).max(100000000), vat_rate: z.number().min(0).max(30).multipleOf(0.01) }),
   z.object({ type: z.literal("task.create"), project_id: z.uuid(), title: text, trade: text, assignee: z.string().max(120), due_date: z.iso.date(), weight: z.number().int().min(1).max(100) }),
   z.object({ type: z.literal("task.toggle"), id: z.uuid(), status: z.enum(["pending", "done"]) }),
+  z.object({ type: z.literal("task.update"), id: z.uuid(), title: text.optional(), trade: text.optional(), assignee: z.string().max(120).optional(), due_date: z.iso.date().optional(), weight: z.number().int().min(1).max(100).optional() }),
+  z.object({ type: z.literal("task.delete"), id: z.uuid() }),
   z.object({ type: z.literal("purchase.create"), project_id: z.uuid(), name: text, supplier: text, quantity: z.number().positive().max(1000000), unit: z.enum(["m²", "ml", "ud", "h", "global"]) }),
   z.object({ type: z.literal("purchase.update"), id: z.uuid(), status: z.enum(["planned", "ordered", "received", "delivered"]), received_quantity: z.number().min(0), delivered_quantity: z.number().min(0) }),
   z.object({ type: z.literal("message.send"), project_id: z.uuid(), body: z.string().trim().min(1).max(5000) }),
@@ -151,6 +153,16 @@ export function applyCommand(previous: Workspace, input: Command, actor: Actor, 
     }
     case "task.toggle": {
       const t = state.tasks.find(t => t.id === command.id); if (!t) throw new Error("Tarea no encontrada."); t.status = command.status; projectId = t.project_id; activity = `${t.status === "done" ? "Completada" : "Reabierta"}: ${t.title}`; break;
+    }
+    case "task.update": {
+      const t = state.tasks.find(t => t.id === command.id); if (!t) throw new Error("Tarea no encontrada.");
+      const { type: _, id: __, ...cambios } = command; void _; void __;
+      Object.assign(t, Object.fromEntries(Object.entries(cambios).filter(([, v]) => v !== undefined)));
+      projectId = t.project_id; activity = `Tarea actualizada: ${t.title}`; break;
+    }
+    case "task.delete": {
+      const t = state.tasks.find(t => t.id === command.id); if (!t) throw new Error("Tarea no encontrada.");
+      state.tasks = state.tasks.filter(x => x.id !== command.id); projectId = t.project_id; activity = `Tarea eliminada: ${t.title}`; break;
     }
     case "purchase.create": {
       const { type: _, ...fields } = command; void _;

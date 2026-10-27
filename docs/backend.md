@@ -58,3 +58,7 @@ Se conservan como alcance: clientes y oportunidades, visita y estimación asisti
 ## Reacciones (migración 202610270002)
 
 `messages.reactions` es un `jsonb` `{emoji: [nombres mostrados]}`. `message.react` alterna la reacción de quien la ejecuta: la añade si no estaba y la quita si estaba, borrando la clave cuando se queda vacía. Solo admite 👍 ✅ ❤️ 👀 🙏 ⚠️. Equipo de obra puede reaccionar; consulta no.
+
+## Tareas: edición y borrado (migración 202610270003)
+
+`task.update` recibe `id` y cualquier subconjunto de `title`, `trade`, `assignee`, `due_date`, `weight`; valida igual que `task.create` y solo cambia lo enviado. `task.delete` borra la tarea (el avance del proyecto se recalcula al vuelo). Ambos vedados al equipo de obra.

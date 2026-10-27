@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from "react";
 import Link from "next/link";
-import { ArrowUp, Hash, FileText, ListChecks, Package, Receipt, X, Paperclip, Pencil, Trash2, Check, SmilePlus, Loader2, Image as ImageIcon } from "lucide-react";
+import { ArrowUp, Hash, FileText, ListChecks, Package, Receipt, X, Paperclip, Pencil, Trash2, Check, SmilePlus, Loader2, Image as ImageIcon, ExternalLink, Download } from "lucide-react";
 import { Menu } from "@/components/ui/menu";
 import { useWorkspace } from "@/components/workspace-provider";
 import { TaskDialog } from "@/components/project/task-dialog";
@@ -33,6 +33,14 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
   const [uploading, setUploading] = useState(false);
   const [pendingAttach, setPendingAttach] = useState<{ name: string; since: string } | null>(null);
   const [adjuntos, setAdjuntos] = useState<Document[]>([]);
+  const [preview, setPreview] = useState<{ doc: Document; url: string | null } | null>(null);
+  const lightbox = useRef<HTMLDialogElement>(null);
+  useEffect(() => { const d = lightbox.current; if (!d) return; if (preview && !d.open) d.showModal(); if (!preview && d.open) d.close(); }, [preview]);
+  async function previsualizar(doc: Document) {
+    setPreview({ doc, url: null });
+    try { const url = await fileUrl(doc); setPreview(p => (p && p.doc.id === doc.id ? { doc, url } : p)); }
+    catch (e) { setPreview(null); notify(e instanceof Error ? e.message : "No se ha podido abrir el documento."); }
+  }
   const attachInput = useRef<HTMLInputElement>(null);
   // Cuando el documento recién subido aparece en el espacio, queda como adjunto del mensaje que se está escribiendo.
   useEffect(() => {
@@ -128,7 +136,7 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
     if ("document" in dest) {
       const doc = data.documents.find(d => d.id === dest.document);
       if (!doc) { notify("Ese documento ya no está en el proyecto."); return; }
-      try { const url = await fileUrl(doc); window.open(url, "_blank", "noopener"); } catch (e) { notify(e instanceof Error ? e.message : "No se ha podido abrir el documento."); }
+      void previsualizar(doc);
     }
   }
 
@@ -242,6 +250,26 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
       ) : <p className="muted text-xs">Tu perfil puede leer la conversación pero no escribir.</p>}
 
       <TaskDialog task={openTask ? data.tasks.find(t => t.id === openTask.id) ?? null : null} onClose={() => setOpenTask(null)} />
+
+      <dialog ref={lightbox} className="lightbox" onClose={() => setPreview(null)} onClick={e => { if (e.target === e.currentTarget) setPreview(null); }} aria-label={preview ? preview.doc.name : "Previsualización"}>
+        {preview && (
+          <div className="lightbox-body">
+            <header className="lightbox-head">
+              <span style={{ minWidth: 0 }}><strong>{preview.doc.name}</strong><small className="muted"> · {formatSize(preview.doc.size_bytes)}</small></span>
+              <span className="lightbox-tools">
+                {preview.url && <a href={preview.url} target="_blank" rel="noopener" className="btn btn-ghost" style={{ height: 34 }}><ExternalLink size={15} strokeWidth={1.8} aria-hidden="true" />Abrir aparte</a>}
+                {preview.url && <a href={preview.url} download={preview.doc.name} className="btn btn-ghost" style={{ height: 34 }}><Download size={15} strokeWidth={1.8} aria-hidden="true" />Descargar</a>}
+                <button type="button" className="search-clear" aria-label="Cerrar" onClick={() => setPreview(null)}><X size={15} strokeWidth={1.8} aria-hidden="true" /></button>
+              </span>
+            </header>
+            <div className="lightbox-stage">
+              {!preview.url && <span className="muted text-sm"><Loader2 size={18} strokeWidth={1.8} aria-hidden="true" className="spin" /> Cargando…</span>}
+              {preview.url && isImage(preview.doc) && <img src={preview.url} alt={preview.doc.name} />}
+              {preview.url && !isImage(preview.doc) && <iframe src={preview.url} title={preview.doc.name} />}
+            </div>
+          </div>
+        )}
+      </dialog>
     </div>
   );
 }

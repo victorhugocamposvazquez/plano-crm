@@ -3206,3 +3206,20 @@ p {
 .ref-chip[data-attachment="true"] button:hover { opacity: 1; background: rgba(127,127,127,0.18); }
 .chat-window .msg p { display: block; }
 .msg-thumb { display: flex; width: 100%; max-width: 240px; }
+.task-tools { display: flex; gap: 8px; flex-wrap: wrap; }
+.task-tools .btn { height: 36px; padding: 0 12px; font-size: var(--pl-text-sm); }
+.btn-danger { background: var(--pl-danger) !important; color: #fff !important; }
+.btn-ghost.danger { color: var(--pl-danger); }
+
+/* ---------- Previsualización en grande de adjuntos ---------- */
+
+.lightbox { width: min(1100px, 96vw); max-width: none; height: min(92dvh, 900px); max-height: none; margin: auto; padding: 0; border: 0; border-radius: var(--pl-radius-panel); background: var(--pl-surface); color: var(--pl-ink); box-shadow: var(--pl-shadow-2); }
+.lightbox::backdrop { background: rgba(0, 0, 0, 0.72); }
+.lightbox-body { display: flex; flex-direction: column; height: 100%; }
+.lightbox-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; border-bottom: var(--pl-hairline) solid var(--pl-line); font-size: var(--pl-text-sm); }
+.lightbox-head strong { font-weight: var(--pl-weight-medium); }
+.lightbox-tools { display: inline-flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+.lightbox-stage { flex: 1; min-height: 0; display: flex; align-items: center; justify-content: center; background: #111; }
+.lightbox-stage img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.lightbox-stage iframe { width: 100%; height: 100%; border: 0; background: #fff; }
+@media (max-width: 767px) { .lightbox { width: 100vw; height: 100dvh; border-radius: 0; } .lightbox-tools .btn span, .lightbox-tools .btn { font-size: 0; gap: 0; padding: 0 8px; } .lightbox-tools .btn svg { font-size: initial; } }
