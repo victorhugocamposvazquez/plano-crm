@@ -30,3 +30,21 @@ describe("Editar y borrar mensajes", () => {
     expect(() => applyCommand(borrado, { type: "message.edit", id: msg.id, body: "x" }, demoActor)).toThrow(/no encontrado/);
   });
 });
+
+describe("Reacciones", () => {
+  const data = createDemo();
+  const msg = data.messages[0];
+  it("añade y quita la reacción de quien la pulsa, sin tocar las de otros", () => {
+    const otra = demoActorFor("Marta · Demo", "manager");
+    let out = applyCommand(data, { type: "message.react", id: msg.id, emoji: "👍" }, demoActor);
+    out = applyCommand(out, { type: "message.react", id: msg.id, emoji: "👍" }, otra);
+    expect(out.messages.find(m => m.id === msg.id)!.reactions).toEqual({ "👍": [demoActor.name, otra.name] });
+    out = applyCommand(out, { type: "message.react", id: msg.id, emoji: "👍" }, demoActor);
+    expect(out.messages.find(m => m.id === msg.id)!.reactions).toEqual({ "👍": [otra.name] });
+    out = applyCommand(out, { type: "message.react", id: msg.id, emoji: "👍" }, otra);
+    expect(out.messages.find(m => m.id === msg.id)!.reactions).toEqual({});
+  });
+  it("rechaza emojis fuera del conjunto", () => {
+    expect(() => applyCommand(data, { type: "message.react", id: msg.id, emoji: "🦄" } as never, demoActor)).toThrow();
+  });
+});

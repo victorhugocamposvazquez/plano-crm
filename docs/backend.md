@@ -54,3 +54,7 @@ Se conservan como alcance: clientes y oportunidades, visita y estimación asisti
 ## Mensajes: edición y borrado (migración 202610270001)
 
 `messages` guarda `author_id` (quién lo escribió), `edited_at` y `deleted_at`. `message.edit` solo lo ejecuta el autor y marca `edited_at`; `message.delete` lo ejecuta el autor, oficina o administración y deja el mensaje con cuerpo vacío y `deleted_at` (borrado lógico: la conversación conserva el hueco). La interfaz lee los dos campos del `select *` habitual.
+
+## Reacciones (migración 202610270002)
+
+`messages.reactions` es un `jsonb` `{emoji: [nombres mostrados]}`. `message.react` alterna la reacción de quien la ejecuta: la añade si no estaba y la quita si estaba, borrando la clave cuando se queda vacía. Solo admite 👍 ✅ ❤️ 👀 🙏 ⚠️. Equipo de obra puede reaccionar; consulta no.
