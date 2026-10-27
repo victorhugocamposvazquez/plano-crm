@@ -221,7 +221,7 @@ export default function ObraPage() {
                 </div>
               )}
 
-              {budget && <BudgetActions budget={budget} approved={approved} working={working} onEdit={() => setEditParam("1")} />}
+              {budget && <BudgetActions budget={budget} approved={approved} working={working} shown={shown} onEdit={() => setEditParam("1")} />}
             </div>
           )}
 

@@ -199,3 +199,9 @@ Presupuestos, Clientes, Documentos y Finanzas leen todo el espacio y enlazan a l
 ### Ciclo del presupuesto en la ficha
 
 Bajo las partidas, una fila de acciones según el estado (`accionesPresupuesto`): borrador → «Editar partidas» y «Cerrar Vn»; cerrada → «Aprobar Vn para obra» (oficina y administración) o «Nueva revisión»; aprobada sin borrador → «Nueva revisión». Con aprobada y borrador a la vez, «Ver cambios completos» abre el comparador campo a campo con la diferencia en base.
+
+## 11. Documentos para el cliente e identidad de la organización
+
+Plano es SaaS: la identidad que ve el cliente en los documentos es la de **cada organización**, no la de Plano. Se configura en «Identidad de la empresa» (`/configuracion/identidad`, oficina y administración): nombre comercial, razón social, CIF, dirección y contacto; logo (PNG/SVG, ≤ 300 KB; sin logo, el nombre hace de marca); color principal y de acento (paleta sugerida o cualquier hex, con contraste automático del texto); portada opcional con frase e imagen; condiciones generales y línea del pie. Modelo en `src/lib/branding.ts`; hoy se guarda en el navegador por organización hasta que el dominio tenga `organization.branding`.
+
+Los documentos (`src/components/documents/*`) se abren en la ruta `(print)` sin armazón, siempre en claro, A4 con `@page`, y se guardan en PDF con «Imprimir». Toman los colores por variables `--doc-primary`, `--doc-accent`, `--doc-on-primary`. Plano solo aparece como «Hecho con PLANO■» en el pie, pequeño. El borrador se marca como tal y sin validez como oferta; la revisión cerrada o aprobada lleva cajas de firma y, si procede, la referencia de aceptación.

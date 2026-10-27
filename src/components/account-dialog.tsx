@@ -1,6 +1,7 @@
 "use client";
 import { useState } from "react";
-import { LogOut, Building2, ShieldCheck, Database, FlaskConical } from "lucide-react";
+import Link from "next/link";
+import { LogOut, Building2, ShieldCheck, Database, FlaskConical, Palette } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -50,6 +51,7 @@ export function AccountDialog({ open, onClose }: { open: boolean; onClose: () =>
           <div><dt><ShieldCheck size={15} strokeWidth={1.7} aria-hidden="true" />Perfil</dt><dd>{roleNames[actor.role]}<small className="muted">{actor.role === "admin" || actor.role === "office" ? " · aprueba presupuestos y certificaciones" : actor.role === "site" ? " · tareas, mensajes, documentos y recepciones" : actor.role === "viewer" ? " · solo consulta" : ""}</small></dd></div>
           <div><dt>{mode === "supabase" ? <Database size={15} strokeWidth={1.7} aria-hidden="true" /> : <FlaskConical size={15} strokeWidth={1.7} aria-hidden="true" />}Datos</dt><dd>{mode === "supabase" ? "Espacio compartido de la empresa" : "Demostración local"}</dd></div>
         </dl>
+        {(actor.role === "admin" || actor.role === "office") && <Link href="/configuracion/identidad" className="account-link" onClick={onClose}><Palette size={16} strokeWidth={1.7} aria-hidden="true" /><span style={{ flex: 1 }}>Identidad de la empresa<small className="muted">Logo, colores y portada de los documentos</small></span></Link>}
         <div className="account-row">
           <span>Tema de la interfaz</span>
           <ThemeToggle withLabel />

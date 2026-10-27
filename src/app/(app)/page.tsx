@@ -53,9 +53,9 @@ export default function HoyPage() {
       </div>
 
       <div className="summary">
-        <Link href="/proyectos"><strong>{data.projects.filter(p => p.status === "active").length}</strong><small>proyectos en obra</small></Link>
-        <Link href="/proyectos"><strong>{data.versions.filter(v => v.status === "draft" || v.status === "issued").length}</strong><small>presupuestos en revisión</small></Link>
-        <Link href="/proyectos"><strong>{data.purchases.filter(p => p.status === "ordered").length}</strong><small>pedidos sin recibir</small></Link>
+        <Link href="/proyectos?f=active"><strong>{data.projects.filter(p => p.status === "active").length}</strong><small>proyectos en obra</small></Link>
+        <Link href="/presupuestos?f=review"><strong>{data.versions.filter(v => v.status === "draft" || v.status === "issued").length}</strong><small>presupuestos en revisión</small></Link>
+        <Link href="/compras?f=ordered"><strong>{data.purchases.filter(p => p.status === "ordered").length}</strong><small>pedidos sin recibir</small></Link>
       </div>
 
       <div className="detail">
