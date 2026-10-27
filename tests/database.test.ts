@@ -167,3 +167,17 @@ describe("Editar y borrar mensajes en PostgreSQL",()=>{
     await expect(command({type:"message.delete",id},viewer)).rejects.toThrow(/permiso/);
   });
 });
+
+describe("Reacciones en PostgreSQL",()=>{
+  it("añade, acumula y quita reacciones por persona",async()=>{
+    const p=await project();await command({type:"message.send",project_id:p,body:"Hola"},site);
+    const id=(await db.query<{id:string}>("select id from messages")).rows[0].id;
+    await command({type:"message.react",id,emoji:"👍"},site);
+    await command({type:"message.react",id,emoji:"👍"},admin);
+    expect((await db.query<{reactions:Record<string,string[]>}>("select reactions from messages")).rows[0].reactions).toEqual({"👍":["Usuario site","Usuario admin"]});
+    await command({type:"message.react",id,emoji:"👍"},site);
+    await command({type:"message.react",id,emoji:"👍"},admin);
+    expect((await db.query<{reactions:Record<string,string[]>}>("select reactions from messages")).rows[0].reactions).toEqual({});
+    await expect(command({type:"message.react",id,emoji:"🦄"},admin)).rejects.toThrow(/no admitida/);
+  });
+});
