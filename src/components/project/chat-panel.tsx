@@ -67,7 +67,8 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
       if (event.key === "Enter" || event.key === "Tab") { event.preventDefault(); insert(matches[picker.active]); return; }
       if (event.key === "Escape") { event.preventDefault(); setPicker({ open: false, query: "", active: 0 }); return; }
     }
-    if (event.key === "Enter" && (event.metaKey || event.ctrlKey)) { event.preventDefault(); void submit(); }
+    // Enter envía; Mayús+Enter hace salto de línea (como cualquier chat).
+    if (event.key === "Enter" && !event.shiftKey && !event.nativeEvent.isComposing) { event.preventDefault(); void submit(); }
   }
 
   async function openRef(ref: Ref) {
@@ -129,7 +130,7 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
           )}
           <div className="composer">
             <button type="button" className="composer-tool" aria-label="Insertar referencia" title="Enlazar presupuesto, documento, tarea o compra" onClick={() => { setPicker({ open: true, query: "", active: 0 }); setBody(b => `${b}${b && !b.endsWith(" ") ? " " : ""}#`); textarea.current?.focus(); }}><Hash size={17} strokeWidth={1.7} aria-hidden="true" /></button>
-            <textarea ref={textarea} value={body} onChange={e => onChange(e.target.value)} onKeyDown={onKey} rows={1} placeholder="Escribe al equipo… # para enlazar" aria-label="Nuevo mensaje" maxLength={5000} />
+            <textarea ref={textarea} value={body} onChange={e => onChange(e.target.value)} onKeyDown={onKey} rows={1} placeholder="Escribe al equipo… # para enlazar · Mayús+Enter salto de línea" aria-label="Nuevo mensaje" maxLength={5000} />
             <button type="submit" className="btn btn-round" aria-label="Enviar mensaje" disabled={!body.trim() || sending || busy}><ArrowUp size={16} strokeWidth={1.8} aria-hidden="true" /></button>
           </div>
         </form>

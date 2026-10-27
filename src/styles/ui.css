@@ -3040,3 +3040,23 @@ p {
 .onboarding-mark { display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; width: 24px; height: 24px; border-radius: var(--pl-radius-full); border: var(--pl-hairline) solid var(--pl-strong-line); font-size: var(--pl-text-xs); color: var(--pl-muted); }
 .onboarding li[data-done="true"] .onboarding-mark { background: var(--pl-success-bg); border-color: transparent; color: var(--pl-success); }
 .topbar-new { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: var(--pl-radius-full); background: var(--pl-action); color: var(--pl-on-action); }
+
+/* ---------- Segunda revisión: carril de tablet y lista de proyectos ---------- */
+
+/* En el carril de tablet se ocultan las etiquetas, nunca el icono. */
+@media (min-width: 768px) and (max-width: 1279px) {
+  .nav-item span { display: none; }
+  .nav-item .nav-icon { display: inline-flex; }
+}
+
+.row-code { display: none; margin-left: 8px; font-size: var(--pl-text-xs); font-weight: var(--pl-weight-regular); color: var(--pl-faint); }
+
+@media (min-width: 1280px) {
+  .row-project { transition: background-color 0.12s; }
+  .row-project:hover { background: var(--pl-soft); margin: 0 -10px; padding-left: 10px; padding-right: 10px; border-radius: var(--pl-radius-control); }
+  .row-project .row-title { font-size: var(--pl-text-ui); }
+  .row-code { display: inline; }
+  .row-cols > span:first-child { font-size: var(--pl-text-sm); }
+  .row-cols .row-value { color: var(--pl-ink); font-size: var(--pl-text-sm); }
+  .row-cols .meter { min-width: 90px; }
+}
