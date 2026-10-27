@@ -169,3 +169,21 @@ Principio: **la pantalla en la que trabajas no se pierde**. Reglas:
 ### Botones de creación
 
 Todo botón que crea algo lleva icono `Plus` (17 px, trazo 1,8) **y** texto «Nuevo/Nueva + sustantivo» («Nuevo proyecto», «Nueva tarea», «Nuevo artículo»): nunca solo el «+». Variante `btn-primary btn-new` en la cabecera de página; mientras el formulario de alta está abierto pasa a `btn-secondary` con `X` y «Cerrar». El alta de proyecto desde oficina abre un `Modal` sobre la lista (`/proyectos?nuevo=1`); «Estimar en la visita» es la otra entrada, no la única.
+
+### Panel de cuenta
+
+El avatar (barra superior en móvil, pie de la navegación en escritorio) abre un `Modal` «Tu cuenta» con nombre, perfil, organización, origen de los datos, el conmutador de tema con texto y «Cerrar sesión» (solo en modo Supabase). No hay botón de salir suelto en el armazón.
+
+### Conmutador de tema
+
+Dos estados, claro ↔ oscuro, sin paso intermedio «sistema»: el primer valor se toma de `prefers-color-scheme` y a partir del primer clic manda `localStorage` (`plano.theme`). El icono muestra el tema actual (sol / luna).
+
+### Editor de partidas y guía por capítulos
+
+Las partidas de la revisión en borrador se editan en un `Drawer` ancho (`size="wide"`, 760 px en escritorio) sin salir de la ficha (`?editar=1`): partidas agrupadas por capítulo con cantidad, unidad, precio, ajuste e inclusión; «Añadir del catálogo» con buscador y chips de capítulo; «Partida libre»; notas; pie con base, IVA y total y «Guardar Vn». Al cerrar con cambios se pide confirmación en el propio pie, nunca con un diálogo nativo.
+
+La guía por capítulos (`guiaPorTipo`) es el guion de una obra según el tipo de proyecto; se muestra al abrir una revisión vacía, cada paso filtra el catálogo por su capítulo y se marca cubierto cuando tiene partidas. «Ir al grano» la oculta; se puede volver a abrir.
+
+### Chips de filtro
+
+`.chip[aria-pressed="true"]` invierte color (tinta sobre fondo) para el filtro activo. En listas largas, `.chips-scroll` desplaza en horizontal sin partir líneas (categorías del catálogo).

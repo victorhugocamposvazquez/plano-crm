@@ -6,7 +6,7 @@ import { X } from "lucide-react";
  * Panel lateral: en escritorio se abre a la derecha sin tapar la pantalla; en móvil ocupa la altura completa.
  * Para conversaciones y herramientas que se usan mientras se mira otra cosa (chat del proyecto).
  */
-export function Drawer({ open, onClose, title, subtitle, children, footer }: { open: boolean; onClose: () => void; title: string; subtitle?: string; children: ReactNode; footer?: ReactNode }) {
+export function Drawer({ open, onClose, title, subtitle, children, footer, size = "md" }: { open: boolean; onClose: () => void; title: string; subtitle?: string; children: ReactNode; footer?: ReactNode; size?: "md" | "wide" }) {
   const ref = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -17,7 +17,7 @@ export function Drawer({ open, onClose, title, subtitle, children, footer }: { o
   }, [open]);
 
   return (
-    <dialog ref={ref} className="drawer" onClose={onClose} onClick={e => { if (e.target === e.currentTarget) onClose(); }} aria-label={title}>
+    <dialog ref={ref} className="drawer" data-size={size} onClose={onClose} onClick={e => { if (e.target === e.currentTarget) onClose(); }} aria-label={title}>
       <div className="drawer-body">
         <header className="drawer-head">
           <div style={{ minWidth: 0 }}>

@@ -1,35 +1,50 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Sun, Moon, Monitor } from "lucide-react";
+import { Sun, Moon } from "lucide-react";
 
-export type Theme = "system" | "light" | "dark";
+export type Theme = "light" | "dark";
 const KEY = "plano.theme";
-const order: Theme[] = ["system", "light", "dark"];
-const labels: Record<Theme, string> = { system: "Tema del sistema", light: "Tema claro", dark: "Tema oscuro" };
+const labels: Record<Theme, string> = { light: "Tema claro", dark: "Tema oscuro" };
 
-/** Aplica el tema al <html>: sin atributo sigue al sistema; con data-theme fuerza Workspace o Grafito. */
+/** Aplica el tema al <html>: con data-theme fuerza Workspace o Grafito. */
 export function applyTheme(theme: Theme) {
-  if (theme === "system") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = theme;
+  document.documentElement.dataset.theme = theme;
+}
+
+/** Tema efectivo: el guardado o, si no hay, el que prefiera el sistema. */
+export function currentTheme(): Theme {
+  try { const saved = localStorage.getItem(KEY); if (saved === "light" || saved === "dark") return saved; } catch {}
+  return typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
 
 /** Script en línea para el <head>: lee la preferencia guardada antes de pintar y evita el parpadeo. */
 export const themeBootScript = `try{var t=localStorage.getItem("${KEY}");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t;}catch(e){}`;
 
-/** Botón que recorre sistema → claro → oscuro. Vive en el armazón y en el acceso. */
-export function ThemeToggle({ className = "" }: { className?: string }) {
-  const [theme, setTheme] = useState<Theme>("system");
-  useEffect(() => { try { const saved = localStorage.getItem(KEY) as Theme | null; if (saved && order.includes(saved)) setTheme(saved); } catch {} }, []);
-
-  function next() {
-    const value = order[(order.indexOf(theme) + 1) % order.length];
-    setTheme(value); applyTheme(value);
-    try { if (value === "system") localStorage.removeItem(KEY); else localStorage.setItem(KEY, value); } catch {}
+export function useTheme(): [Theme, (next: Theme) => void] {
+  const [theme, setTheme] = useState<Theme>("light");
+  useEffect(() => {
+    setTheme(currentTheme());
+    const sync = (e: StorageEvent) => { if (e.key === KEY) setTheme(currentTheme()); };
+    window.addEventListener("storage", sync);
+    return () => window.removeEventListener("storage", sync);
+  }, []);
+  function set(next: Theme) {
+    setTheme(next); applyTheme(next);
+    try { localStorage.setItem(KEY, next); } catch {}
+    window.dispatchEvent(new StorageEvent("storage", { key: KEY, newValue: next }));
   }
+  return [theme, set];
+}
 
-  const Icon = theme === "light" ? Sun : theme === "dark" ? Moon : Monitor;
+/** Interruptor directo claro ↔ oscuro. Vive en el armazón, en el acceso y en el panel de cuenta. */
+export function ThemeToggle({ className = "", withLabel = false }: { className?: string; withLabel?: boolean }) {
+  const [theme, setTheme] = useTheme();
+  const next: Theme = theme === "dark" ? "light" : "dark";
+  const Icon = theme === "dark" ? Moon : Sun;
   return (
-    <button type="button" className={`theme-toggle ${className}`.trim()} onClick={next} aria-label={`${labels[theme]} · cambiar`} title={labels[theme]}>
+    <button type="button" className={`theme-toggle ${withLabel ? "theme-toggle-label" : ""} ${className}`.trim()} onClick={() => setTheme(next)} aria-label={`${labels[theme]} · cambiar a ${labels[next].toLowerCase()}`} title={`Cambiar a ${labels[next].toLowerCase()}`} aria-pressed={theme === "dark"}>
       <Icon size={17} strokeWidth={1.6} aria-hidden="true" />
+      {withLabel && <span>{labels[theme]}</span>}
     </button>
   );
 }
