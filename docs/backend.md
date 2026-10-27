@@ -50,3 +50,7 @@ Esta primera política concede acceso por organización, no asignación individu
 ## Pendientes del producto completo
 
 Se conservan como alcance: clientes y oportunidades, visita y estimación asistida, catálogo, planos y mediciones, presupuestos/versiones, documentos/checklists/chat, compras/albaranes/recepciones, agenda/equipo/tiempos, seguimiento e incidencias, certificaciones/facturación/cobros, remates/entrega/cierre económico y galería compartible. La migración inicial implementa una base para varios de estos módulos; no equivale al CRM completo terminado.
+
+## Mensajes: edición y borrado (migración 202610270001)
+
+`messages` guarda `author_id` (quién lo escribió), `edited_at` y `deleted_at`. `message.edit` solo lo ejecuta el autor y marca `edited_at`; `message.delete` lo ejecuta el autor, oficina o administración y deja el mensaje con cuerpo vacío y `deleted_at` (borrado lógico: la conversación conserva el hueco). La interfaz lee los dos campos del `select *` habitual.

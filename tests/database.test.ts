@@ -1,5 +1,5 @@
 import { PGlite } from "@electric-sql/pglite";
-import { readFileSync } from "node:fs";
+import { readFileSync,readdirSync } from "node:fs";
 import { beforeAll,beforeEach,afterAll,describe,it,expect } from "vitest";
 import { demoId } from "@/lib/demo";
 import { lineTotal,type BudgetItem } from "@/lib/domain";
@@ -20,7 +20,8 @@ beforeAll(async()=>{
     alter table storage.objects enable row level security;
     grant usage on schema storage to authenticated; grant select,insert,update,delete on storage.objects to authenticated;
   `);
-  await db.exec(readFileSync(new URL("../supabase/migrations/202610260001_workspace.sql",import.meta.url),"utf8"));
+  // Todas las migraciones, en orden, igual que `supabase db push`.
+  for(const file of readdirSync(new URL("../supabase/migrations/",import.meta.url)).sort()) await db.exec(readFileSync(new URL(`../supabase/migrations/${file}`,import.meta.url),"utf8"));
 },30000);
 beforeEach(async()=>{
   await db.exec(`reset role; truncate public.organizations cascade; truncate auth.users cascade; truncate storage.objects;`);
@@ -143,5 +144,26 @@ describe("Comandos transaccionales de presupuesto",()=>{
     await db.query("insert into storage.objects(bucket_id,name,metadata) values('project-files',$1,$2)",[path,JSON.stringify({size:1000,mimetype:"application/pdf"})]);
     await expect(command({...c,size_bytes:2000})).rejects.toThrow(/metadatos/);await command(c);
     expect((await db.query("select * from documents")).rows).toHaveLength(1);
+  });
+});
+
+describe("Editar y borrar mensajes en PostgreSQL",()=>{
+  async function mensaje(user=site){const p=await project();await command({type:"message.send",project_id:p,body:"Hola equipo"},user);return (await db.query<{id:string}>("select id from messages")).rows[0].id;}
+  it("el autor edita el suyo y queda marcado; otra persona no puede",async()=>{
+    const id=await mensaje();
+    await command({type:"message.edit",id,body:"Hola a todos"},site);
+    expect((await db.query<{body:string;edited:boolean}>("select body, edited_at is not null as edited from messages")).rows[0]).toEqual({body:"Hola a todos",edited:true});
+    await expect(command({type:"message.edit",id,body:"X"},manager)).rejects.toThrow(/escribió/);
+  });
+  it("administración borra el de otro con borrado lógico; el jefe de obra no",async()=>{
+    const id=await mensaje();
+    await expect(command({type:"message.delete",id},manager)).rejects.toThrow(/borrarlo/);
+    await command({type:"message.delete",id},admin);
+    expect((await db.query<{body:string;deleted:boolean}>("select body, deleted_at is not null as deleted from messages")).rows[0]).toEqual({body:"",deleted:true});
+    await expect(command({type:"message.edit",id,body:"X"},site)).rejects.toThrow(/no encontrado/);
+  });
+  it("consulta no puede editar ni borrar",async()=>{
+    const id=await mensaje();
+    await expect(command({type:"message.delete",id},viewer)).rejects.toThrow(/permiso/);
   });
 });
