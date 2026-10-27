@@ -5,7 +5,7 @@ import { Building2, Plus, ArrowUpRight, FileText, Search, X } from "lucide-react
 import { useWorkspace } from "@/components/workspace-provider";
 import { Tabs } from "@/components/ui/tabs";
 import { ProjectStatus, Meter } from "@/components/ui/status";
-import { projectProgress, projectStatus, money, totals, dateLabel, type Project, type Workspace } from "@/lib/domain";
+import { projectProgress, projectStatus, kindNames, money, totals, dateLabel, type Project, type Workspace } from "@/lib/domain";
 import { searchProjects } from "@/lib/search";
 import { useQueryState } from "@/lib/use-query-state";
 import { NewProjectDialog } from "@/components/project/new-project-dialog";
@@ -65,7 +65,7 @@ export default function ObrasPage() {
       <Tabs label="Filtrar proyectos" value={filter} onChange={setFilter} options={filters.map(f => ({ id: f.id, label: f.label, count: searchProjects(data, data.projects.filter(f.match), query).length }))} />
 
       <div>
-        <div className="row-head"><span>Proyecto</span><span>Cliente</span><span>Fase</span><span>Avance</span><span style={{ textAlign: "right" }}>Aprobado · sin IVA</span><span>Estado</span></div>
+        <div className="row-head"><span>Proyecto</span><span>Cliente</span><span>Tipo</span><span>Avance</span><span style={{ textAlign: "right" }}>Aprobado · sin IVA</span><span>Fase</span></div>
         {projects.map(project => {
           const progress = projectProgress(data, project.id);
           const amount = approvedAmount(data, project.id);
@@ -74,9 +74,10 @@ export default function ObrasPage() {
               <span className="row-main">
                 <span className="row-icon"><Building2 size={16} strokeWidth={1.6} aria-hidden="true" /></span>
                 <span className="row-text">
-                  <span className="row-title">{project.name}</span>
+                  <span className="row-title">{project.name}<small className="row-code pl-mono">{project.code}</small></span>
                   <span className="row-meta">
                     <span>{projectStatus[project.status]}</span>
+                    <span>{kindNames[project.kind]}</span>
                     <span>{project.client_name}</span>
                     <span>{project.location}</span>
                     {amount !== null && <span className="pl-mono">{money(amount)}</span>}
@@ -86,7 +87,7 @@ export default function ObrasPage() {
               </span>
               <span className="row-cols">
                 <span style={{ minWidth: 0 }}>{project.client_name}<small className="muted" style={{ display: "block", fontSize: "var(--pl-text-xs)" }}>{project.location}{query && matchedIn(project.id).length > 0 ? ` · coincide en ${matchedIn(project.id).join(", ")}` : ""}</small></span>
-                <span>{projectStatus[project.status]}</span>
+                <span className="muted">{kindNames[project.kind]}</span>
                 <span style={{ display: "flex", alignItems: "center", gap: 10 }}><span style={{ flex: 1 }}><Meter value={progress} label={`Avance de ${project.name}`} /></span><span className="row-value">{progress}%</span></span>
                 <span className="row-value" style={{ color: "var(--pl-ink)" }}>{amount !== null ? money(amount) : "—"}</span>
                 <ProjectStatus status={project.status} />
@@ -106,7 +107,7 @@ export default function ObrasPage() {
       {lastVersion && lastProject && (
         <div>
           <div className="section-label"><span>Último presupuesto tocado</span><ArrowUpRight size={15} strokeWidth={1.6} aria-hidden="true" /></div>
-          <Link href={`/proyectos/${lastProject.id}`} className="row-doc">
+          <Link href={`/proyectos/${lastProject.id}?s=budget&p=${lastVersion.budget_id}`} className="row-doc">
             <FileText size={19} strokeWidth={1.55} aria-hidden="true" className="muted" />
             <span>V{lastVersion.number} · {lastVersion.change_reason}<small>{lastProject.name} · {dateLabel(lastVersion.updated_at)} · {lastVersion.created_by_name}</small></span>
           </Link>

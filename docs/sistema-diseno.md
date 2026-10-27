@@ -222,3 +222,4 @@ La **hoja de pedido** (`/imprimir/pedido/<proyecto>?p=<proveedor>`) usa la misma
 - Foco visible con teclado (anillo azul) en botones, enlaces, pestañas y opciones de menú.
 - El acceso rápido de la barra superior es un «+» en círculo con el color de acción.
 - «Primeros pasos» en Hoy para una organización nueva (`src/lib/primeros-pasos.ts`): identidad, catálogo, primer proyecto y primer presupuesto, con enlace a cada pantalla; se oculta al completarse, al pasar de tres proyectos o a mano.
+- Segunda pasada: el carril de tablet mostraba solo el recuadro del elemento activo, sin iconos (la regla que oculta las etiquetas ocultaba también el icono); corregido. La lista de proyectos en escritorio gana jerarquía: título con código, columna «Tipo» en vez de una «Fase» que repetía el estado, fila con hover. En el chat, Enter envía y Mayús+Enter hace salto de línea.
