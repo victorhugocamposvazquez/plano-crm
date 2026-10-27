@@ -187,3 +187,7 @@ La guía por capítulos (`guiaPorTipo`) es el guion de una obra según el tipo d
 ### Chips de filtro
 
 `.chip[aria-pressed="true"]` invierte color (tinta sobre fondo) para el filtro activo. En listas largas, `.chips-scroll` desplaza en horizontal sin partir líneas (categorías del catálogo).
+
+### Pantallas transversales
+
+Presupuestos, Clientes, Documentos y Finanzas leen todo el espacio y enlazan a la ficha del proyecto conservando el contexto (`?s=`, `?p=`). Sus filtros van en la URL (`?f=`, `?q=`, `?c=`). Importes siempre en base sin IVA, en mono. «Más» es la puerta de las secciones secundarias en móvil (tarjeta de cuenta, lista de secciones, tema) y repite el menú lateral en escritorio. En Finanzas la tabla se apila en móvil con el nombre de la columna delante de cada cifra (`data-label`).
