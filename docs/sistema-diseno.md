@@ -45,7 +45,7 @@ Relación con la identidad corporativa: la Tinta de marca (`#16232E`), el Yeso (
 
 | Rol | Fuente | Tamaño / peso / tracking |
 |---|---|---|
-| Marca «PLANO■» | Archivo 800 | 21 px en app, −0,065 em, cuadrado de 5 px en `--pl-orange` apoyado en la línea base · favicon/PWA: inicial «P» + el mismo cuadrado (`src/app/icon.tsx`, `apple-icon.tsx`, `manifest.ts`) |
+| Marca «PLANO■» | Archivo 800 | 21 px en app, −0,065 em, cuadrado de 5 px en `--pl-orange` apoyado en la línea base · favicon/PWA: «PLA» / «NO■» en blanco sobre azul `#2c5a85` (`src/lib/brand-icon.tsx`, `src/app/icon.tsx`, `apple-icon.tsx`, `manifest.ts`) |
 | Título de pantalla | Inter 500 | 28 px, línea 1,16, −0,055 em (Grafito: 25 px) |
 | Título de ficha / panel | Inter 500 | 22 px, −0,04 em · 16–17 px, −0,025 em |
 | Nombre de obra, botón, campo | Inter 500 / 400 | 15 px, −0,015 em |
@@ -245,3 +245,4 @@ La **hoja de pedido** (`/imprimir/pedido/<proyecto>?p=<proveedor>`) usa la misma
 - Accesos rápidos del chat (`.chat-quick`): fila de chips sobre el compositor (Presupuesto, Tareas, Compras, Documentos, Cliente, Cómo va) que salen de los comandos con `acceso` en `chat-comandos.ts`. Es la entrada para quien no conoce «/»; escribir sigue valiendo para quien lo prefiera.
 - Vocabulario para no expertos: «#» es **mencionar** algo del proyecto (no «enlazar»), «/» es **consultar**, y la ayuda se titula «Cómo se usa el chat». La ayuda explica para qué sirve mencionar: ser concreto cuando hay varios presupuestos, documentos o tareas; no hace falta para hablar.
 - Cajón del chat: el título es el nombre del proyecto en seminegrita (`--pl-weight-semibold`, nuevo token 600, también para títulos de modales) y «Chat del proyecto · código» pasa al subtítulo.
+- Favicon e iconos PWA (`src/lib/brand-icon.tsx`, `src/app/icon.tsx`, `apple-icon.tsx`): «PLA» y debajo «NO■» en Archivo 800 sobre el azul de Plano (`#2c5a85`), texto blanco y el cuadrado naranja de la marca como punto. La fuente se incrusta desde `src/lib/fonts/archivo-latin-800-normal.woff` (OFL, licencia junto al archivo) porque el generador de imágenes no lee WOFF2; los iconos se prerenderizan en la build. El fondo del manifiesto PWA pasa al mismo azul.
