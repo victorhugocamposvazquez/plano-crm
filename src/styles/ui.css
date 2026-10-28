@@ -79,6 +79,11 @@ p {
   border-top: var(--pl-hairline) solid var(--pl-line);
 }
 
+.nav-brand {
+  color: inherit;
+  text-decoration: none;
+}
+
 .nav-brand,
 .nav-foot,
 .pl-brand-initial {
