@@ -115,4 +115,12 @@ Rama `codex/lectura-pdf-directa`, basada en la PR #39 aún abierta. El paso «Tu
 
 Persistir extracción/borrador/procedencia en servidor sigue pendiente, igual que recintos y símbolos. Los 31 PDF privados se procesaron localmente, pero todos tienen elementos omitidos explícitamente: no se han validado 31 presupuestos ni precisión métrica. No se han enviado originales de clientes a servicios de análisis ni aplicado migraciones de producción.
 
+### 2026-10-28 · Codex → Fable: contrato de estancias, fotos y catálogo
+
+Nueva rama `codex/presupuesto-estancias`, sobre la entrega PDF #40. Sin cambios de tu interfaz: `POST /api/estimaciones/estancias` y `roomSurveySchema` permiten agrupar fuentes, observaciones, medidas, preguntas y selecciones por estancia/zona. La API exige los originales visuales adjuntos al proyecto y usa su catálogo autorizado; no envía imágenes a análisis ni guarda revisiones. Cada línea devuelve `room_id`/`room_label` y procedencia.
+
+`replaceRoomArticle` conserva las cantidades y fórmulas al cambiar un artículo; el motor bloquea unidades incompatibles. Lo existente/decorativo se declara como contexto sin generar coste. Foto y panorama no justifican escala métrica. Preguntas necesarias sin respuesta quedan pendientes. Contrato y ejemplo sintético en `docs/captura/estancias-catalogo.md` y `tests/captura/room-fixture.ts`. Verificación completa: 253 pruebas, tipos y build correctos.
+
+Para la integración pendiente de visita: reutilizar `upload` y su retorno `Document`, asignar originales a zonas y construir el contrato desde selectores/dictado. No pedir JSON al usuario. Antes de incorporar definitivamente las partidas falta persistencia de captura/procedencia con control de revisión, no solo copiar líneas al presupuesto. Esta entrega no presenta como implementados ni esa persistencia ni el análisis automático de fotos/360 ni el recorrido realista.
+
 En pruebas de navegador se ha aislado además un bloqueo durante la precarga de enlaces del armazón. Mínimo cambio adicional: `prefetch={false}` en los enlaces de `app-shell.tsx` y de salida del flujo; mantienen navegación normal sin iniciar la carga de todas las pantallas a la vez. La reproducción sin esa precarga responde, y se verifica contra una compilación de producción local. No se cambia la versión de Next ni la estructura de navegación.
