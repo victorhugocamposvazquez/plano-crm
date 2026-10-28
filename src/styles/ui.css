@@ -3296,3 +3296,23 @@ p {
 @media (max-width: 479px) { .help-cmds li { grid-template-columns: 1fr; gap: 2px; } .ref-cats { grid-template-columns: 1fr; } }
 .ref-option > span { display: flex; flex-direction: column; min-width: 0; }
 .chat-search input::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
+
+/* ---------- Chat: presupuesto visto en el propio chat ---------- */
+.budget-peek { gap: 14px; }
+.peek-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; padding-top: 12px; }
+.peek-head small { display: block; font-size: var(--pl-text-xs); margin-top: 2px; }
+.peek-versions { display: flex; flex-wrap: wrap; gap: 6px; }
+.peek-totals { flex: 0 0 auto; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; margin: 0; border: var(--pl-hairline) solid var(--pl-line); border-radius: var(--pl-radius-control); overflow: hidden; background: var(--pl-line); }
+.peek-totals > div { background: var(--pl-surface); padding: 8px 10px; min-width: 0; }
+.peek-totals > div:nth-child(4) { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: baseline; }
+.peek-totals dt { font-size: var(--pl-text-xs); color: var(--pl-muted); }
+.peek-totals dd { margin: 2px 0 0; font-size: var(--pl-text-sm); }
+.peek-totals dd[data-tone="warning"] { color: var(--pl-warning); }
+.peek-totals dd[data-tone="success"] { color: var(--pl-success); }
+.peek-chapter h3 { display: flex; justify-content: space-between; gap: 10px; margin: 0 0 4px; padding-bottom: 4px; border-bottom: var(--pl-hairline) solid var(--pl-strong-line); font-size: var(--pl-text-sm); font-weight: var(--pl-weight-medium); }
+.peek-chapter ul { list-style: none; margin: 0; padding: 0; }
+.peek-chapter li { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px; padding: 6px 0; border-bottom: var(--pl-hairline) solid var(--pl-line); font-size: var(--pl-text-sm); }
+.peek-chapter li > :nth-child(2) { grid-column: 1; }
+.peek-chapter li > :nth-child(3) { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
+.peek-chapter[data-optional="true"] .peek-desc { color: var(--pl-muted); }
+.peek-foot { display: flex; flex-wrap: wrap; gap: 8px; padding-top: 4px; }

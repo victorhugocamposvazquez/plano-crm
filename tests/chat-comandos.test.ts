@@ -22,7 +22,7 @@ describe("Atajos del chat", () => {
     const r = interpretar("/presupuesto")!.comando.ejecutar({ data, projectId, argumento: "" });
     expect(r.titulo).toMatch(/^V2/);
     expect(r.lineas.some(l => /base/.test(l))).toBe(true);
-    expect(r.acciones.some(a => a.kind === "href" && a.href.includes("?s=budget"))).toBe(true);
+    expect(r.acciones.some(a => a.kind === "presupuesto" && a.versionId)).toBe(true);
     expect(r.acciones.some(a => a.kind === "href" && a.href.startsWith("/imprimir/"))).toBe(true);
   });
 

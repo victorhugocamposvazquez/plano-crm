@@ -6,6 +6,7 @@ import { Menu } from "@/components/ui/menu";
 import { Modal } from "@/components/ui/modal";
 import { useWorkspace } from "@/components/workspace-provider";
 import { TaskDialog } from "@/components/project/task-dialog";
+import { BudgetPeek } from "@/components/project/budget-peek";
 import { can, dateLabel, type Document, type Message, type Task } from "@/lib/domain";
 import { isImage, formatSize } from "@/lib/documentos";
 import { parseMessage, encodeRef, referenciables, filtrarReferencias, destinoRef, categorias, nombreCategoria, type Ref, type RefOption, type RefType } from "@/lib/chat-refs";
@@ -20,6 +21,8 @@ type Emoji = (typeof EMOJIS)[number];
 const adjuntables = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
 const iconFor = (type: RefType) => type === "v" ? Receipt : type === "d" ? FileText : type === "t" ? ListChecks : type === "c" ? Package : type === "k" ? Users : type === "p" ? Layers2 : Hash;
 const etiquetaDia = (iso: string) => { const hoy = new Date().toISOString().slice(0, 10); const ayer = new Date(Date.now() - 864e5).toISOString().slice(0, 10); return iso === hoy ? "Hoy" : iso === ayer ? "Ayer" : day.format(new Date(`${iso}T12:00:00`)).replace(/^./, c => c.toUpperCase()); };
+/** Qué ocupa el panel: la conversación, la información del chat o un presupuesto consultado sin salir. */
+type Vista = "chat" | "info" | { presupuesto: string };
 type Picker = { open: boolean; query: string; cat: RefType | null; active: number };
 const pickerCerrado: Picker = { open: false, query: "", cat: null, active: 0 };
 
@@ -33,7 +36,7 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
   const { data, actor, busy, send, notify, fileUrl, upload } = useWorkspace();
   const allowed = can(actor.role, "message.send");
   const puedeBorrarAjenos = actor.role === "admin" || actor.role === "office";
-  const [vista, setVista] = useState<"chat" | "info">("chat");
+  const [vista, setVista] = useState<Vista>("chat");
   const [buscando, setBuscando] = useState(false);
   const [consulta, setConsulta] = useState("");
   const [ayuda, setAyuda] = useState(false);
@@ -180,6 +183,7 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
     if (a.kind === "tarea") { const t = data.tasks.find(x => x.id === a.taskId); if (t) setOpenTask(t); return; }
     if (a.kind === "documento") { const d = data.documents.find(x => x.id === a.documentId); if (d) void previsualizar(d); return; }
     if (a.kind === "buscar") { setBuscando(true); setConsulta(a.query); setVista("chat"); return; }
+    if (a.kind === "presupuesto") { setVista({ presupuesto: a.versionId }); return; }
     if (a.kind === "ayuda") setAyuda(true);
   }
 
@@ -203,6 +207,7 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
     const exists = r.type === "v" ? data.versions.some(v => v.id === r.id) : r.type === "d" ? data.documents.some(d => d.id === r.id) : r.type === "t" ? data.tasks.some(t => t.id === r.id) : r.type === "c" ? data.purchases.some(c => c.id === r.id) : r.type === "p" ? data.projects.some(p => p.id === r.id) : true;
     const content = <><Icon size={12} strokeWidth={1.9} aria-hidden="true" />{r.label}</>;
     if (!exists) return <span className="ref-chip" data-missing="true" title="Ya no existe en el proyecto">{content}</span>;
+    if (r.type === "v") return <button type="button" className="ref-chip" onClick={() => setVista({ presupuesto: r.id })}>{content}</button>;
     if ("href" in dest) return <Link href={dest.href} className="ref-chip">{content}</Link>;
     return <button type="button" className="ref-chip" onClick={() => openRef(r)}>{content}</button>;
   };
@@ -226,7 +231,7 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
   return (
     <div className="chat chat-window">
       <div className="chat-top">
-        {vista === "info" ? (
+        {vista !== "chat" ? (
           <button type="button" className="chat-top-back" onClick={() => setVista("chat")}><ArrowLeft size={16} strokeWidth={1.8} aria-hidden="true" />Volver al chat</button>
         ) : (
           <button type="button" className="chat-top-people" onClick={() => setVista("info")} title="Participantes y elementos compartidos"><AvatarStack /><span className="chat-top-names"><strong>{gente.length} participante{gente.length === 1 ? "" : "s"}</strong><small className="muted">{nombres}</small></span></button>
@@ -267,6 +272,8 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
             <ul className="info-list">{compartidos.enlaces.map(u => <li key={u}><a className="info-row" href={u} target="_blank" rel="noopener"><ExternalLink size={15} strokeWidth={1.7} aria-hidden="true" /><span style={{ minWidth: 0, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u}</span></a></li>)}</ul>
           </Seccion>
         </div>
+      ) : typeof vista === "object" ? (
+        <BudgetPeek versionId={vista.presupuesto} data={data} projectId={projectId} onBack={() => setVista("chat")} onVersion={id => setVista({ presupuesto: id })} />
       ) : (
         <div className="chat-list" role="log" aria-label="Mensajes del proyecto" aria-live="polite">
           {grupos.length === 0 && respuestas.length === 0 && (
