@@ -87,7 +87,9 @@
   --pl-row-project: 90px;
   --pl-row-project-desktop: 60px;
   --pl-row-dense: 56px;
-  --pl-nav-item: 55px;
+  --pl-nav-item: 48px;
+  /* Altura útil de la barra inferior en móvil (ítem + aire superior). El safe-area va aparte. */
+  --pl-nav-bar: 52px;
   --pl-topbar: 77px;
   --pl-header-desktop: 64px;
 
