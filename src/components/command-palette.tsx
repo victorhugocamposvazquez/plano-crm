@@ -36,7 +36,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
   }
 
   return (
-    <dialog ref={dialog} className="palette" onClose={onClose} onClick={e => { if (e.target === e.currentTarget) onClose(); }} aria-label="Buscar en Plano">
+    <dialog ref={dialog} className="palette" onClose={e => { if (e.target === e.currentTarget) onClose(); }} onClick={e => { if (e.target === e.currentTarget) onClose(); }} aria-label="Buscar en Plano">
       <div className="palette-body" onKeyDown={onKey}>
         <label className="palette-input">
           <Search size={18} strokeWidth={1.8} aria-hidden="true" />

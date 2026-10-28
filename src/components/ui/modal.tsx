@@ -17,7 +17,7 @@ export function Modal({ open, onClose, title, children, footer }: { open: boolea
   }, [open]);
 
   return (
-    <dialog ref={ref} className="modal" onClose={onClose} onClick={e => { if (e.target === e.currentTarget) onClose(); }} aria-label={title}>
+    <dialog ref={ref} className="modal" onClose={e => { if (e.target === e.currentTarget) onClose(); }} onClick={e => { if (e.target === e.currentTarget) onClose(); }} aria-label={title}>
       <div className="modal-body">
         <span className="modal-handle" aria-hidden="true" />
         <header className="modal-head">
