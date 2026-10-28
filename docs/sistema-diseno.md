@@ -61,9 +61,10 @@ Fuentes ya instaladas en el proyecto (`@fontsource-variable/inter`, `@fontsource
 ## 4. Medidas
 
 - **Base de espaciado:** 4 px. Escala habitual 4 · 8 · 12 · 16 · 20 · 24 · 32.
-- **Radios:** pantalla móvil 24 · panel y campo 10 · botón 10 · botón-icono 8 · pestaña píldora 6 · barra de comando 17 (Grafito 11) · circular para avatar y botón de enviar.
+- **Radios:** pantalla móvil 24 · panel y campo 10 · botón 10 · botón-icono 8 · pestaña píldora 6 · barra de comando 17 (Grafito 11) · circular para avatar (36 px, iniciales 12 px) y botón de enviar.
+- **Campos en móvil:** el texto de `input` / `select` / `textarea` es siempre ≥ 16 px (`--pl-text-base`) para que iOS no haga zoom al enfocar.
 - **Filetes:** 1 px; pestaña activa 1,5 px; medidor de avance 3 px.
-- **Táctil:** botones 44 px (38 px en cabecera de escritorio) · campos 46 px · filas de lista ≥ 56 px, filas de obra 90 px en móvil y 60 px en escritorio · navegación inferior 55 px · botón-icono 34–36 px (mínimo 44 px de área activa).
+- **Táctil:** botones 44 px (38 px en cabecera de escritorio) · campos 46 px · filas de lista ≥ 56 px, filas de obra 90 px en móvil y 60 px en escritorio · navegación inferior 48 px de ítem (`--pl-nav-bar` 52 px + `safe-area-inset-bottom`, sin padding extra bajo los iconos) · botón-icono 34–36 px (mínimo 44 px de área activa).
 - **Iconos:** trazo 1,55 px, 19 px por defecto; 13–16 px dentro de etiquetas y meta. Conjunto: Lucide (ya en dependencias).
 
 ## 5. Navegación por anchura
@@ -79,7 +80,7 @@ Las pantallas son las mismas en los tres anchos; lo que cambia es dónde vive la
 ## 6. Componentes
 
 - **Botón principal:** `--pl-action` / `--pl-on-action`, 44 px, radio 10, texto 15/500. Variante naranja por pantalla. Secundario: borde `--pl-strong-line`, fondo transparente. Fantasma: texto en `--pl-blue`. Deshabilitado: fondo `--pl-raised`, texto `--pl-faint`.
-- **Campo:** 46 px, borde `--pl-line`, radio 10, etiqueta de 11 px encima en `--pl-muted`. Foco: borde 1,5 px en `--pl-ink`. Aviso: borde y texto de ayuda en `--pl-warning`. Cifras en mono con la unidad a la derecha.
+- **Campo:** 46 px, borde `--pl-line`, radio 10, etiqueta de 11 px encima en `--pl-muted`; texto del control 15 px en escritorio y 16 px en móvil (anti-zoom de iOS). Foco: borde 1,5 px en `--pl-ink`. Aviso: borde y texto de ayuda en `--pl-warning`. Cifras en mono con la unidad a la derecha.
 - **Pestañas:** Workspace subrayado 1,5 px en `--pl-ink`; Grafito píldora con fondo `--pl-raised` y radio 6. Contador en mono 11 px.
 - **Fila de obra:** icono en caja de 32×36 con borde, nombre 15/500, meta 11, porcentaje en mono a la derecha. El medidor de avance (3 px) solo en paneles y fichas, no en cada fila de móvil.
 - **Panel (Grafito y escritorio):** borde `--pl-line`, radio 10, cabecera en `--pl-soft` con etiqueta de 11 px en mayúsculas opcionales.
@@ -230,7 +231,7 @@ La **hoja de pedido** (`/imprimir/pedido/<proyecto>?p=<proveedor>`) usa la misma
 - **Buscador global** (`⌘K` / `Ctrl+K`, lupa en la barra y en el menú): proyectos, clientes, presupuestos, documentos, artículos, acciones y pantallas (`src/lib/buscador.ts`), con teclado. En móvil ocupa la pantalla.
 - **Chat**: bloques por autor con avatar de iniciales y tono estable, burbujas (las propias a la derecha en color de acción), separadores «Hoy / Ayer / fecha», compositor redondeado con `#`, adjuntar (deshabilitado hasta que el dominio lo permita) y botón de enviar en naranja. Enter envía, Mayús+Enter salto de línea. El fondo del hilo es `--pl-raised` para separarlo del resto del cajón.
 - Chat: cada mensaje propio tiene un menú pequeño (editar, borrar) que aparece al pasar el ratón o siempre en táctil; la edición es en la propia burbuja (Enter guarda, Esc cancela) y queda marcada «editado»; el borrado deja una burbuja punteada «Mensaje eliminado» para que se note el hueco. Oficina y administración pueden borrar mensajes ajenos.
-- Línea de fases: una pista continua de centro a centro con el tramo hecho en verde (`--progress`); en móvil se ocultan las etiquetas y se muestra «Fase n de 5 · Nombre».
+- Línea de fases: ocupa todo el ancho del bloque; pista continua de centro a centro del primer y último punto, con el tramo hecho en verde (`--progress`); en móvil se ocultan las etiquetas y se muestra «Fase n de 5 · Nombre».
 - La visita tiene «Cerrar» en la cabecera: vuelve al proyecto del que salió (o a la lista) y, si hay fotos, alcance o partidas sin guardar, pide confirmación.
 - Chat: el clip del compositor adjunta una foto o un PDF (se guarda en Documentos del proyecto, fotos en «durante la obra») y lo enlaza en el mensaje; las fotos se pintan como miniatura dentro de la burbuja y abren el archivo. Las reacciones se eligen desde un selector de seis emojis junto al menú del mensaje y se muestran como pastillas bajo la burbuja, con la propia marcada; pulsar una pastilla la alterna.
 - Diálogo de tarea: además de completar o reabrir, «Mañana» y «+1 semana» posponen con un clic, «Editar» cambia título, oficio, responsable, fecha y peso en el propio diálogo, y «Eliminar» pide confirmación en el mismo lugar (botón rojo). Lo que el perfil no puede hacer no aparece, con una línea que lo explica.
