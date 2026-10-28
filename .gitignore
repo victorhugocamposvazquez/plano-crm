@@ -14,3 +14,6 @@ supabase/.branches/
 private-imports/
 *.log
 .vercel
+__pycache__/
+*.pyc
+.venv/
