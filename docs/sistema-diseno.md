@@ -205,3 +205,9 @@ Bajo las partidas, una fila de acciones según el estado (`accionesPresupuesto`)
 Ruta independiente `/laboratorio/planos`, fuera del proveedor del CRM: trabaja con una extracción local y un ejemplo sintético. Reutiliza Brand, Button, Select, ThemeToggle y Modal. No se añade al menú ni cambia las pantallas de Fable en esta rama. Nuevo token `--pl-document-bg`, blanco fijo en ambos temas, para que los trazados del original sigan siendo legibles sobre papel en Grafito.
 
 El plano mantiene sus colores originales como datos del documento; las superposiciones de medición usan `--pl-blue`. Una lista textual acompaña a las propuestas: pendiente, incluida en revisión o descartada. La selección de referencia mediante dos pulsaciones tiene alternativa con campos de coordenadas. Cada página conserva escala, leyenda y decisiones; cambiar una referencia reabre su revisión. Cambiar de archivo con decisiones abiertas permite descargarlas antes, con confirmación sobre la pantalla. El laboratorio descarga una revisión local y no ofrece acciones de guardar/aprobar presupuestos.
+
+### Prototipo de espacio navegable · 28-10-2026
+
+Ruta independiente `/laboratorio/espacio`, con ejemplos ficticios de local y nave. Controles táctiles de vista, giro y acercamiento, selección alternativa por lista y catálogo propio de la demostración. La propuesta económica distingue base, IVA y diferencia frente al ejemplo inicial, y muestra «En preparación · propuesta local» y ausencia de revisión aprobada vinculada.
+
+La escena conserva los colores RGB de sus materiales y utiliza `--pl-document-bg` como fondo; los modelos son contenido visual, no estados de la interfaz. La selección se señala en azul y con texto en la lista. La ficha del artículo permite cambiar la alternativa sin abandonar el espacio. Si falta WebGL, la ficha y los cálculos siguen disponibles. No se añade esta ruta al menú de producción ni se cambia la navegación de Fable.

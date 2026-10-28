@@ -1,6 +1,6 @@
 # Catálogo visual y propuesta navegable
 
-Requisito de Hugo, 28-10-2026: los artículos del catálogo tendrán precios y podrán tener diseños/modelos 3D o representaciones de materiales preparados para reutilizarse. La propuesta al cliente podrá incluir un entorno virtual navegable vinculado al presupuesto. Este documento define el comportamiento previsto; no hay visor 3D ni carga de modelos implementados en esta entrega.
+Requisito de Hugo, 28-10-2026: los artículos del catálogo tendrán precios y podrán tener diseños/modelos 3D o representaciones de materiales preparados para reutilizarse. La propuesta al cliente podrá incluir un entorno virtual navegable vinculado al presupuesto. Este documento define el comportamiento previsto. Ya existe un prototipo 3D sintético para comprobar navegación y vínculo con artículos, descrito en `espacio-navegable.md`; la carga de modelos reales y la reconstrucción están pendientes.
 
 ## Experiencia prevista
 
@@ -8,7 +8,7 @@ El profesional captura el inmueble o aporta planos y explica la reforma. PLANO p
 
 A partir de esa propuesta, el cliente podrá ver una planta general, entrar en estancias y recorrer la distribución propuesta. Donde haya datos y modelos suficientes podrá consultar productos y comparar acabados o alternativas. El recorrido y la estimación rápida son procesos relacionados que deben poder completarse de forma independiente: la preparación del 3D detallado no debe retrasar la orientación económica inicial.
 
-La configuración se hará por los profesionales de GARAL; Hugo no tiene que modelar viviendas ni medir planos para usar el producto. Preparar la biblioteca inicial es una tarea de implantación que se reutiliza entre proyectos.
+La configuración se hará por los profesionales de GARAL; Hugo no tiene que modelar espacios ni medir planos para usar el producto. Preparar la biblioteca inicial es una tarea de implantación que se reutiliza entre proyectos.
 
 ## El artículo es la referencia común
 
