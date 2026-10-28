@@ -3484,3 +3484,24 @@ p {
 .doors-wide { display: inline-flex; gap: 8px; flex-wrap: wrap; }
 .doors-compact { display: none; }
 @media (max-width: 1199px) { .doors-wide { display: none; } .doors-compact { display: inline-flex; } }
+
+/* ---------- Tus planos: lista y alta ---------- */
+.plan-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.plan-card { display: grid; grid-template-columns: 112px minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 10px; border: var(--pl-hairline) solid var(--pl-line); border-left: 4px solid var(--pl-faint); border-radius: var(--pl-radius-panel); background: var(--pl-surface); }
+.plan-card[data-uso="demolicion"] { border-left-color: #b83a2e; }
+.plan-card[data-uso="obra_nueva"] { border-left-color: #2f7d4f; }
+.plan-card[data-uso="cotas"] { border-left-color: var(--pl-blue); }
+.plan-card-body { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.plan-card-body strong { font-size: var(--pl-text-sm); font-weight: var(--pl-weight-medium); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.plan-card-body small { font-size: var(--pl-text-xs); }
+.plan-stage-xs { height: 84px; }
+.plan-stage-xs .plan-svg { height: 84px; width: 100%; object-fit: contain; }
+.plan-add { display: grid; grid-template-columns: 1fr; gap: 10px; }
+.dropzone-sm { min-height: 110px; padding: 14px; gap: 4px; }
+.plan-add-alt { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; }
+.plan-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+.plan-tabs .chip[aria-selected="true"] { background: var(--pl-ink); color: var(--pl-bg); border-color: var(--pl-ink); }
+.legend-row input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--pl-ink); }
+@media (min-width: 640px) { .plan-add { grid-template-columns: 1fr 1fr; align-items: center; } }
+@media (max-width: 479px) { .plan-card { grid-template-columns: 1fr auto; } .plan-card .plan-stage-xs { display: none; } }
+a.flow-back, a.flow-back:hover { text-decoration: none; }
