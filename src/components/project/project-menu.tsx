@@ -76,7 +76,7 @@ export function ProjectMenu({ project, approvedVersion, puedeEstimar, onChat, so
     { id: "estado", label: "Cambiar de fase", hint: `Ahora: ${projectStatus[project.status]}`, icon: <ArrowLeftRight size={16} strokeWidth={1.7} />, disabled: !can(actor.role, "project.status"), onSelect: () => abrir("estado") },
     { id: "tarea", label: "Planificar tarea", hint: "Oficio, responsable y fecha", icon: <ListPlus size={16} strokeWidth={1.7} />, disabled: !can(actor.role, "task.create"), onSelect: () => abrir("tarea") },
     { id: "certificacion", label: "Nueva certificación", hint: approvedVersion ? `Saldo ${money(saldo)} de la V${approvedVersion.number}` : "Necesita un presupuesto aprobado", icon: <Receipt size={16} strokeWidth={1.7} />, disabled: !approvedVersion || !can(actor.role, "certification.create"), onSelect: () => abrir("certificacion") },
-    ...(puedeEstimar ? [{ id: "visita", label: "Estimar en visita", hint: "Fotos, alcance y partidas a pie de obra", icon: <Footprints size={16} strokeWidth={1.7} />, onSelect: () => router.push(`/proyectos/nueva?proyecto=${project.id}`) }] : []),
+    ...(puedeEstimar ? [{ id: "visita", label: "Desde fotos", hint: "Fotos de la obra, notas y una cifra orientativa", icon: <Footprints size={16} strokeWidth={1.7} />, onSelect: () => router.push(`/proyectos/nueva?proyecto=${project.id}`) }] : []),
     { id: "chat", label: "Abrir el chat", hint: "Conversación del equipo", icon: <MessageSquare size={16} strokeWidth={1.7} />, onSelect: onChat }
   ];
 

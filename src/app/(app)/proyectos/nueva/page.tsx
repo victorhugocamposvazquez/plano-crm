@@ -7,7 +7,7 @@ import { Modal } from "@/components/ui/modal";
 import { useWorkspace } from "@/components/workspace-provider";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
-import { can, money, kindNames, dateLabel, type Project } from "@/lib/domain";
+import { can, money, kindNames, dateLabel, type Project, type BudgetVersion } from "@/lib/domain";
 import { trabajosRapidos, articulosPorCapitulo, articuloPara, partidasDesdeLineas, rangoEstimacion, importeLinea, notasDeVisita, comprobaciones, type Linea } from "@/lib/estimacion";
 
 type Step = 1 | 2 | 3 | 4 | 5;
@@ -83,8 +83,10 @@ export default function NuevaVisitaPage() {
   }
   const updateLinea = (id: string, patch: Partial<Linea>) => setLineas(prev => prev.map(l => (l.id === id ? { ...l, ...patch } : l)));
 
+  const soloFotos = Boolean(existente) && items.length === 0;
+  const puedeGuardar = datosOk && (items.length > 0 || (soloFotos && (fotos.length > 0 || alcance.trim().length > 0)));
   async function guardar() {
-    if (saving || busy || !datosOk || items.length === 0) return;
+    if (saving || busy || !puedeGuardar) return;
     setSaving(true); setError("");
     let projectId: string | null = null;
     try {
@@ -98,16 +100,25 @@ export default function NuevaVisitaPage() {
       const pid = project.id;
       projectId = pid;
       for (const foto of fotos) await upload(foto.file, pid, "before");
-      // Si el proyecto ya tiene un presupuesto vacío abierto en oficina, la estimación lo rellena en vez de abrir otro.
-      let version = ws.versions.find(v => v.status === "draft" && v.items.length === 0 && ws.budgets.some(b => b.id === v.budget_id && b.project_id === pid));
+      if (soloFotos) {
+        // Solo fotos y notas: quedan en Documentos y, si hay notas, en el chat del proyecto. El presupuesto no se toca.
+        if (alcance.trim() && can(actor.role, "message.send")) await send({ type: "message.send", project_id: pid, body: `Notas de la visita: ${alcance.trim()}` });
+        notify(`${fotos.length ? `${fotos.length} foto${fotos.length === 1 ? "" : "s"} guardada${fotos.length === 1 ? "" : "s"}` : "Notas guardadas"} · ${project.name}`);
+        router.push(`/proyectos/${pid}`);
+        return;
+      }
+      // Si el proyecto ya tiene un borrador abierto, las partidas se añaden a él en vez de abrir otro presupuesto.
+      const borradores = ws.versions.filter(v => v.status === "draft" && ws.budgets.some(b => b.id === v.budget_id && b.project_id === pid));
+      let version: BudgetVersion | undefined = borradores.find(v => v.items.length === 0) ?? borradores[0];
       if (!version) {
         ws = await send({ type: "budget.create", project_id: pid, title: "Estimación de visita" });
         const budget = ws.budgets.filter(b => b.project_id === pid).sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
         version = budget ? ws.versions.find(v => v.budget_id === budget.id && v.status === "draft") : undefined;
       }
       if (!version) throw new Error("No se ha podido abrir el borrador del presupuesto.");
-      const notes = notasDeVisita(alcance, pendientes, dateLabel(new Date().toISOString()), margen);
-      await send({ type: "budget.save", version_id: version.id, expected_revision: version.draft_revision, items, notes });
+      const notasNuevas = notasDeVisita(alcance, pendientes, dateLabel(new Date().toISOString()), margen);
+      const notes = version.items.length ? [version.notes, notasNuevas].filter(Boolean).join("\n\n") : notasNuevas;
+      await send({ type: "budget.save", version_id: version.id, expected_revision: version.draft_revision, items: [...version.items, ...items], notes });
       if (project.status === "lead") await send({ type: "project.status", id: pid, status: "estimating" });
       notify(`Estimación guardada · ${project.name}`);
       router.push(`/proyectos/${pid}`);
@@ -138,12 +149,12 @@ export default function NuevaVisitaPage() {
   return (
     <div className="page">
       <div>
-        <div className="eyebrow"><Link href="/proyectos" className="muted" style={{ display: "inline-flex", alignItems: "center", gap: 6, textDecoration: "none" }}><ArrowLeft size={13} strokeWidth={1.8} aria-hidden="true" />Proyectos</Link><span>· {existente ? `Visita a ${existente.name}` : "Nueva visita"}</span></div>
+        <div className="eyebrow"><Link href={existente ? `/proyectos/${existente.id}` : "/proyectos"} className="muted" style={{ display: "inline-flex", alignItems: "center", gap: 6, textDecoration: "none" }}><ArrowLeft size={13} strokeWidth={1.8} aria-hidden="true" />{existente ? existente.name : "Proyectos"}</Link><span>· {existente ? `${existente.code} · fotos y notas` : "Nueva visita"}</span></div>
         <div className="page-head">
-          <h1 className="h1">Estimar en la visita.</h1>
-          <button type="button" className="btn btn-icon" aria-label={existente ? "Cerrar y volver al proyecto" : "Cerrar la visita"} title={existente ? "Volver al proyecto" : "Cerrar"} onClick={salir}><X size={19} strokeWidth={1.6} aria-hidden="true" /></button>
+          <h1 className="h1">{existente ? "Fotos y notas de la obra." : "Estimar en la visita."}</h1>
+          <Button variant="ghost" onClick={salir} aria-label={existente ? "Salir y volver al proyecto" : "Salir de la visita"}><X size={17} strokeWidth={1.7} aria-hidden="true" />{existente ? "Volver al proyecto" : "Salir"}</Button>
         </div>
-        <p className="subtitle">Sal de la visita con una cifra orientativa, calculada con los precios del catálogo. Lo que no se mide queda marcado como pendiente.</p>
+        <p className="subtitle">{existente ? "Hazlas ahora con la cámara o elígelas de la galería, apunta lo que se quiere hacer y, si quieres, deja una cifra orientativa con los precios del catálogo. Puedes volver y añadir más fotos cuando haga falta." : "Sal de la visita con una cifra orientativa, calculada con los precios del catálogo. Lo que no se mide queda marcado como pendiente."}</p>
       </div>
 
       <ol className="steps" aria-label="Pasos">
@@ -179,7 +190,7 @@ export default function NuevaVisitaPage() {
         <section className="form">
           <label className="btn btn-secondary" style={{ alignSelf: "flex-start", cursor: "pointer" }}>
             <Camera size={19} strokeWidth={1.55} aria-hidden="true" />Hacer o elegir fotos
-            <input type="file" accept="image/*" capture="environment" multiple onChange={addFotos} style={{ position: "absolute", width: 1, height: 1, opacity: 0 }} />
+            <input type="file" accept="image/*" multiple onChange={addFotos} style={{ position: "absolute", width: 1, height: 1, opacity: 0 }} />
           </label>
           {fotos.length > 0 && (
             <ul className="thumbs" aria-label="Fotos de la visita">
@@ -259,13 +270,13 @@ export default function NuevaVisitaPage() {
             );
           })}
 
-          <div className="form-actions"><Button variant="secondary" onClick={() => setStep(3)}>Atrás</Button><Button variant="primary" disabled={items.length === 0} onClick={() => setStep(5)}>Ver la estimación</Button></div>
+          <div className="form-actions"><Button variant="secondary" onClick={() => setStep(3)}>Atrás</Button><Button variant="primary" disabled={items.length === 0 && !existente} onClick={() => setStep(5)}>{items.length === 0 && existente ? "Ver el resumen" : "Ver la estimación"}</Button></div>
         </section>
       )}
 
       {step === 5 && (
         <section className="form">
-          <div className="panel">
+          {!soloFotos && <div className="panel">
             <div className="panel-head"><span>ESTIMACIÓN ORIENTATIVA</span><span className="pl-mono">{items.length} partidas</span></div>
             <div className="panel-body">
               <div className="range"><small>Entre</small><strong className="pl-mono">{money(rango.minTotal)}</strong><small>y</small><strong className="pl-mono">{money(rango.maxTotal)}</strong><small>con IVA</small></div>
@@ -276,17 +287,17 @@ export default function NuevaVisitaPage() {
             <div style={{ borderTop: "var(--pl-hairline) solid var(--pl-line)" }}>
               {items.map(item => <div key={item.id} className="row-item" style={{ padding: "0 14px" }}><span><strong>{item.description}</strong><small>{item.chapter}{item.adjustment_percent ? ` · ajuste ${item.adjustment_percent > 0 ? "+" : ""}${item.adjustment_percent} %` : ""}</small></span><span className="pl-mono muted text-xs">{item.quantity} {item.unit}</span><span className="pl-mono">{money(importeLinea(lineas.find(l => l.id === item.id)!, data.articles))}</span></div>)}
             </div>
-          </div>
+          </div>}
 
           <div className="panel"><div className="panel-body text-sm">
             <small className="muted text-xs">Se guardará en el proyecto</small>
-            <p style={{ marginTop: 4 }}><strong>{datos.name}</strong> · {datos.client_name}{datos.location ? ` · ${datos.location}` : ""} · {kindNames[datos.kind]}</p>
-            <p className="muted" style={{ marginTop: 6 }}>{fotos.length ? `${fotos.length} fotos de «antes»` : "Sin fotos"} · presupuesto «Estimación de visita» V1 en borrador · estado «Presupuestando»</p>
-            <p className="muted text-xs" style={{ marginTop: 10, whiteSpace: "pre-line" }}>{notasDeVisita(alcance, pendientes, dateLabel(new Date().toISOString()), margen)}</p>
+            <p style={{ marginTop: 4 }}><strong>{existente ? existente.name : datos.name}</strong> · {existente ? existente.client_name : datos.client_name}{(existente ? existente.location : datos.location) ? ` · ${existente ? existente.location : datos.location}` : ""} · {kindNames[existente ? existente.kind : datos.kind]}</p>
+            <p className="muted" style={{ marginTop: 6 }}>{fotos.length ? `${fotos.length} foto${fotos.length === 1 ? "" : "s"} en Documentos` : "Sin fotos"}{soloFotos ? (alcance.trim() ? " · las notas van al chat del proyecto · el presupuesto no cambia" : " · el presupuesto no cambia") : existente ? ` · ${items.length} partida${items.length === 1 ? "" : "s"} al borrador del presupuesto` : " · presupuesto «Estimación de visita» V1 en borrador · estado «Presupuestando»"}</p>
+            <p className="muted text-xs" style={{ marginTop: 10, whiteSpace: "pre-line" }}>{soloFotos ? (alcance.trim() ? `Notas de la visita: ${alcance.trim()}` : "Sin notas.") : notasDeVisita(alcance, pendientes, dateLabel(new Date().toISOString()), margen)}</p>
           </div></div>
 
           {error && <p role="alert" className="auth-error">{error}</p>}
-          <div className="form-actions"><Button variant="secondary" onClick={() => setStep(4)} disabled={saving}>Atrás</Button><Button variant="primary" onClick={guardar} disabled={saving || busy}>{saving ? "Guardando…" : "Guardar estimación"}</Button></div>
+          <div className="form-actions"><Button variant="secondary" onClick={() => setStep(4)} disabled={saving}>Atrás</Button><Button variant="primary" onClick={guardar} disabled={saving || busy || !puedeGuardar}>{saving ? "Guardando…" : soloFotos ? "Guardar fotos y notas" : "Guardar estimación"}</Button></div>
         </section>
       )}
       {modalSalida}

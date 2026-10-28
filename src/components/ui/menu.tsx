@@ -8,7 +8,7 @@ export type MenuItem = { id: string; label: string; hint?: string; icon?: ReactN
  * Menú contextual propio del sistema: botón «···» que despliega una lista con teclado
  * (flechas, Inicio/Fin, Enter, Escape) y cierre al pulsar fuera. No cambia de ruta.
  */
-export function Menu({ items, label = "Más acciones", align = "end", size = "md" }: { items: MenuItem[]; label?: string; align?: "start" | "end"; size?: "md" | "sm" }) {
+export function Menu({ items, label = "Más acciones", align = "end", size = "md", trigger }: { items: MenuItem[]; label?: string; align?: "start" | "end"; size?: "md" | "sm"; trigger?: ReactNode }) {
   const id = useId();
   const root = useRef<HTMLDivElement>(null);
   const [open, setOpen] = useState(false);
@@ -41,8 +41,8 @@ export function Menu({ items, label = "Más acciones", align = "end", size = "md
 
   return (
     <div ref={root} className="menu" onKeyDown={onKey}>
-      <button type="button" className={size === "sm" ? "menu-trigger-sm" : "btn btn-icon"} aria-label={label} title={label} aria-haspopup="menu" aria-expanded={open} aria-controls={id} onClick={() => { setOpen(v => !v); setActive(enabled[0]?.i ?? 0); }}>
-        <Ellipsis size={size === "sm" ? 15 : 19} strokeWidth={1.7} aria-hidden="true" />
+      <button type="button" className={trigger ? "btn btn-secondary" : size === "sm" ? "menu-trigger-sm" : "btn btn-icon"} aria-label={trigger ? undefined : label} title={trigger ? undefined : label} aria-haspopup="menu" aria-expanded={open} aria-controls={id} onClick={() => { setOpen(v => !v); setActive(enabled[0]?.i ?? 0); }}>
+        {trigger ?? <Ellipsis size={size === "sm" ? 15 : 19} strokeWidth={1.7} aria-hidden="true" />}
       </button>
       {open && (
         <div id={id} role="menu" className="menu-list" data-align={align}>
