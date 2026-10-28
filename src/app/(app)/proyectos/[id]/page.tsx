@@ -269,7 +269,7 @@ export default function ObraPage() {
       </div>
       <TaskDialog task={abierta ? data.tasks.find(t => t.id === abierta.id) ?? null : null} onClose={() => setAbierta(null)} />
       {editable && <BudgetEditor open={editando} onClose={() => setEditParam("")} project={project} version={editable} guiaInicial={editable.items.length === 0} />}
-      <Drawer open={chatAbierto} onClose={() => setChatParam("")} title="Chat del proyecto" subtitle={`${project.name} · lo ve todo el equipo con acceso`}>
+      <Drawer open={chatAbierto} onClose={() => setChatParam("")} title={project.name} subtitle={`Chat del proyecto · ${project.code} · lo ve todo el equipo con acceso`}>
         <ChatPanel projectId={project.id} messages={messages} />
       </Drawer>
     </div>

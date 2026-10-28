@@ -1,18 +1,18 @@
 "use client";
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import Link from "next/link";
-import { ArrowUp, Hash, FileText, ListChecks, Package, Receipt, X, Paperclip, Pencil, Trash2, Check, SmilePlus, Loader2, Image as ImageIcon, ExternalLink, Download, Search, Info, CircleHelp, ArrowLeft, Users, Building2, Layers2, Link2, ChevronRight, Slash, Sparkles } from "lucide-react";
+import { ArrowUp, Hash, FileText, ListChecks, Package, Receipt, X, Paperclip, Pencil, Trash2, Check, SmilePlus, Loader2, Image as ImageIcon, ExternalLink, Download, Search, Info, CircleHelp, ArrowLeft, Users, Layers2, Link2, ChevronRight, Slash, Sparkles, Activity } from "lucide-react";
 import { Menu } from "@/components/ui/menu";
 import { Modal } from "@/components/ui/modal";
 import { useWorkspace } from "@/components/workspace-provider";
 import { TaskDialog } from "@/components/project/task-dialog";
-import { BudgetPeek } from "@/components/project/budget-peek";
+import { ChatPeek } from "@/components/project/chat-peek";
 import { can, dateLabel, type Document, type Message, type Task } from "@/lib/domain";
 import { isImage, formatSize } from "@/lib/documentos";
 import { parseMessage, encodeRef, referenciables, filtrarReferencias, destinoRef, categorias, nombreCategoria, type Ref, type RefOption, type RefType } from "@/lib/chat-refs";
 import { agruparMensajes, iniciales, tonoAutor } from "@/lib/chat-grupos";
 import { buscarMensajes, trozos, participantes as listarParticipantes, elementosCompartidos } from "@/lib/chat-busqueda";
-import { comandos, interpretar, sugerir, type Respuesta, type AccionRespuesta } from "@/lib/chat-comandos";
+import { comandos, accesosRapidos, interpretar, sugerir, type Comando, type VistaChat } from "@/lib/chat-comandos";
 
 const time = new Intl.DateTimeFormat("es-ES", { hour: "2-digit", minute: "2-digit" });
 const day = new Intl.DateTimeFormat("es-ES", { weekday: "long", day: "numeric", month: "long" });
@@ -20,27 +20,27 @@ const EMOJIS = ["👍", "✅", "❤️", "👀", "🙏", "⚠️"] as const;
 type Emoji = (typeof EMOJIS)[number];
 const adjuntables = ["image/jpeg", "image/png", "image/webp", "application/pdf"];
 const iconFor = (type: RefType) => type === "v" ? Receipt : type === "d" ? FileText : type === "t" ? ListChecks : type === "c" ? Package : type === "k" ? Users : type === "p" ? Layers2 : Hash;
+const iconoAcceso: Record<string, typeof Receipt> = { presupuesto: Receipt, tareas: ListChecks, compras: Package, documentos: FileText, cliente: Users, estado: Activity };
 const etiquetaDia = (iso: string) => { const hoy = new Date().toISOString().slice(0, 10); const ayer = new Date(Date.now() - 864e5).toISOString().slice(0, 10); return iso === hoy ? "Hoy" : iso === ayer ? "Ayer" : day.format(new Date(`${iso}T12:00:00`)).replace(/^./, c => c.toUpperCase()); };
-/** Qué ocupa el panel: la conversación, la información del chat o un presupuesto consultado sin salir. */
-type Vista = "chat" | "info" | { presupuesto: string };
 type Picker = { open: boolean; query: string; cat: RefType | null; active: number };
 const pickerCerrado: Picker = { open: false, query: "", cat: null, active: 0 };
+type Peek = Exclude<VistaChat, { kind: "buscar" } | { kind: "ayuda" } | { kind: "aviso" }>;
 
 /**
  * Conversación del proyecto. Cabecera con participantes, buscador e información (lo compartido);
- * burbujas por autor con reacciones, edición y borrado; adjuntos con previsualización; «#» para enlazar
- * por categoría (presupuesto, documento, tarea, compra, cliente, proyecto) y «/» para atajos con respuesta
- * inmediata (último presupuesto, tareas pendientes…). Las respuestas de los atajos no se guardan.
+ * burbujas por autor con reacciones, edición y borrado; adjuntos con previsualización; «#» para mencionar
+ * algo del proyecto por categoría y accesos rápidos / «/» para consultar (presupuesto, tareas, compras…)
+ * en un modal encima del chat: lo mismo que se vería en la ficha, sin salir de la conversación.
  */
 export function ChatPanel({ projectId, messages }: { projectId: string; messages: Message[] }) {
   const { data, actor, busy, send, notify, fileUrl, upload } = useWorkspace();
   const allowed = can(actor.role, "message.send");
   const puedeBorrarAjenos = actor.role === "admin" || actor.role === "office";
-  const [vista, setVista] = useState<Vista>("chat");
+  const [vista, setVista] = useState<"chat" | "info">("chat");
+  const [peek, setPeek] = useState<Peek | null>(null);
   const [buscando, setBuscando] = useState(false);
   const [consulta, setConsulta] = useState("");
   const [ayuda, setAyuda] = useState(false);
-  const [respuestas, setRespuestas] = useState<{ id: string; at: string; pregunta: string; r: Respuesta }[]>([]);
   const [editing, setEditing] = useState<{ id: string; body: string } | null>(null);
   const [working, setWorking] = useState<string | null>(null);
   const [reactFor, setReactFor] = useState<string | null>(null);
@@ -70,7 +70,7 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
   const atajoExacto = useMemo(() => (!body.trim().startsWith("/") && !picker.open ? interpretar(body) : null), [body, picker.open]);
 
   useEffect(() => { const d = lightbox.current; if (!d) return; if (preview && !d.open) d.showModal(); if (!preview && d.open) d.close(); }, [preview]);
-  useEffect(() => { if (vista === "chat" && !buscando) end.current?.scrollIntoView({ block: "end" }); }, [messages.length, respuestas.length, vista, buscando]);
+  useEffect(() => { if (vista === "chat" && !buscando) end.current?.scrollIntoView({ block: "end" }); }, [messages.length, vista, buscando]);
   useEffect(() => { if (buscando) setTimeout(() => buscador.current?.focus(), 0); }, [buscando]);
   useEffect(() => { setCmdActive(0); }, [body]);
   // Cuando el documento recién subido aparece en el espacio, queda como adjunto del mensaje que se está escribiendo.
@@ -88,11 +88,15 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
     catch (e) { setPreview(null); notify(e instanceof Error ? e.message : "No se ha podido abrir el documento."); }
   }
 
-  function ejecutarAtajo(c: { comando: (typeof comandos)[number]; argumento: string }, pregunta: string) {
-    const r = c.comando.ejecutar({ data, projectId, argumento: c.argumento });
-    if (c.comando.id === "ayuda" && !c.argumento) { setAyuda(true); setBody(""); return; }
-    if (c.comando.id === "buscar" && c.argumento) { setBuscando(true); setConsulta(c.argumento); setVista("chat"); setBody(""); return; }
-    setRespuestas(prev => [...prev, { id: crypto.randomUUID(), at: new Date().toISOString(), pregunta, r }]);
+  /** Toda consulta se resuelve encima del chat: modal, búsqueda, ayuda o un aviso. Nunca una navegación. */
+  function abrirVista(v: VistaChat) {
+    if (v.kind === "buscar") { setVista("chat"); setBuscando(true); setConsulta(v.query); return; }
+    if (v.kind === "ayuda") { setAyuda(true); return; }
+    if (v.kind === "aviso") { notify(v.texto); return; }
+    setPeek(v);
+  }
+  function consultar(comando: Comando, argumento = "") {
+    abrirVista(comando.abrir({ data, projectId, argumento }));
     setBody(""); setPicker(pickerCerrado);
   }
 
@@ -101,8 +105,8 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
     if (sending || busy) return;
     const texto = body.trim();
     if (!adjuntos.length) {
-      if (texto.startsWith("/")) { const sug = sugerencias[cmdActive] ?? sugerencias[0]; const inter = interpretar(texto); if (inter) { ejecutarAtajo(inter, texto); return; } if (sug) { ejecutarAtajo({ comando: sug, argumento: "" }, sug.formas[0]); return; } notify("Ese atajo no existe. Escribe / para ver los disponibles."); return; }
-      if (atajoExacto) { ejecutarAtajo(atajoExacto, texto); return; }
+      if (texto.startsWith("/")) { const inter = interpretar(texto); if (inter) { consultar(inter.comando, inter.argumento); return; } const sug = sugerencias[cmdActive] ?? sugerencias[0]; if (sug) { consultar(sug); return; } notify("Esa consulta no existe. Escribe / para ver las disponibles."); return; }
+      if (atajoExacto) { consultar(atajoExacto.comando, atajoExacto.argumento); return; }
     }
     const text = [adjuntos.map(d => encodeRef({ type: "d", id: d.id, label: d.name })).join(" "), texto].filter(Boolean).join(" ");
     if (!text) return;
@@ -175,16 +179,10 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
     catch (e) { notify(e instanceof Error ? e.message : "No se ha podido reaccionar."); }
   }
   function openRef(ref: Ref) {
+    if (ref.type === "v") { setPeek({ kind: "presupuesto", versionId: ref.id }); return; }
     const dest = destinoRef(ref, data, projectId);
     if ("task" in dest) { const t = data.tasks.find(x => x.id === dest.task); if (t) setOpenTask(t); else notify("Esa tarea ya no existe."); return; }
     if ("document" in dest) { const doc = data.documents.find(d => d.id === dest.document); if (!doc) { notify("Ese documento ya no está en el proyecto."); return; } void previsualizar(doc); }
-  }
-  function accion(a: AccionRespuesta) {
-    if (a.kind === "tarea") { const t = data.tasks.find(x => x.id === a.taskId); if (t) setOpenTask(t); return; }
-    if (a.kind === "documento") { const d = data.documents.find(x => x.id === a.documentId); if (d) void previsualizar(d); return; }
-    if (a.kind === "buscar") { setBuscando(true); setConsulta(a.query); setVista("chat"); return; }
-    if (a.kind === "presupuesto") { setVista({ presupuesto: a.versionId }); return; }
-    if (a.kind === "ayuda") setAyuda(true);
   }
 
   /** Miniatura de una foto adjunta: la URL se resuelve igual que al abrir el documento. */
@@ -207,8 +205,7 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
     const exists = r.type === "v" ? data.versions.some(v => v.id === r.id) : r.type === "d" ? data.documents.some(d => d.id === r.id) : r.type === "t" ? data.tasks.some(t => t.id === r.id) : r.type === "c" ? data.purchases.some(c => c.id === r.id) : r.type === "p" ? data.projects.some(p => p.id === r.id) : true;
     const content = <><Icon size={12} strokeWidth={1.9} aria-hidden="true" />{r.label}</>;
     if (!exists) return <span className="ref-chip" data-missing="true" title="Ya no existe en el proyecto">{content}</span>;
-    if (r.type === "v") return <button type="button" className="ref-chip" onClick={() => setVista({ presupuesto: r.id })}>{content}</button>;
-    if ("href" in dest) return <Link href={dest.href} className="ref-chip">{content}</Link>;
+    if (r.type !== "v" && "href" in dest) return <Link href={dest.href} className="ref-chip">{content}</Link>;
     return <button type="button" className="ref-chip" onClick={() => openRef(r)}>{content}</button>;
   };
 
@@ -231,7 +228,7 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
   return (
     <div className="chat chat-window">
       <div className="chat-top">
-        {vista !== "chat" ? (
+        {vista === "info" ? (
           <button type="button" className="chat-top-back" onClick={() => setVista("chat")}><ArrowLeft size={16} strokeWidth={1.8} aria-hidden="true" />Volver al chat</button>
         ) : (
           <button type="button" className="chat-top-people" onClick={() => setVista("info")} title="Participantes y elementos compartidos"><AvatarStack /><span className="chat-top-names"><strong>{gente.length} participante{gente.length === 1 ? "" : "s"}</strong><small className="muted">{nombres}</small></span></button>
@@ -239,7 +236,7 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
         <span className="chat-top-tools">
           <button type="button" className="composer-tool" aria-label="Buscar en la conversación" aria-pressed={buscando} title="Buscar en la conversación" onClick={() => { setVista("chat"); setBuscando(v => !v); if (buscando) setConsulta(""); }}><Search size={17} strokeWidth={1.7} aria-hidden="true" /></button>
           <button type="button" className="composer-tool" aria-label="Información del chat" aria-pressed={vista === "info"} title="Participantes, fotos, documentos y enlaces" onClick={() => setVista(v => (v === "info" ? "chat" : "info"))}><Info size={17} strokeWidth={1.7} aria-hidden="true" /></button>
-          <button type="button" className="composer-tool" aria-label="Atajos del chat" title="Atajos: # para enlazar, / para consultar" onClick={() => setAyuda(true)}><CircleHelp size={17} strokeWidth={1.7} aria-hidden="true" /></button>
+          <button type="button" className="composer-tool" aria-label="Cómo se usa el chat" title="Cómo se usa el chat" onClick={() => setAyuda(true)}><CircleHelp size={17} strokeWidth={1.7} aria-hidden="true" /></button>
         </span>
       </div>
 
@@ -272,15 +269,13 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
             <ul className="info-list">{compartidos.enlaces.map(u => <li key={u}><a className="info-row" href={u} target="_blank" rel="noopener"><ExternalLink size={15} strokeWidth={1.7} aria-hidden="true" /><span style={{ minWidth: 0, flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{u}</span></a></li>)}</ul>
           </Seccion>
         </div>
-      ) : typeof vista === "object" ? (
-        <BudgetPeek versionId={vista.presupuesto} data={data} projectId={projectId} onBack={() => setVista("chat")} onVersion={id => setVista({ presupuesto: id })} />
       ) : (
         <div className="chat-list" role="log" aria-label="Mensajes del proyecto" aria-live="polite">
-          {grupos.length === 0 && respuestas.length === 0 && (
+          {grupos.length === 0 && (
             <div className="chat-empty">
               <strong>Sin mensajes todavía</strong>
               <span className="muted text-sm">Lo que se escriba aquí lo ve todo el equipo del proyecto.</span>
-              <span className="chat-empty-tips"><span className="ref-chip"><Hash size={12} strokeWidth={2} aria-hidden="true" />enlaza presupuestos, documentos, tareas…</span><span className="ref-chip"><Slash size={12} strokeWidth={2} aria-hidden="true" />consulta: /presupuesto, /tareas</span><span className="ref-chip"><Paperclip size={12} strokeWidth={2} aria-hidden="true" />adjunta fotos y PDF</span></span>
+              <span className="chat-empty-tips"><span className="ref-chip"><Receipt size={12} strokeWidth={2} aria-hidden="true" />los botones de abajo consultan sin salir</span><span className="ref-chip"><Hash size={12} strokeWidth={2} aria-hidden="true" />menciona un presupuesto, documento o tarea</span><span className="ref-chip"><Paperclip size={12} strokeWidth={2} aria-hidden="true" />adjunta fotos y PDF</span></span>
             </div>
           )}
           {buscando && consulta.trim() && gruposVisibles.length === 0 && <div className="chat-empty"><strong>Nada coincide con «{consulta}»</strong></div>}
@@ -329,35 +324,30 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
               </div>
             );
           })}
-          {!buscando && respuestas.map(x => (
-            <div key={x.id} className="msg-system">
-              <span className="msg-system-q"><Sparkles size={12} strokeWidth={2} aria-hidden="true" />{x.pregunta}<button type="button" className="search-clear" aria-label="Quitar respuesta" onClick={() => setRespuestas(prev => prev.filter(r => r.id !== x.id))}><X size={12} strokeWidth={2} aria-hidden="true" /></button></span>
-              <article className="msg-system-card">
-                <strong>{x.r.titulo}</strong>
-                {x.r.lineas.map((l, i) => <span key={i} className="text-sm">{l}</span>)}
-                {x.r.acciones.length > 0 && <span className="msg-system-actions">{x.r.acciones.map((a, i) => a.kind === "href" ? <Link key={i} href={a.href} className="btn btn-secondary" target={a.nueva ? "_blank" : undefined} rel={a.nueva ? "noopener" : undefined} style={{ height: 32 }}>{a.label}{a.nueva && <ExternalLink size={13} strokeWidth={1.8} aria-hidden="true" />}</Link> : <button key={i} type="button" className="btn btn-secondary" style={{ height: 32 }} onClick={() => accion(a)}>{a.label}</button>)}</span>}
-                <small className="muted">Solo lo ves tú · {time.format(new Date(x.at))}</small>
-              </article>
-            </div>
-          ))}
           <div ref={end} />
         </div>
+      )}
+
+      {vista === "chat" && (
+        <nav className="chat-quick" aria-label="Consultar sin salir del chat">
+          {accesosRapidos.map(c => { const Icon = iconoAcceso[c.id] ?? Sparkles; return <button key={c.id} type="button" className="chip" title={c.descripcion} onClick={() => consultar(c)}><Icon size={14} strokeWidth={1.8} aria-hidden="true" />{c.acceso}</button>; })}
+        </nav>
       )}
 
       {allowed && vista === "chat" ? (
         <form className="composer-wrap" onSubmit={submit}>
           {picker.open && (
-            <div className="ref-picker" role="listbox" aria-label="Enlazar">
+            <div className="ref-picker" role="listbox" aria-label="Mencionar">
               {!picker.cat && !picker.query ? (
                 <>
-                  <div className="ref-picker-head"><span>Enlazar…</span><small className="muted">o sigue escribiendo para buscar en todo</small></div>
+                  <div className="ref-picker-head"><span>Mencionar…</span><small className="muted">o sigue escribiendo para buscar en todo</small></div>
                   <div className="ref-cats">
-                    {categorias.map((c, i) => { const Icon = iconFor(c.type); return <button key={c.type} type="button" role="option" aria-selected={i === picker.active} className="ref-cat" disabled={!conteoCat[c.type]} onMouseEnter={() => setPicker(p => ({ ...p, active: i }))} onMouseDown={e => e.preventDefault()} onClick={() => setPicker(p => ({ ...p, cat: c.type, active: 0 }))}><Icon size={16} strokeWidth={1.7} aria-hidden="true" /><span><strong>{c.label}</strong><small className="muted">{conteoCat[c.type] ? `${conteoCat[c.type]} · ${c.hint}` : "Nada que enlazar"}</small></span></button>; })}
+                    {categorias.map((c, i) => { const Icon = iconFor(c.type); return <button key={c.type} type="button" role="option" aria-selected={i === picker.active} className="ref-cat" disabled={!conteoCat[c.type]} onMouseEnter={() => setPicker(p => ({ ...p, active: i }))} onMouseDown={e => e.preventDefault()} onClick={() => setPicker(p => ({ ...p, cat: c.type, active: 0 }))}><Icon size={16} strokeWidth={1.7} aria-hidden="true" /><span><strong>{c.label}</strong><small className="muted">{conteoCat[c.type] ? `${conteoCat[c.type]} · ${c.hint}` : "Nada que mencionar"}</small></span></button>; })}
                   </div>
                 </>
               ) : (
                 <>
-                  <div className="ref-picker-head">{picker.cat ? <button type="button" className="ref-picker-back" onMouseDown={e => e.preventDefault()} onClick={() => setPicker(p => ({ ...p, cat: null, active: 0 }))}><ArrowLeft size={13} strokeWidth={2} aria-hidden="true" />{nombreCategoria(picker.cat)}{picker.cat === "v" ? "s" : "s"}</button> : <span>Resultados en todo el proyecto</span>}<small className="muted">{matches.length ? `${matches.length} opciones` : ""}</small></div>
+                  <div className="ref-picker-head">{picker.cat ? <button type="button" className="ref-picker-back" onMouseDown={e => e.preventDefault()} onClick={() => setPicker(p => ({ ...p, cat: null, active: 0 }))}><ArrowLeft size={13} strokeWidth={2} aria-hidden="true" />{nombreCategoria(picker.cat)}s</button> : <span>Resultados en todo el proyecto</span>}<small className="muted">{matches.length ? `${matches.length} opciones` : ""}</small></div>
                   {matches.length === 0 && <div className="muted text-xs" style={{ padding: "8px 10px" }}>Nada coincide con «{picker.query}».</div>}
                   {matches.map((o, i) => { const Icon = iconFor(o.type); return (
                     <button key={`${o.type}-${o.id}`} type="button" role="option" aria-selected={i === picker.active} className="ref-option" onMouseEnter={() => setPicker(p => ({ ...p, active: i }))} onMouseDown={e => e.preventDefault()} onClick={() => insert(o)}>
@@ -370,10 +360,10 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
             </div>
           )}
           {!picker.open && sugerencias.length > 0 && (
-            <div className="ref-picker cmd-list" role="listbox" aria-label="Atajos">
-              <div className="ref-picker-head"><span>Atajos</span><button type="button" className="ref-picker-back" onMouseDown={e => e.preventDefault()} onClick={() => setAyuda(true)}>Ver todos</button></div>
+            <div className="ref-picker cmd-list" role="listbox" aria-label="Consultas">
+              <div className="ref-picker-head"><span>Consultar</span><button type="button" className="ref-picker-back" onMouseDown={e => e.preventDefault()} onClick={() => setAyuda(true)}>Ver todas</button></div>
               {sugerencias.map((c, i) => (
-                <button key={c.id} type="button" role="option" aria-selected={i === cmdActive} className="ref-option" onMouseEnter={() => setCmdActive(i)} onMouseDown={e => e.preventDefault()} onClick={() => ejecutarAtajo({ comando: c, argumento: "" }, c.formas[0])}>
+                <button key={c.id} type="button" role="option" aria-selected={i === cmdActive} className="ref-option" onMouseEnter={() => setCmdActive(i)} onMouseDown={e => e.preventDefault()} onClick={() => consultar(c)}>
                   <Slash size={14} strokeWidth={2} aria-hidden="true" />
                   <span style={{ minWidth: 0 }}><span className="pl-mono">{c.formas[0]}{c.conArgumento ? " …" : ""}</span><small className="muted text-xs">{c.descripcion}</small></span>
                 </button>
@@ -381,7 +371,7 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
             </div>
           )}
           {!picker.open && atajoExacto && (
-            <div className="cmd-hint"><Sparkles size={13} strokeWidth={2} aria-hidden="true" /><span>Enter consulta «{atajoExacto.comando.descripcion.toLowerCase().replace(/\.$/, "")}»</span><button type="button" className="ref-picker-back" onMouseDown={e => e.preventDefault()} onClick={() => { const texto = body; setBody(""); void send({ type: "message.send", project_id: projectId, body: texto.trim() }).catch(e => notify(e instanceof Error ? e.message : "No se ha podido enviar el mensaje.")); }}>Enviar como mensaje</button></div>
+            <div className="cmd-hint"><Sparkles size={13} strokeWidth={2} aria-hidden="true" /><span>Enter abre «{atajoExacto.comando.descripcion.toLowerCase().replace(/\.$/, "")}»</span><button type="button" className="ref-picker-back" onMouseDown={e => e.preventDefault()} onClick={() => { const texto = body; setBody(""); void send({ type: "message.send", project_id: projectId, body: texto.trim() }).catch(e => notify(e instanceof Error ? e.message : "No se ha podido enviar el mensaje.")); }}>Enviar como mensaje</button></div>
           )}
           {adjuntos.length > 0 && (
             <div className="composer-attachments" aria-label="Adjuntos del mensaje">
@@ -389,7 +379,7 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
             </div>
           )}
           <div className="composer">
-            <button type="button" className="composer-tool" aria-label="Enlazar algo del proyecto" title="Enlazar presupuesto, documento, tarea, compra, cliente o proyecto (#)" onClick={() => { setPicker({ open: true, query: "", cat: null, active: 0 }); setBody(b => `${b}${b && !b.endsWith(" ") ? " " : ""}#`); textarea.current?.focus(); }}><Hash size={17} strokeWidth={1.7} aria-hidden="true" /></button>
+            <button type="button" className="composer-tool" aria-label="Mencionar algo del proyecto" title="Mencionar un presupuesto, documento, tarea, compra, cliente o proyecto (#)" onClick={() => { setPicker({ open: true, query: "", cat: null, active: 0 }); setBody(b => `${b}${b && !b.endsWith(" ") ? " " : ""}#`); textarea.current?.focus(); }}><Hash size={17} strokeWidth={1.7} aria-hidden="true" /></button>
             <button type="button" className="composer-tool" aria-label="Adjuntar foto o PDF" title="Adjuntar foto o PDF" disabled={uploading} onClick={() => attachInput.current?.click()}>{uploading ? <Loader2 size={16} strokeWidth={1.8} aria-hidden="true" className="spin" /> : <Paperclip size={16} strokeWidth={1.7} aria-hidden="true" />}</button>
             <input ref={attachInput} type="file" accept={adjuntables.join(",")} capture="environment" onChange={e => { void adjuntar(e.target.files?.[0]); e.target.value = ""; }} style={{ display: "none" }} aria-hidden="true" tabIndex={-1} />
             <textarea ref={textarea} value={body} onChange={e => onChange(e.target.value)} onKeyDown={onKey} rows={1} placeholder={uploading ? "Subiendo el archivo…" : "Mensaje"} aria-label="Nuevo mensaje" maxLength={5000} />
@@ -399,25 +389,26 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
       ) : !allowed ? <p className="muted text-xs">Tu perfil puede leer la conversación pero no escribir.</p> : null}
 
       <TaskDialog task={openTask ? data.tasks.find(t => t.id === openTask.id) ?? null : null} onClose={() => setOpenTask(null)} />
+      <ChatPeek vista={peek} projectId={projectId} onChange={setPeek} onClose={() => setPeek(null)} />
 
-      <Modal open={ayuda} onClose={() => setAyuda(false)} title="Atajos del chat" footer={<button type="button" className="btn btn-primary" onClick={() => setAyuda(false)}>Entendido</button>}>
+      <Modal open={ayuda} onClose={() => setAyuda(false)} title="Cómo se usa el chat" footer={<button type="button" className="btn btn-primary" onClick={() => setAyuda(false)}>Entendido</button>}>
         <div className="help">
           <section>
-            <h3><Hash size={15} strokeWidth={2} aria-hidden="true" />Enlazar algo del proyecto</h3>
-            <p className="text-sm">Escribe <kbd>#</kbd> y elige qué enlazar; luego busca por nombre. Quien lea el mensaje lo abre con un toque sin salir de la ficha.</p>
-            <ul className="help-grid">{categorias.map(c => { const Icon = iconFor(c.type); return <li key={c.type}><Icon size={14} strokeWidth={1.8} aria-hidden="true" /><span><strong>{c.label}</strong><small className="muted">{c.hint}</small></span></li>; })}</ul>
+            <h3><Receipt size={15} strokeWidth={2} aria-hidden="true" />Consultar sin salir del chat</h3>
+            <p className="text-sm">Pulsa uno de los botones bajo la conversación (Presupuesto, Tareas, Compras…) y se abre encima del chat lo mismo que verías en la ficha. Al cerrarlo sigues donde estabas. Si prefieres escribir, vale <kbd>/</kbd> y elegir, o la frase tal cual: «ver último presupuesto», «qué falta».</p>
+            <ul className="help-cmds">{comandos.map(c => <li key={c.id}><span className="pl-mono">{c.formas[0]}{c.conArgumento ? " …" : ""}</span><span><strong>{c.descripcion}</strong><small className="muted">{c.ejemplo ? `Ej.: ${c.ejemplo} · ` : ""}También: {c.formas.slice(1, 4).map(f => `«${f}»`).join(", ")}</small></span></li>)}</ul>
           </section>
           <section>
-            <h3><Slash size={15} strokeWidth={2} aria-hidden="true" />Consultar sin salir del chat</h3>
-            <p className="text-sm">Escribe <kbd>/</kbd> y elige, o escribe la frase tal cual (por ejemplo «ver último presupuesto»). La respuesta solo la ves tú y trae accesos directos.</p>
-            <ul className="help-cmds">{comandos.map(c => <li key={c.id}><span className="pl-mono">{c.formas[0]}{c.conArgumento ? " …" : ""}</span><span><strong>{c.descripcion}</strong><small className="muted">{c.ejemplo ? `Ej.: ${c.ejemplo} · ` : ""}También: {c.formas.slice(1, 4).map(f => `«${f}»`).join(", ")}</small></span></li>)}</ul>
+            <h3><Hash size={15} strokeWidth={2} aria-hidden="true" />Mencionar algo del proyecto</h3>
+            <p className="text-sm">Pulsa <kbd>#</kbd> (o escríbelo) para señalar en tu mensaje de qué hablas: «revisad <span className="ref-chip" style={{ cursor: "default" }}><Receipt size={11} strokeWidth={2} aria-hidden="true" />V2 · Presupuesto de reforma</span> antes del viernes». Quien lo lea lo abre con un toque sin buscarlo, y en la información del chat queda reunido todo lo que se ha mencionado. No hace falta para hablar; sirve para ser concreto cuando hay varios presupuestos, documentos o tareas.</p>
+            <ul className="help-grid">{categorias.map(c => { const Icon = iconFor(c.type); return <li key={c.type}><Icon size={14} strokeWidth={1.8} aria-hidden="true" /><span><strong>{c.label}</strong><small className="muted">{c.hint}</small></span></li>; })}</ul>
           </section>
           <section>
             <h3><Paperclip size={15} strokeWidth={2} aria-hidden="true" />Y además</h3>
             <ul className="help-plain">
               <li>El clip adjunta fotos o PDF: quedan en Documentos del proyecto y se abren en grande con un toque.</li>
               <li>Pasa por un mensaje para reaccionar, editarlo o borrarlo. <kbd>Enter</kbd> envía, <kbd>Mayús</kbd>+<kbd>Enter</kbd> hace salto de línea.</li>
-              <li>La lupa busca en la conversación; el icono de información reúne participantes, fotos, documentos y enlaces.</li>
+              <li>La lupa busca en la conversación; el icono de información reúne participantes, fotos, documentos y lo mencionado.</li>
             </ul>
           </section>
         </div>

@@ -6,7 +6,7 @@ import { X } from "lucide-react";
  * Diálogo sobre la pantalla actual: no cambia de ruta, así que al cerrarlo sigues donde estabas.
  * En móvil se presenta como hoja inferior; en escritorio, centrado. Usa <dialog> nativo (foco y Escape).
  */
-export function Modal({ open, onClose, title, children, footer }: { open: boolean; onClose: () => void; title: string; children: ReactNode; footer?: ReactNode }) {
+export function Modal({ open, onClose, title, children, footer, size = "md" }: { open: boolean; onClose: () => void; title: string; children: ReactNode; footer?: ReactNode; size?: "md" | "wide" }) {
   const ref = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -17,7 +17,7 @@ export function Modal({ open, onClose, title, children, footer }: { open: boolea
   }, [open]);
 
   return (
-    <dialog ref={ref} className="modal" onClose={e => { if (e.target === e.currentTarget) onClose(); }} onClick={e => { if (e.target === e.currentTarget) onClose(); }} aria-label={title}>
+    <dialog ref={ref} className="modal" data-size={size} onClose={e => { if (e.target === e.currentTarget) onClose(); }} onClick={e => { if (e.target === e.currentTarget) onClose(); }} aria-label={title}>
       <div className="modal-body">
         <span className="modal-handle" aria-hidden="true" />
         <header className="modal-head">
