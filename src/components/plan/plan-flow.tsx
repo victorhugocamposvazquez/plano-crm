@@ -126,9 +126,9 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
   return (
     <div className="flow">
       <header className="flow-head">
-        <button type="button" className="btn btn-ghost" onClick={salir}><ArrowLeft size={16} strokeWidth={1.8} aria-hidden="true" />Salir</button>
-        <div className="flow-head-text"><span className="eyebrow">{cabeceraDestino}</span><strong>{project.name}</strong></div>
-        <span className="muted text-xs flow-head-save">Se guarda solo en este navegador</span>
+        <Link href={salida} className="flow-back" title="Volver al proyecto"><ArrowLeft size={15} strokeWidth={1.8} aria-hidden="true" /><span>{project.name}</span></Link>
+        <div className="flow-head-text"><span className="eyebrow">{cabeceraDestino}</span><span className="muted text-xs flow-head-save">Se guarda solo en este navegador</span></div>
+        <button type="button" className="btn btn-icon" aria-label="Salir y volver al proyecto" title="Salir · el borrador se guarda" onClick={salir}><X size={19} strokeWidth={1.6} aria-hidden="true" /></button>
       </header>
       <ol className="flow-steps" aria-label="Pasos">
         {pasos.map(p => <li key={p.n} data-state={p.n < b.paso ? "done" : p.n === b.paso ? "current" : "todo"} aria-current={p.n === b.paso ? "step" : undefined}><button type="button" disabled={p.n > b.paso} onClick={() => ir(p.n)}><i>{p.n < b.paso ? <Check size={11} strokeWidth={2.6} aria-hidden="true" /> : p.n}</i><span>{p.corto}</span></button></li>)}
