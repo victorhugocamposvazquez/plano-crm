@@ -8,57 +8,90 @@ import type { Article, BudgetItem } from "./domain";
 
 /**
  * «Presupuestar desde un plano»: la lógica del flujo guiado de la ficha, sin interfaz.
- * Apoya cada número en el motor de captura de Codex (candidatos a pared, escala, propuesta con precios
- * del catálogo) y traduce sus conceptos a palabras de obra: medida, pared que se tira o nueva, trabajo, partida.
- * El borrador vive en localStorage hasta que el dominio lo persista (ver docs/PREGUNTAS.md).
+ * Un expediente trae varios planos de la misma vivienda (demolición, obra nueva, cotas, áreas, instalaciones):
+ * cada uno dice para qué sirve, comparten una sola escala cuando son la misma hoja, y cada trabajo toma su
+ * cantidad del plano que le corresponde. Todo número sale del motor de captura de Codex.
  */
 
-export type Significado = "tira" | "nueva" | "nada";
+export type Uso = "demolicion" | "obra_nueva" | "cotas" | "areas" | "instalaciones" | "otro";
+export const usos: { id: Uso; label: string; hint: string; patron: RegExp; paredes?: Pared["estado"] }[] = [
+  { id: "demolicion", label: "Demolición", hint: "Lo marcado de color se tira", patron: /demoli|derrib/i, paredes: "tira" },
+  { id: "obra_nueva", label: "Obra nueva", hint: "Lo marcado de color es nuevo: tabiques, pladur", patron: /pladur|tabiq|obra nueva|reformad/i, paredes: "nueva" },
+  { id: "cotas", label: "Cotas", hint: "Con las medidas escritas: el mejor para dar la escala", patron: /cota|medid/i },
+  { id: "areas", label: "Áreas", hint: "Superficies de las estancias: suelos, techos, pintura", patron: /\bárea|\barea|superfic/i },
+  { id: "instalaciones", label: "Instalaciones", hint: "Luz, clima, fontanería: puntos a contar", patron: /climat|ilumin|electr|fontan|instalac/i },
+  { id: "otro", label: "Otro", hint: "Estado actual, distribución u otra vista", patron: /./ }
+];
+export const usoSugerido = (nombre: string): Uso => usos.find(u => u.patron.test(nombre))?.id ?? "otro";
+export const nombreUso = (uso: Uso) => usos.find(u => u.id === uso)?.label ?? uso;
+
+export type Medida = { start: Point | null; end: Point | null; metros: string };
+export type PlanoCargado = { id: string; nombre: string; documentId: string | null; extraction: PdfExtraction; page: number; uso: Uso; medida: Medida | null; ignorados: string[] };
 export type TrabajoId = "demoler" | "levantar" | "acabar";
 export type Paso = 1 | 2 | 3 | 4 | 5;
 export type Borrador = {
-  version: 1; projectId: string; budgetId: string | null; paso: Paso;
-  documentId: string | null; nombre: string; extraction: PdfExtraction | null; page: number;
-  medida: { start: Point | null; end: Point | null; metros: string };
-  /** Qué significa cada color de relleno del plano, por clave «r,g,b». */
-  leyenda: Record<string, Significado>;
-  /** Candidatos que la persona ha dicho que no son paredes. */
+  version: 2; projectId: string; budgetId: string | null; paso: Paso;
+  planos: PlanoCargado[];
+  /** La medida compartida: se toma en un plano y vale para los que son la misma hoja. */
+  medida: Medida & { planoId: string | null };
   noParedes: string[];
   altura: string; huecos: string;
   trabajos: Record<TrabajoId, { activo: boolean; articleId: string | null }>;
-  /** Identificadores estables para el motor, que exige UUID en fuentes, mediciones e intenciones. */
-  ids: { source: string; manual: string; calibration: string; altura: string; huecos: string; paredes: Record<string, string>; intents: Record<string, string>; items: Record<string, string> };
+  ids: { manual: string; altura: string; huecos: string; sources: Record<string, string>; calibrations: Record<string, string>; paredes: Record<string, string>; intents: Record<string, string>; items: Record<string, string> };
 };
 
 export const uuid = () => (typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : `${Date.now().toString(16)}-0000-4000-8000-${Math.random().toString(16).slice(2, 14).padEnd(12, "0")}`);
 export const numero = (s: string) => { const n = Number(String(s).replace(",", ".")); return Number.isFinite(n) ? n : 0; };
 const redondear = (n: number, d = 3) => Math.round(n * 10 ** d) / 10 ** d;
+const medidaVacia = (): Medida => ({ start: null, end: null, metros: "" });
 
 export function borradorNuevo(projectId: string, budgetId: string | null): Borrador {
   return {
-    version: 1, projectId, budgetId, paso: 1, documentId: null, nombre: "", extraction: null, page: 1,
-    medida: { start: null, end: null, metros: "" }, leyenda: {}, noParedes: [], altura: "2,60", huecos: "0",
+    version: 2, projectId, budgetId, paso: 1, planos: [], medida: { ...medidaVacia(), planoId: null }, noParedes: [], altura: "2,60", huecos: "0",
     trabajos: { demoler: { activo: true, articleId: null }, levantar: { activo: true, articleId: null }, acabar: { activo: false, articleId: null } },
-    ids: { source: uuid(), manual: uuid(), calibration: uuid(), altura: uuid(), huecos: uuid(), paredes: {}, intents: {}, items: {} }
+    ids: { manual: uuid(), altura: uuid(), huecos: uuid(), sources: {}, calibrations: {}, paredes: {}, intents: {}, items: {} }
   };
 }
-
 export const claveBorrador = (projectId: string) => `plano.borrador.${projectId}`;
 export function cargarBorrador(projectId: string): Borrador | null {
-  try { const raw = localStorage.getItem(claveBorrador(projectId)); if (!raw) return null; const b = JSON.parse(raw) as Borrador; return b.version === 1 && b.projectId === projectId ? b : null; } catch { return null; }
+  try { const raw = localStorage.getItem(claveBorrador(projectId)); if (!raw) return null; const b = JSON.parse(raw) as Borrador; return b.version === 2 && b.projectId === projectId ? b : null; } catch { return null; }
 }
 export function guardarBorrador(b: Borrador) { try { localStorage.setItem(claveBorrador(b.projectId), JSON.stringify(b)); return true; } catch { return false; } }
 export function borrarBorrador(projectId: string) { try { localStorage.removeItem(claveBorrador(projectId)); } catch { /* sin almacenamiento */ } }
 
-export function paginaActual(b: Borrador): PdfPage | null {
-  return b.extraction?.pages.find(p => p.page === b.page) ?? b.extraction?.pages[0] ?? null;
+/** Añade un plano leído; el uso se sugiere por el nombre y se puede cambiar. */
+export function añadirPlano(b: Borrador, plano: { nombre: string; extraction: PdfExtraction; documentId?: string | null }): Borrador {
+  const nuevo: PlanoCargado = { id: uuid(), nombre: plano.nombre, documentId: plano.documentId ?? null, extraction: plano.extraction, page: plano.extraction.pages[0].page, uso: usoSugerido(plano.nombre), medida: null, ignorados: [] };
+  return { ...b, planos: [...b.planos, nuevo] };
 }
+export function quitarPlano(b: Borrador, planoId: string): Borrador {
+  const medida = b.medida.planoId === planoId ? { ...medidaVacia(), planoId: null } : b.medida;
+  return { ...b, planos: b.planos.filter(p => p.id !== planoId), medida, noParedes: b.noParedes.filter(id => !id.startsWith(`${planoId}:`)) };
+}
+export const paginaDe = (p: PlanoCargado): PdfPage => p.extraction.pages.find(x => x.page === p.page) ?? p.extraction.pages[0];
+/** Dos planos son la misma hoja si la página mide lo mismo: salen del mismo CAD y comparten escala y origen. */
+export const mismaHoja = (a: PlanoCargado, c: PlanoCargado) => Math.abs(paginaDe(a).width - paginaDe(c).width) < 0.5 && Math.abs(paginaDe(a).height - paginaDe(c).height) < 0.5;
+/** El plano donde conviene medir: el de cotas si lo hay, si no el primero. */
+export const planoParaMedir = (b: Borrador): PlanoCargado | null => b.planos.find(p => p.uso === "cotas") ?? b.planos[0] ?? null;
 
-/** Nombre llano de un color para preguntar «¿qué significa el rojo?». */
-export function nombreColor([r, g, b]: RGB): string {
-  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+const escalaMedida = (m: Medida | null): number | null => { if (!m?.start || !m.end) return null; const k = numero(m.metros); if (k <= 0) return null; try { return metersPerDrawingUnit(m.start, m.end, k); } catch { return null; } };
+/** La medida que rige para un plano: la propia si la tiene; si no, la compartida cuando es la misma hoja. */
+export function medidaDe(b: Borrador, p: PlanoCargado): Medida | null {
+  if (escalaMedida(p.medida)) return p.medida;
+  const base = b.planos.find(x => x.id === b.medida.planoId);
+  if (base && escalaMedida(b.medida) && (base.id === p.id || mismaHoja(base, p))) return b.medida;
+  return null;
+}
+export const escalaDe = (b: Borrador, p: PlanoCargado) => escalaMedida(medidaDe(b, p));
+export const escala = (b: Borrador) => escalaMedida(b.medida);
+/** Planos que aportan paredes y todavía no tienen escala: habrá que medirlos aparte. */
+export const planosSinEscala = (b: Borrador) => b.planos.filter(p => usos.find(u => u.id === p.uso)?.paredes && !escalaDe(b, p));
+
+/** Nombre llano de un color para hablar de él. */
+export function nombreColor([r, g, bl]: RGB): string {
+  const max = Math.max(r, g, bl), min = Math.min(r, g, bl);
   if (max - min < 28) return max > 225 ? "blanco" : max < 60 ? "negro" : "gris";
-  const h = (() => { const d = max - min; let x = max === r ? (g - b) / d + (g < b ? 6 : 0) : max === g ? (b - r) / d + 2 : (r - g) / d + 4; x *= 60; return x; })();
+  const h = (() => { const d = max - min; let x = max === r ? (g - bl) / d + (g < bl ? 6 : 0) : max === g ? (bl - r) / d + 2 : (r - g) / d + 4; x *= 60; return x; })();
   if (h < 15 || h >= 345) return "rojo";
   if (h < 40) return "naranja";
   if (h < 70) return "amarillo";
@@ -68,15 +101,12 @@ export function nombreColor([r, g, b]: RGB): string {
   if (h < 300) return "morado";
   return "rosa";
 }
+const neutro = (c: RGB) => ["blanco", "negro", "gris"].includes(nombreColor(c));
+/** Colores de relleno de un plano; los neutros no cuentan como pared salvo que se marquen. */
 export function colores(page: PdfPage) {
-  return filledColors(page).filter(c => nombreColor(c.color) !== "blanco").slice(0, 8).map(c => ({ ...c, nombre: nombreColor(c.color) }));
+  return filledColors(page).filter(c => nombreColor(c.color) !== "blanco").slice(0, 8).map(c => ({ ...c, nombre: nombreColor(c.color), neutro: neutro(c.color) }));
 }
-
-export function escala(b: Borrador): number | null {
-  const { start, end, metros } = b.medida; const m = numero(metros);
-  if (!start || !end || m <= 0) return null;
-  try { return metersPerDrawingUnit(start, end, m); } catch { return null; }
-}
+export const cuentaComoPared = (p: PlanoCargado, c: { key: string; neutro: boolean }) => (p.ignorados.includes(c.key) ? c.neutro : !c.neutro);
 
 /** Vértice de trazo más cercano al punto tocado (esquinas incluidas), para que la medida caiga sobre el dibujo y no al lado. */
 export function puntoCercano(page: PdfPage, p: Point, tolerancia: number): Point {
@@ -85,19 +115,24 @@ export function puntoCercano(page: PdfPage, p: Point, tolerancia: number): Point
   return [redondear(mejor[0]), redondear(mejor[1])];
 }
 
-export type Pared = { id: string; nombre: string; estado: "tira" | "nueva"; longitud: number; centerline: [Point, Point]; color: RGB; descartada: boolean; pathIds: string[] };
-export function reglas(leyenda: Borrador["leyenda"]): LegendRule[] {
-  return Object.entries(leyenda).filter(([, s]) => s !== undefined).map(([key, s]) => ({ color: key.split(",").map(Number) as [number, number, number], action: s === "tira" ? "demolish" : s === "nueva" ? "build" : "ignore" }));
-}
-/** Paredes propuestas por el motor para la leyenda elegida, con su longitud en metros si ya hay escala. */
+export type Pared = { id: string; planoId: string; plano: string; nombre: string; estado: "tira" | "nueva"; longitud: number; centerline: [Point, Point]; color: RGB; descartada: boolean; pathIds: string[] };
+/** Paredes propuestas por el motor: lo coloreado del plano de demolición se tira, lo del de obra nueva es nuevo. */
 export function paredes(b: Borrador): Pared[] {
-  const page = paginaActual(b); if (!page) return [];
-  const r = reglas(b.leyenda); if (!r.some(x => x.action !== "ignore")) return [];
-  let candidatos; try { candidatos = proposeWallCandidates(page, r).candidates; } catch { return []; }
-  const k = escala(b);
-  return candidatos
-    .sort((a, c) => a.action.localeCompare(c.action) || polylineLength(c.centerline) - polylineLength(a.centerline))
-    .map((c, i) => ({ id: c.id, nombre: `Pared ${i + 1}`, estado: c.action === "demolish" ? "tira" : "nueva", longitud: k ? redondear(polylineLength(c.centerline) * k, 2) : 0, centerline: c.centerline, color: c.color, descartada: b.noParedes.includes(c.id), pathIds: c.source_path_ids }));
+  const out: Pared[] = [];
+  for (const p of b.planos) {
+    const estado = usos.find(u => u.id === p.uso)?.paredes; if (!estado) continue;
+    const page = paginaDe(p);
+    const reglas: LegendRule[] = colores(page).map(c => ({ color: c.color as [number, number, number], action: cuentaComoPared(p, c) ? (estado === "tira" ? "demolish" : "build") : "ignore" }));
+    if (!reglas.some(r => r.action !== "ignore")) continue;
+    let candidatos; try { candidatos = proposeWallCandidates(page, reglas).candidates; } catch { continue; }
+    const k = escalaDe(b, p);
+    for (const c of candidatos.sort((x, y) => polylineLength(y.centerline) - polylineLength(x.centerline))) {
+      const id = `${p.id}:${c.id}`;
+      out.push({ id, planoId: p.id, plano: p.nombre, nombre: "", estado, longitud: k ? redondear(polylineLength(c.centerline) * k, 2) : 0, centerline: c.centerline, color: c.color, descartada: b.noParedes.includes(id), pathIds: c.source_path_ids });
+    }
+  }
+  out.sort((a, c) => a.estado.localeCompare(c.estado) || c.longitud - a.longitud);
+  return out.map((w, i) => ({ ...w, nombre: `Pared ${i + 1}` }));
 }
 export function resumenParedes(ps: Pared[]) {
   const vivas = ps.filter(p => !p.descartada);
@@ -107,44 +142,45 @@ export function resumenParedes(ps: Pared[]) {
 
 export type Trabajo = { id: TrabajoId; titulo: string; detalle: string; aplicaA: Pared["estado"]; caras: 1 | 2; patron: RegExp; excluye?: RegExp };
 export const trabajos: Trabajo[] = [
-  { id: "demoler", titulo: "Demoler las paredes que se tiran", detalle: "Superficie de las paredes marcadas «se tira», por la altura.", aplicaA: "tira", caras: 1, patron: /demoli|derrib/i },
-  { id: "levantar", titulo: "Levantar las paredes nuevas", detalle: "Superficie de las paredes marcadas «nueva», por la altura.", aplicaA: "nueva", caras: 1, patron: /tabique|yeso|pladur|ladrillo|cartón/i, excluye: /demoli|derrib|retirad/i },
-  { id: "acabar", titulo: "Pintar las paredes nuevas", detalle: "Las dos caras de cada pared nueva. Las paredes que se quedan no salen del plano: añádelas a mano.", aplicaA: "nueva", caras: 2, patron: /pintur|pintar|acabado/i }
+  { id: "demoler", titulo: "Demoler las paredes que se tiran", detalle: "Superficie de las paredes del plano de demolición, por la altura.", aplicaA: "tira", caras: 1, patron: /demoli|derrib/i },
+  { id: "levantar", titulo: "Levantar las paredes nuevas", detalle: "Superficie de las paredes del plano de obra nueva, por la altura.", aplicaA: "nueva", caras: 1, patron: /tabique|yeso|pladur|ladrillo|cartón/i, excluye: /demoli|derrib|retirad/i },
+  { id: "acabar", titulo: "Pintar las paredes nuevas", detalle: "Las dos caras de cada pared nueva. Suelos, techos y lo existente saldrán del plano de áreas cuando el motor lo lea.", aplicaA: "nueva", caras: 2, patron: /pintur|pintar|acabado/i }
 ];
-/** Artículos del catálogo que pueden medirse desde el plano: por superficie o por metro lineal. */
 export const articulosMedibles = (articles: Article[]) => articles.filter(a => a.unit === "m²" || a.unit === "ml");
 export function sugerirArticulo(articles: Article[], t: Trabajo): Article | null {
   const medibles = articulosMedibles(articles).filter(a => t.patron.test(a.name) && !(t.excluye && t.excluye.test(a.name)));
   return medibles.find(a => a.unit === "m²") ?? medibles[0] ?? null;
 }
-/** Cantidad que saldrá del plano para un trabajo, en la unidad del artículo elegido. */
 export function cantidadTrabajo(t: Trabajo, ps: Pared[], altura: number, huecos: number, unit: string) {
   const largo = ps.filter(p => !p.descartada && p.estado === t.aplicaA).reduce((s, p) => s + p.longitud, 0);
   if (unit === "ml") return redondear(largo * t.caras, 2);
   return redondear(Math.max(0, largo * altura * t.caras - (t.caras === 1 ? huecos : 0)), 2);
 }
 
-/** Completa los UUID que el motor necesita para cada pared, intención y partida, sin cambiar los ya asignados. */
+/** Completa los UUID que el motor necesita (fuente y escala por plano, medición por pared, intención, partida). */
 export function asegurarIds(b: Borrador, ps: Pared[]): Borrador {
-  const ids = { ...b.ids, paredes: { ...b.ids.paredes }, intents: { ...b.ids.intents }, items: { ...b.ids.items } };
+  const ids = { ...b.ids, sources: { ...b.ids.sources }, calibrations: { ...b.ids.calibrations }, paredes: { ...b.ids.paredes }, intents: { ...b.ids.intents }, items: { ...b.ids.items } };
   let cambiado = false;
-  for (const p of ps) { if (!ids.paredes[p.id]) { ids.paredes[p.id] = uuid(); cambiado = true; } for (const t of trabajos) for (const cara of [1, 2]) { const k = `${t.id}:${p.id}:${cara}`; if (!ids.intents[k]) { ids.intents[k] = uuid(); cambiado = true; } } }
+  for (const p of b.planos) { if (!ids.sources[p.id]) { ids.sources[p.id] = uuid(); cambiado = true; } if (!ids.calibrations[p.id]) { ids.calibrations[p.id] = uuid(); cambiado = true; } }
+  for (const w of ps) { if (!ids.paredes[w.id]) { ids.paredes[w.id] = uuid(); cambiado = true; } for (const t of trabajos) for (const cara of [1, 2]) { const k = `${t.id}:${w.id}:${cara}`; if (!ids.intents[k]) { ids.intents[k] = uuid(); cambiado = true; } } }
   for (const t of trabajos) if (!ids.items[t.id]) { ids.items[t.id] = uuid(); cambiado = true; }
   return cambiado ? { ...b, ids } : b;
 }
 
-/** La entrada del motor de Codex: fuente, escala, una medición por pared y una intención por pared y trabajo. */
+/** La entrada del motor: una fuente y una escala por plano con paredes, una medición por pared y una intención por pared y cara. */
 export function entradaMotor(b: Borrador, ps: Pared[], articles: Article[]): EstimateInput | null {
-  const page = paginaActual(b); const { start, end } = b.medida; const m = numero(b.medida.metros);
-  if (!page || !b.extraction || !start || !end || m <= 0) return null;
   const altura = numero(b.altura), huecos = numero(b.huecos);
-  const vivas = ps.filter(p => !p.descartada && b.ids.paredes[p.id]);
+  const vivas = ps.filter(w => !w.descartada && b.ids.paredes[w.id]);
+  const planosUsados = b.planos.filter(p => vivas.some(w => w.planoId === p.id) && medidaDe(b, p));
+  if (!planosUsados.length) return null;
   const sources: EstimateInput["sources"] = [
-    { id: b.ids.source, kind: "pdf", label: b.nombre || "Plano", sha256: b.extraction.sha256, phase: "unspecified", legend: "", ...(b.documentId && /^[0-9a-f-]{36}$/i.test(b.documentId) ? { document_id: b.documentId } : {}) },
+    ...planosUsados.map(p => ({ id: b.ids.sources[p.id], kind: "pdf" as const, label: p.nombre, sha256: p.extraction.sha256, phase: (p.uso === "demolicion" ? "demolition" : p.uso === "obra_nueva" ? "proposed" : "unspecified") as "demolition" | "proposed" | "unspecified", legend: "", ...(p.documentId && /^[0-9a-f-]{36}$/i.test(p.documentId) ? { document_id: p.documentId } : {}) })),
     { id: b.ids.manual, kind: "manual", label: "Datos indicados en la ficha", phase: "unspecified", legend: "" }
   ];
+  const calibrations: EstimateInput["calibrations"] = planosUsados.map(p => { const m = medidaDe(b, p)!; return { id: b.ids.calibrations[p.id], source_id: b.ids.sources[p.id], page: paginaDe(p).page, start: m.start!, end: m.end!, distance_m: numero(m.metros), reference: m === b.medida ? "Medida compartida indicada sobre el plano" : "Medida indicada sobre este plano" }; });
+  const usables = vivas.filter(w => planosUsados.some(p => p.id === w.planoId));
   const measurements: EstimateInput["measurements"] = [
-    ...vivas.map(p => ({ id: b.ids.paredes[p.id], source_id: b.ids.source, label: p.nombre, kind: "plan_length" as const, page: page.page, calibration_id: b.ids.calibration, points: p.centerline, derived_from_path_ids: p.pathIds })),
+    ...usables.map(w => ({ id: b.ids.paredes[w.id], source_id: b.ids.sources[w.planoId], label: `${w.nombre} · ${w.plano}`, kind: "plan_length" as const, page: paginaDe(b.planos.find(p => p.id === w.planoId)!).page, calibration_id: b.ids.calibrations[w.planoId], points: w.centerline, derived_from_path_ids: w.pathIds })),
     { id: b.ids.altura, source_id: b.ids.manual, label: "Altura de las paredes", kind: "quantity", value: Math.max(altura, 0.01), unit: "ml", method: "manual", reference: "Altura indicada en la ficha" },
     ...(huecos > 0 ? [{ id: b.ids.huecos, source_id: b.ids.manual, label: "Huecos descontados", kind: "quantity" as const, value: huecos, unit: "m²" as const, method: "manual" as const, reference: "Puertas y ventanas indicadas en la ficha" }] : [])
   ];
@@ -152,36 +188,34 @@ export function entradaMotor(b: Borrador, ps: Pared[], articles: Article[]): Est
   for (const t of trabajos) {
     const cfg = b.trabajos[t.id]; if (!cfg.activo) continue;
     const article = articles.find(a => a.id === cfg.articleId);
-    const suyas = vivas.filter(p => p.estado === t.aplicaA);
+    const suyas = usables.filter(w => w.estado === t.aplicaA);
     const masLarga = suyas.slice().sort((a, c) => c.longitud - a.longitud)[0];
-    for (const p of suyas) for (let cara = 1; cara <= t.caras; cara++) {
-      const descuento = huecos > 0 && t.caras === 1 && p.id === masLarga?.id ? [b.ids.huecos] : [];
-      intents.push({
-        id: b.ids.intents[`${t.id}:${p.id}:${cara}`], label: `${t.titulo} · ${p.nombre}${t.caras > 1 ? ` · cara ${cara}` : ""}`, article_id: article?.id ?? null,
-        formula: article?.unit === "ml" ? { kind: "sum", measurement_ids: [b.ids.paredes[p.id]] } : { kind: "wall_area", length_id: b.ids.paredes[p.id], height_id: b.ids.altura, opening_ids: descuento },
-        inclusion: "included", adjustment_percent: 0, adjustment_reason: ""
-      });
+    for (const w of suyas) for (let cara = 1; cara <= t.caras; cara++) {
+      const descuento = huecos > 0 && t.caras === 1 && w.id === masLarga?.id ? [b.ids.huecos] : [];
+      intents.push({ id: b.ids.intents[`${t.id}:${w.id}:${cara}`], label: `${t.titulo} · ${w.nombre}${t.caras > 1 ? ` · cara ${cara}` : ""}`, article_id: article?.id ?? null,
+        formula: article?.unit === "ml" ? { kind: "sum", measurement_ids: [b.ids.paredes[w.id]] } : { kind: "wall_area", length_id: b.ids.paredes[w.id], height_id: b.ids.altura, opening_ids: descuento },
+        inclusion: "included", adjustment_percent: 0, adjustment_reason: "" });
     }
   }
   if (!intents.length) return null;
-  return { schema_version: 1, project_id: b.projectId, scope: "Partidas propuestas desde el plano", sources, calibrations: [{ id: b.ids.calibration, source_id: b.ids.source, page: page.page, start, end, distance_m: m, reference: "Medida indicada sobre el plano" }], measurements, intents };
+  return { schema_version: 1, project_id: b.projectId, scope: "Partidas propuestas desde los planos", sources, calibrations, measurements, intents };
 }
 
-export type LineaPropuesta = { trabajo: Trabajo; article: Article | null; item: BudgetItem | null; cantidad: number; paredes: number; pendientes: string[]; avisos: string[] };
+export type LineaPropuesta = { trabajo: Trabajo; article: Article | null; item: BudgetItem | null; cantidad: number; paredes: number; planos: string[]; pendientes: string[]; avisos: string[] };
 export type Propuesta = { lineas: LineaPropuesta[]; items: BudgetItem[]; base: number; pendientes: number };
 
 /** Pasa la entrada por el motor y agrupa sus líneas (una por pared) en una partida por trabajo. */
 export function propuesta(b: Borrador, ps: Pared[], articles: Article[], organizationId: string): Propuesta | { error: string } {
   const entrada = entradaMotor(b, ps, articles);
-  if (!entrada) return { error: "Faltan la medida del plano o algún trabajo marcado." };
+  if (!entrada) return { error: "Faltan la medida de los planos o algún trabajo marcado." };
   let resultado: ReturnType<typeof createEstimateProposal>;
   try { resultado = createEstimateProposal(entrada, { organization_id: organizationId, articles }); }
   catch (e) { return { error: e instanceof Error ? e.message : "El motor no ha podido calcular la propuesta." }; }
-  const porIntent = new Map<string, string>(Object.entries(b.ids.intents).map(([k, id]) => [id, k.split(":")[0]]));
+  const porIntent = new Map<string, string>(Object.entries(b.ids.intents).map(([k, id]) => [id, k]));
   const lineas: LineaPropuesta[] = [];
   for (const t of trabajos) {
     if (!b.trabajos[t.id].activo) continue;
-    const suyas: ProposalLine[] = resultado.lines.filter(l => porIntent.get(l.id) === t.id);
+    const suyas: ProposalLine[] = resultado.lines.filter(l => porIntent.get(l.id)?.startsWith(`${t.id}:`));
     if (!suyas.length) continue;
     const article = articles.find(a => a.id === b.trabajos[t.id].articleId) ?? null;
     const calculadas = suyas.filter(l => l.item);
@@ -190,14 +224,15 @@ export function propuesta(b: Borrador, ps: Pared[], articles: Article[], organiz
     const avisos = [...new Set(suyas.flatMap(l => l.warnings))].filter(w => !/pendiente de revisión humana/.test(w));
     const base = calculadas[0]?.item ?? null;
     const item = base && cantidad > 0 ? { ...base, id: b.ids.items[t.id], quantity: cantidad } : null;
-    lineas.push({ trabajo: t, article, item, cantidad, paredes: new Set(suyas.map(l => l.label.replace(/ · cara \d$/, ""))).size, pendientes, avisos });
+    const paredIds = new Set(suyas.map(l => porIntent.get(l.id)!.split(":").slice(1, -1).join(":")));
+    const planos = [...new Set([...paredIds].map(id => ps.find(w => w.id === id)?.plano).filter((x): x is string => Boolean(x)))];
+    lineas.push({ trabajo: t, article, item, cantidad, paredes: paredIds.size, planos, pendientes, avisos });
   }
   const items = lineas.flatMap(l => (l.item ? [l.item] : []));
   return { lineas, items, base: resultado.priced_subtotal.base, pendientes: lineas.filter(l => !l.item).length };
 }
 
 export type Coincidencia = { nuevo: BudgetItem; existente: BudgetItem };
-/** Partidas que ya estaban en la revisión y se parecen a las propuestas: misma descripción o mismo artículo. */
 export function coincidencias(existentes: BudgetItem[], nuevos: BudgetItem[]): Coincidencia[] {
   const out: Coincidencia[] = [];
   for (const nuevo of nuevos) {
@@ -207,7 +242,6 @@ export function coincidencias(existentes: BudgetItem[], nuevos: BudgetItem[]): C
   return out;
 }
 export type Decision = "sustituir" | "añadir";
-/** Mezcla respetando lo que había: sustituir cambia cantidad y precio en la partida existente; añadir la pone detrás. */
 export function fusionar(existentes: BudgetItem[], nuevos: BudgetItem[], decisiones: Record<string, Decision>, pares: Coincidencia[]): BudgetItem[] {
   const resultado = existentes.map(e => ({ ...e }));
   const añadidos: BudgetItem[] = [];

@@ -2,27 +2,28 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ArrowRight, Check, FileText, Upload, Loader2, RotateCcw, X, Ruler, Sparkles } from "lucide-react";
+import { ArrowLeft, ArrowRight, Check, FileText, Upload, Loader2, RotateCcw, X, Ruler, Sparkles, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { useWorkspace } from "@/components/workspace-provider";
 import { PlanSvg } from "@/components/plan/plan-svg";
-import { pdfExtractionSchema } from "@/lib/captura/pdf-extraction";
+import { pdfExtractionSchema, colorCss } from "@/lib/captura/pdf-extraction";
 import { samplePlan } from "@/lib/captura/sample-plan";
-import { colorCss } from "@/lib/captura/pdf-extraction";
 import { can, money, lineTotal, type Project, type BudgetItem } from "@/lib/domain";
 import { formatSize } from "@/lib/documentos";
-import { borradorNuevo, cargarBorrador, guardarBorrador, borrarBorrador, paginaActual, colores, escala, puntoCercano, paredes as calcularParedes, resumenParedes, trabajos, articulosMedibles, sugerirArticulo, cantidadTrabajo, asegurarIds, propuesta as calcularPropuesta, coincidencias, fusionar, numero, type Borrador, type Paso, type Significado, type Decision } from "@/lib/plano-flujo";
+import { borradorNuevo, cargarBorrador, guardarBorrador, borrarBorrador, añadirPlano, quitarPlano, usos, nombreUso, paginaDe, planoParaMedir, mismaHoja, medidaDe, escalaDe, escala, planosSinEscala, colores, cuentaComoPared, puntoCercano, paredes as calcularParedes, resumenParedes, trabajos, articulosMedibles, sugerirArticulo, cantidadTrabajo, asegurarIds, propuesta as calcularPropuesta, coincidencias, fusionar, numero, type Borrador, type Paso, type PlanoCargado, type Decision } from "@/lib/plano-flujo";
 
 const pasos: { n: Paso; titulo: string; corto: string }[] = [
-  { n: 1, titulo: "Sube el plano", corto: "Plano" }, { n: 2, titulo: "Dale una medida", corto: "Medida" }, { n: 3, titulo: "Confirma las paredes", corto: "Paredes" },
+  { n: 1, titulo: "Tus planos", corto: "Planos" }, { n: 2, titulo: "Dale una medida", corto: "Medida" }, { n: 3, titulo: "Confirma las paredes", corto: "Paredes" },
   { n: 4, titulo: "¿Qué se hace?", corto: "Trabajos" }, { n: 5, titulo: "Revisa y añade al presupuesto", corto: "Revisar" }
 ];
 const cantidad = (n: number) => new Intl.NumberFormat("es-ES", { maximumFractionDigits: 2 }).format(n);
+type Vista = { medida: boolean };
 
 /**
- * Flujo «Presupuestar desde un plano». Cinco pasos con palabras de obra; «Salir» siempre a mano y el
- * borrador guardado en este navegador. Lo que sale se añade a la revisión abierta del presupuesto (o abre la V1).
+ * Flujo «Presupuestar desde un plano». Un expediente trae varios planos de la misma vivienda: cada uno dice
+ * para qué sirve, comparten una medida cuando son la misma hoja y cada trabajo toma su cantidad del plano que
+ * le toca. Cinco pasos con palabras de obra; la X siempre arriba; el borrador se guarda en este navegador.
  */
 export function PlanFlow({ project, budgetId }: { project: Project; budgetId: string | null }) {
   const { data, actor, busy, send, notify, upload, mode } = useWorkspace();
@@ -31,6 +32,9 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
   const [b, setB] = useState<Borrador>(() => (typeof window !== "undefined" && cargarBorrador(project.id)) || borradorNuevo(project.id, budgetId));
   const [subiendo, setSubiendo] = useState(false);
   const [pendiente, setPendiente] = useState<{ name: string; since: string } | null>(null);
+  const [sinLeer, setSinLeer] = useState<{ documentId: string; nombre: string }[]>([]);
+  const [midiendo, setMidiendo] = useState<string | null>(null);
+  const [planoVisto, setPlanoVisto] = useState<string | null>(null);
   const [seleccionada, setSeleccionada] = useState<string | null>(null);
   const [decisiones, setDecisiones] = useState<Record<string, Decision>>({});
   const [guardando, setGuardando] = useState(false);
@@ -48,47 +52,75 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
   const existentes: BudgetItem[] = destino?.items ?? [];
   const planosAdjuntos = useMemo(() => data.documents.filter(d => d.project_id === project.id && d.mime_type === "application/pdf").sort((x, y) => y.created_at.localeCompare(x.created_at)), [data.documents, project.id]);
 
-  const page = paginaActual(b);
-  const k = escala(b);
-  const ps = useMemo(() => calcularParedes(b), [b]); // eslint-disable-line react-hooks/exhaustive-deps
+  const ps = useMemo(() => calcularParedes(b), [b]);
   const resumen = resumenParedes(ps);
   const medibles = useMemo(() => articulosMedibles(data.articles), [data.articles]);
+  const conParedes = b.planos.filter(p => usos.find(u => u.id === p.uso)?.paredes);
+  const sinEscala = planosSinEscala(b);
+  const base = b.planos.find(p => p.id === b.medida.planoId) ?? null;
+  const planoMedida = b.planos.find(p => p.id === midiendo) ?? base ?? planoParaMedir(b);
+  const planoParedes = b.planos.find(p => p.id === planoVisto && usos.find(u => u.id === p.uso)?.paredes) ?? conParedes[0] ?? null;
 
-  useEffect(() => { if (!guardarBorrador(b) && !avisoGuardado) { setAvisoGuardado(true); notify("No se ha podido guardar el borrador en este navegador; sigue, pero no cierres la pestaña."); } }, [b]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (!guardarBorrador(b) && !avisoGuardado) { setAvisoGuardado(true); notify("No se ha podido guardar el borrador en este navegador (ocupa demasiado); sigue, pero no cierres la pestaña."); } }, [b]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { setB(prev => asegurarIds(prev, ps)); }, [ps]);
-  useEffect(() => { if (!pendiente) return; const doc = data.documents.find(d => d.project_id === project.id && d.name === pendiente.name && d.created_at >= pendiente.since); if (doc) { setB(prev => ({ ...prev, documentId: doc.id, nombre: doc.name })); setPendiente(null); } }, [data.documents, pendiente, project.id]);
-  // Al llegar a los trabajos, cada uno sugiere un artículo del catálogo si todavía no tiene.
+  useEffect(() => { if (!pendiente) return; const doc = data.documents.find(d => d.project_id === project.id && d.name === pendiente.name && d.created_at >= pendiente.since); if (doc) { setSinLeer(prev => [...prev, { documentId: doc.id, nombre: doc.name }]); setPendiente(null); } }, [data.documents, pendiente, project.id]);
   useEffect(() => { if (b.paso !== 4) return; setB(prev => { let cambiado = false; const t = { ...prev.trabajos }; for (const tr of trabajos) if (!t[tr.id].articleId) { const a = sugerirArticulo(data.articles, tr); if (a) { t[tr.id] = { ...t[tr.id], articleId: a.id }; cambiado = true; } } return cambiado ? { ...prev, trabajos: t } : prev; }); }, [b.paso, data.articles]);
 
   const set = (patch: Partial<Borrador>) => setB(prev => ({ ...prev, ...patch }));
+  const actualizarPlano = (id: string, patch: Partial<PlanoCargado>) => setB(prev => ({ ...prev, planos: prev.planos.map(p => (p.id === id ? { ...p, ...patch } : p)) }));
   const ir = (paso: Paso) => { set({ paso }); window.scrollTo({ top: 0 }); };
 
   async function subir(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]; e.target.value = ""; if (!file) return;
     if (file.type !== "application/pdf") { notify("Sube el plano en PDF. Si solo tienes una foto o un escaneo, adjúntalo al proyecto y presupuesta a mano."); return; }
     setSubiendo(true); const since = new Date(Date.now() - 1000).toISOString();
-    try { await upload(file, project.id, "plan"); setPendiente({ name: file.name, since }); set({ nombre: file.name, extraction: null }); }
+    try { await upload(file, project.id, "plan"); setPendiente({ name: file.name, since }); }
     catch (err) { notify(err instanceof Error ? err.message : "No se ha podido subir el plano."); }
     finally { setSubiendo(false); }
   }
-  async function cargarLectura(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]; e.target.value = ""; if (!file) return;
-    try {
-      const raw = JSON.parse(await file.text());
-      const r = pdfExtractionSchema.safeParse(raw);
-      if (!r.success) throw new Error("Ese archivo no es una lectura de plano de Plano.");
-      set({ extraction: r.data, page: r.data.pages[0].page, nombre: b.nombre || file.name.replace(/\.json$/i, ".pdf"), medida: { start: null, end: null, metros: "" }, leyenda: {}, noParedes: [] });
-    } catch (err) { notify(err instanceof Error ? err.message : "No se ha podido leer el archivo."); }
+  async function cargarLecturas(e: ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(e.target.files ?? []); e.target.value = ""; if (!files.length) return;
+    let b2 = b; let leidos = 0; const quedan = [...sinLeer];
+    for (const file of files) {
+      try {
+        const r = pdfExtractionSchema.safeParse(JSON.parse(await file.text()));
+        if (!r.success) throw new Error(`«${file.name}» no es una lectura de plano de Plano.`);
+        const nombre = file.name.replace(/\.json$/i, ".pdf").replace(/_/g, " ");
+        const doc = quedan.find(d => d.nombre.replace(/_/g, " ").toLowerCase() === nombre.toLowerCase()) ?? (quedan.length === 1 && files.length === 1 ? quedan[0] : undefined);
+        if (doc) quedan.splice(quedan.indexOf(doc), 1);
+        b2 = añadirPlano(b2, { nombre: doc?.nombre ?? nombre, extraction: r.data, documentId: doc?.documentId ?? null }); leidos++;
+      } catch (err) { notify(err instanceof Error ? err.message : "No se ha podido leer un archivo."); }
+    }
+    if (leidos) { setB(b2); setSinLeer(quedan); }
   }
-  function usarEjemplo() { set({ extraction: samplePlan, page: 1, nombre: b.nombre || "Plano de ejemplo (ficticio)", medida: { start: null, end: null, metros: "" }, leyenda: {}, noParedes: [] }); }
+  function usarEjemplo() {
+    let b2 = añadirPlano(b, { nombre: "Ejemplo · Plano Demolición.pdf", extraction: { ...samplePlan, sha256: "a".repeat(64), pages: [{ ...samplePlan.pages[0], paths: samplePlan.pages[0].paths.filter(p => p.id !== "construir-b") }] } });
+    b2 = añadirPlano(b2, { nombre: "Ejemplo · Plano Pladur.pdf", extraction: { ...samplePlan, sha256: "b".repeat(64), pages: [{ ...samplePlan.pages[0], paths: samplePlan.pages[0].paths.filter(p => !p.id.startsWith("demoler")) }] } });
+    b2 = añadirPlano(b2, { nombre: "Ejemplo · Plano Cotas.pdf", extraction: samplePlan });
+    setB(b2);
+  }
 
   function marcar(p: [number, number]) {
-    if (!page) return;
+    if (!planoMedida) return;
+    const page = paginaDe(planoMedida);
     const q = puntoCercano(page, p, Math.max(page.width, page.height) / 60);
-    setB(prev => { const m = prev.medida; if (!m.start || (m.start && m.end)) return { ...prev, medida: { start: q, end: null, metros: m.metros } }; return { ...prev, medida: { ...m, end: q } }; });
+    const propia = base && base.id !== planoMedida.id && !mismaHoja(base, planoMedida);
+    setB(prev => {
+      if (propia) { const m = prev.planos.find(x => x.id === planoMedida.id)?.medida ?? { start: null, end: null, metros: prev.medida.metros }; const nueva = !m.start || (m.start && m.end) ? { ...m, start: q, end: null } : { ...m, end: q }; return { ...prev, planos: prev.planos.map(x => (x.id === planoMedida.id ? { ...x, medida: nueva } : x)) }; }
+      const m = prev.medida; const nueva = !m.start || (m.start && m.end) ? { ...m, start: q, end: null, planoId: planoMedida.id } : { ...m, end: q };
+      return { ...prev, medida: nueva };
+    });
   }
-  const significado = (key: string, s: Significado) => setB(prev => ({ ...prev, leyenda: { ...prev.leyenda, [key]: s } }));
+  const medidaEnPantalla = (() => { if (!planoMedida) return null; const propia = base && base.id !== planoMedida.id && !mismaHoja(base, planoMedida); return propia ? (planoMedida.medida ?? { start: null, end: null, metros: "" }) : b.medida; })();
+  const metrosEnPantalla = (v: string) => { if (!planoMedida) return; const propia = base && base.id !== planoMedida.id && !mismaHoja(base, planoMedida); if (propia) actualizarPlano(planoMedida.id, { medida: { ...(planoMedida.medida ?? { start: null, end: null, metros: "" }), metros: v } }); else set({ medida: { ...b.medida, metros: v } }); };
+  function reiniciarMedida() {
+    if (!planoMedida) return;
+    const propia = base && base.id !== planoMedida.id && !mismaHoja(base, planoMedida);
+    if (propia) actualizarPlano(planoMedida.id, { medida: { start: null, end: null, metros: planoMedida.medida?.metros ?? "" } });
+    else set({ medida: { ...b.medida, start: null, end: null } });
+  }
   const alternarPared = (id: string) => setB(prev => ({ ...prev, noParedes: prev.noParedes.includes(id) ? prev.noParedes.filter(x => x !== id) : [...prev.noParedes, id] }));
+  const alternarColor = (p: PlanoCargado, key: string) => actualizarPlano(p.id, { ignorados: p.ignorados.includes(key) ? p.ignorados.filter(k => k !== key) : [...p.ignorados, key] });
 
   const resultado = useMemo(() => (b.paso === 5 ? calcularPropuesta(b, ps, data.articles, data.organization_id) : null), [b, ps, data.articles, data.organization_id]);
   const nuevos = resultado && !("error" in resultado) ? resultado.items : [];
@@ -105,21 +137,22 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
       if (!objetivo) throw new Error("No se ha podido abrir el presupuesto.");
       const suyas = () => ws.versions.filter(v => v.budget_id === objetivo!.id).sort((x, y) => y.number - x.number);
       let borrador = suyas().find(v => v.status === "draft");
-      if (!borrador) { const base = suyas().find(v => v.status === "issued") ?? suyas().find(v => v.id === objetivo!.approved_version_id) ?? suyas()[0]; if (!base) throw new Error("El presupuesto no tiene ninguna revisión."); ws = await send({ type: "budget.revise", version_id: base.id, reason: "Partidas añadidas desde el plano" }); borrador = suyas().find(v => v.status === "draft"); }
+      if (!borrador) { const baseV = suyas().find(v => v.status === "issued") ?? suyas().find(v => v.id === objetivo!.approved_version_id) ?? suyas()[0]; if (!baseV) throw new Error("El presupuesto no tiene ninguna revisión."); ws = await send({ type: "budget.revise", version_id: baseV.id, reason: "Partidas añadidas desde los planos" }); borrador = suyas().find(v => v.status === "draft"); }
       if (!borrador) throw new Error("No se ha podido abrir un borrador.");
       const paresAhora = coincidencias(borrador.items, nuevos);
       await send({ type: "budget.save", version_id: borrador.id, expected_revision: borrador.draft_revision, items: fusionar(borrador.items, nuevos, decisiones, paresAhora), notes: borrador.notes });
       borrarBorrador(project.id);
-      notify(`${nuevos.length} partida${nuevos.length === 1 ? "" : "s"} del plano añadida${nuevos.length === 1 ? "" : "s"} a la V${borrador.number}.`);
+      notify(`${nuevos.length} partida${nuevos.length === 1 ? "" : "s"} de los planos añadida${nuevos.length === 1 ? "" : "s"} a la V${borrador.number}.`);
       router.push(`/proyectos/${project.id}?s=budget&p=${objetivo.id}`);
     } catch (err) { notify(err instanceof Error ? err.message : "No se han podido añadir las partidas."); }
     finally { setGuardando(false); }
   }
   function salir() { router.push(salida); }
-  function empezarDeNuevo() { borrarBorrador(project.id); setB(borradorNuevo(project.id, budgetId)); setDecisiones({}); }
+  function empezarDeNuevo() { borrarBorrador(project.id); setB(borradorNuevo(project.id, budgetId)); setDecisiones({}); setSinLeer([]); }
 
   const cabeceraDestino = destino ? `Añadiendo al presupuesto · V${destino.number} · ${destino.status === "draft" ? "borrador" : destino.status === "issued" ? "revisión cerrada, se abrirá una nueva" : "aprobada, se abrirá una revisión nueva"}` : "Se abrirá el presupuesto · V1";
   const actual = pasos.find(p => p.n === b.paso)!;
+  const vista: Vista = { medida: Boolean(b.medida.start && b.medida.end) };
 
   if (!puede) return <div className="empty"><strong>Tu perfil puede ver el presupuesto, pero no añadir partidas.</strong><Link href={salida} className="btn btn-secondary">Volver a la ficha</Link></div>;
 
@@ -137,101 +170,104 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
 
       {b.paso === 1 && (
         <div className="flow-body">
-          <p className="muted">Vale el PDF que te dio el arquitecto o el que sale de AutoCAD. Se guarda en Documentos del proyecto pase lo que pase después.</p>
-          {!b.extraction && (
-            <>
-              <button type="button" className="dropzone" disabled={subiendo || busy} onClick={() => pdfInput.current?.click()}>
-                {subiendo ? <Loader2 size={32} strokeWidth={1.6} aria-hidden="true" className="spin" /> : <Upload size={32} strokeWidth={1.5} aria-hidden="true" />}
-                <strong>{subiendo ? "Subiendo el plano…" : b.documentId ? `Plano guardado: ${b.nombre}` : "Elegir PDF"}</strong>
-                <span className="muted text-sm">{b.documentId ? "Puedes cambiarlo por otro" : "hasta 50 MB · se guarda como documento del proyecto"}</span>
-              </button>
-              <input ref={pdfInput} type="file" accept="application/pdf" onChange={subir} style={{ display: "none" }} aria-hidden="true" tabIndex={-1} />
-              {planosAdjuntos.length > 0 && !b.documentId && (
-                <div className="panel"><div className="panel-body" style={{ paddingBottom: 6 }}><span className="eyebrow">O usa uno ya adjunto</span></div>{planosAdjuntos.slice(0, 5).map(d => <button key={d.id} type="button" className="info-row" style={{ padding: "8px 14px" }} onClick={() => set({ documentId: d.id, nombre: d.name })}><FileText size={16} strokeWidth={1.7} aria-hidden="true" /><span style={{ minWidth: 0, flex: 1 }}><strong>{d.name}</strong><small className="muted">{formatSize(d.size_bytes)}</small></span></button>)}</div>
-              )}
-              {b.documentId && (
-                <div className="panel notice-panel">
-                  <div className="panel-body" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    <strong>Plano guardado. La lectura automática del PDF todavía no está en Plano.</strong>
-                    <span className="muted text-sm">El equipo técnico puede leerlo con el lector de planos y darte el archivo de lectura. Mientras tanto, también puedes probar el flujo con un plano de ejemplo.</span>
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      <Button variant="secondary" onClick={() => jsonInput.current?.click()}><FileText size={16} strokeWidth={1.7} aria-hidden="true" />Tengo la lectura del plano (.json)</Button>
-                      <Button variant="ghost" onClick={usarEjemplo}>Probar con un plano de ejemplo</Button>
-                    </div>
-                  </div>
+          <p className="muted">Un expediente suele traer varios planos de la misma vivienda: demolición, obra nueva, cotas, áreas, instalaciones. Añádelos todos y di para qué sirve cada uno. Se guardan en Documentos del proyecto.</p>
+          {b.planos.length > 0 && (
+            <ul className="plan-list">{b.planos.map(p => { const page = paginaDe(p); const u = usos.find(x => x.id === p.uso)!; return (
+              <li key={p.id} className="plan-card" data-uso={p.uso}>
+                <div className="plan-stage plan-stage-xs"><PlanSvg page={page} label={`Vista previa de ${p.nombre}`} /></div>
+                <div className="plan-card-body">
+                  <strong title={p.nombre}>{p.nombre}</strong>
+                  <small className="muted">{p.extraction.pages.length} página{p.extraction.pages.length === 1 ? "" : "s"} · {page.paths.length.toLocaleString("es-ES")} trazos{p.documentId ? " · en Documentos" : ""}</small>
+                  <Select label={`¿Qué muestra ${p.nombre}?`} size="sm" value={p.uso} onChange={v => actualizarPlano(p.id, { uso: v })} options={usos.map(x => ({ value: x.id, label: x.label }))} />
+                  <small className="muted">{u.hint}</small>
+                  {p.extraction.pages.length > 1 && <Select label="Página" size="sm" value={String(p.page)} onChange={v => actualizarPlano(p.id, { page: Number(v) })} options={p.extraction.pages.map(x => ({ value: String(x.page), label: `Página ${x.page} · ${x.paths.length} trazos` }))} />}
                 </div>
-              )}
-              {!b.documentId && <div style={{ display: "flex", gap: 8, flexWrap: "wrap", justifyContent: "center" }}><Button variant="ghost" onClick={() => jsonInput.current?.click()}>Tengo la lectura del plano (.json)</Button>{(mode === "demo" || planosAdjuntos.length === 0) && <Button variant="ghost" onClick={usarEjemplo}>Probar con un plano de ejemplo</Button>}</div>}
-              <input ref={jsonInput} type="file" accept=".json,application/json" onChange={cargarLectura} style={{ display: "none" }} aria-hidden="true" tabIndex={-1} />
-            </>
+                <button type="button" className="btn btn-icon" aria-label={`Quitar ${p.nombre}`} onClick={() => setB(prev => quitarPlano(prev, p.id))}><X size={16} strokeWidth={1.7} aria-hidden="true" /></button>
+              </li>
+            ); })}</ul>
           )}
-          {b.extraction && page && (
-            <div className="panel">
-              <div className="panel-body" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}><strong style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{b.nombre}</strong><span className="pill" data-tone="success">Leído</span></div>
-                <span className="muted text-sm">Es un plano con líneas: {b.extraction.pages.length} página{b.extraction.pages.length === 1 ? "" : "s"}, {page.paths.length.toLocaleString("es-ES")} trazos.</span>
-                {b.extraction.pages.length > 1 && <Select label="Página a medir" value={String(b.page)} onChange={v => set({ page: Number(v), medida: { start: null, end: null, metros: "" }, leyenda: {}, noParedes: [] })} options={b.extraction.pages.map(p => ({ value: String(p.page), label: `Página ${p.page} · ${p.paths.length} trazos` }))} />}
-                <div className="plan-stage plan-stage-sm"><PlanSvg page={page} label="Vista previa del plano" /></div>
-                <div><Button variant="ghost" onClick={() => set({ extraction: null })}><X size={15} strokeWidth={1.8} aria-hidden="true" />Quitar y elegir otro</Button></div>
-              </div>
+          {sinLeer.length > 0 && (
+            <div className="panel notice-panel"><div className="panel-body" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              <strong>{sinLeer.length === 1 ? `«${sinLeer[0].nombre}» está guardado en Documentos, pero aún no leído.` : `${sinLeer.length} planos guardados en Documentos, aún no leídos.`}</strong>
+              <span className="muted text-sm">La lectura automática del PDF todavía no está en Plano. El equipo técnico puede dártela como archivo de lectura; cárgalo y se unirá a su PDF.</span>
+              <div><Button variant="secondary" onClick={() => jsonInput.current?.click()}><FileText size={16} strokeWidth={1.7} aria-hidden="true" />Tengo la lectura (.json)</Button></div>
+            </div></div>
+          )}
+          <div className="plan-add">
+            <button type="button" className="dropzone dropzone-sm" disabled={subiendo || busy} onClick={() => pdfInput.current?.click()}>
+              {subiendo ? <Loader2 size={24} strokeWidth={1.6} aria-hidden="true" className="spin" /> : <Upload size={24} strokeWidth={1.5} aria-hidden="true" />}
+              <strong>{subiendo ? "Subiendo…" : "Subir un plano (PDF)"}</strong><span className="muted text-xs">hasta 50 MB · queda en Documentos</span>
+            </button>
+            <div className="plan-add-alt">
+              <Button variant="ghost" onClick={() => jsonInput.current?.click()}><Plus size={15} strokeWidth={1.8} aria-hidden="true" />Añadir lecturas de plano (.json)</Button>
+              {(mode === "demo" || b.planos.length === 0) && <Button variant="ghost" onClick={usarEjemplo}>Probar con planos de ejemplo</Button>}
+              {planosAdjuntos.length > 0 && <span className="muted text-xs">{planosAdjuntos.length} PDF ya adjunto{planosAdjuntos.length === 1 ? "" : "s"} en Documentos; súbelos aquí de nuevo o carga su lectura.</span>}
             </div>
-          )}
-          <p className="muted text-sm">Si fuera una imagen o un escaneo no podríamos medirlo: adjúntalo al proyecto y sigue a mano.</p>
+          </div>
+          <input ref={pdfInput} type="file" accept="application/pdf" onChange={subir} style={{ display: "none" }} aria-hidden="true" tabIndex={-1} />
+          <input ref={jsonInput} type="file" accept=".json,application/json" multiple onChange={cargarLecturas} style={{ display: "none" }} aria-hidden="true" tabIndex={-1} />
+          {b.planos.length > 0 && conParedes.length === 0 && <p className="muted text-sm">Ningún plano está marcado como demolición u obra nueva: sin ellos no saldrán paredes. Áreas e instalaciones se aprovecharán cuando el motor las lea.</p>}
           <footer className="flow-foot">
-            <Button variant="ghost" onClick={salir}>{b.documentId && !b.extraction ? "Solo guardar el plano, sin medir" : "Salir"}</Button>
-            <Button variant="primary" disabled={!b.extraction} onClick={() => ir(2)}>Siguiente: dale una medida<ArrowRight size={16} strokeWidth={1.8} aria-hidden="true" /></Button>
+            <Button variant="ghost" onClick={salir}>{sinLeer.length && !b.planos.length ? "Dejar los planos guardados y salir" : "Salir"}</Button>
+            <Button variant="primary" disabled={!b.planos.length} onClick={() => { setMidiendo(planoParaMedir(b)?.id ?? null); ir(2); }}>Siguiente: dale una medida<ArrowRight size={16} strokeWidth={1.8} aria-hidden="true" /></Button>
           </footer>
         </div>
       )}
 
-      {b.paso === 2 && page && (
+      {b.paso === 2 && planoMedida && (
         <div className="flow-body flow-split">
-          <div className="plan-stage"><PlanSvg page={page} medida={b.medida} onPick={marcar} label="Plano: toca dos puntos para marcar una medida conocida" /></div>
+          <div className="plan-stage"><PlanSvg page={paginaDe(planoMedida)} medida={medidaEnPantalla ?? undefined} onPick={marcar} label={`${planoMedida.nombre}: toca dos puntos para marcar una medida conocida`} /></div>
           <div className="flow-side">
-            <p className="muted">Toca los dos extremos de una cota que conozcas y escribe cuánto mide. Con una basta; el punto se pega solo al trazo más cercano.</p>
+            {b.planos.length > 1 && <Select label="Medir en" value={planoMedida.id} onChange={v => setMidiendo(v)} options={b.planos.map(p => ({ value: p.id, label: `${p.nombre} · ${nombreUso(p.uso)}` }))} />}
+            <p className="muted">Toca los dos extremos de una cota que conozcas y escribe cuánto mide. Con una basta: los planos de la misma hoja la comparten.</p>
             <div className="panel"><div className="panel-body" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <span className="eyebrow">{!b.medida.start ? "1. Toca el primer extremo" : !b.medida.end ? "2. Toca el segundo extremo" : "Esa distancia mide"}</span>
-              <label className="field-inline"><input className="input pl-mono" inputMode="decimal" value={b.medida.metros} onChange={e => set({ medida: { ...b.medida, metros: e.target.value } })} placeholder="4,20" aria-label="Metros" style={{ fontSize: 24, maxWidth: 140 }} /><span className="muted">metros</span></label>
-              {b.medida.start && b.medida.end && k && <span className="muted text-sm"><Ruler size={13} strokeWidth={1.8} aria-hidden="true" /> Escala lista: 1 m son {cantidad(1 / k)} unidades del dibujo.</span>}
+              <span className="eyebrow">{!medidaEnPantalla?.start ? "1. Toca el primer extremo" : !medidaEnPantalla.end ? "2. Toca el segundo extremo" : "Esa distancia mide"}</span>
+              <label className="field-inline"><input className="input pl-mono" inputMode="decimal" value={medidaEnPantalla?.metros ?? ""} onChange={e => metrosEnPantalla(e.target.value)} placeholder="4,20" aria-label="Metros" style={{ fontSize: 24, maxWidth: 140 }} /><span className="muted">metros</span></label>
+              {escalaDe(b, planoMedida) && <span className="muted text-sm"><Ruler size={13} strokeWidth={1.8} aria-hidden="true" /> Escala lista: 1 m son {cantidad(1 / escalaDe(b, planoMedida)!)} unidades del dibujo.</span>}
             </div></div>
+            {b.planos.length > 1 && vista.medida && (
+              <ul className="info-list">{b.planos.map(p => { const k = escalaDe(b, p); const comparte = k && medidaDe(b, p) === b.medida && p.id !== b.medida.planoId; return (
+                <li key={p.id} className="info-row" style={{ cursor: "default" }}><span style={{ minWidth: 0, flex: 1 }}><strong>{p.nombre}</strong><small className="muted">{p.id === b.medida.planoId ? "Aquí se ha medido" : comparte ? "Misma hoja · comparte la medida" : k ? "Con su propia medida" : "Otra hoja · necesita su medida"}</small></span>{!k && <Button variant="secondary" onClick={() => setMidiendo(p.id)}>Medir este</Button>}{k ? <Check size={16} strokeWidth={2} aria-hidden="true" style={{ color: "var(--pl-success)" }} /> : null}</li>
+              ); })}</ul>
+            )}
             <p className="muted text-sm">¿No hay cotas? Marca un hueco de puerta: suelen medir 0,80 m. Luego podrás corregirlo.</p>
             <footer className="flow-foot">
-              <Button variant="ghost" onClick={() => set({ medida: { start: null, end: null, metros: b.medida.metros } })}><RotateCcw size={15} strokeWidth={1.8} aria-hidden="true" />Marcar otra medida</Button>
-              <Button variant="primary" disabled={!k} onClick={() => ir(3)}>Siguiente: confirma las paredes<ArrowRight size={16} strokeWidth={1.8} aria-hidden="true" /></Button>
+              <Button variant="ghost" onClick={reiniciarMedida}><RotateCcw size={15} strokeWidth={1.8} aria-hidden="true" />Marcar otra medida</Button>
+              <Button variant="primary" disabled={!escala(b) || sinEscala.length > 0} onClick={() => { setPlanoVisto(conParedes[0]?.id ?? null); ir(3); }}>{sinEscala.length ? `Faltan medidas: ${sinEscala.length}` : <>Siguiente: confirma las paredes<ArrowRight size={16} strokeWidth={1.8} aria-hidden="true" /></>}</Button>
             </footer>
           </div>
         </div>
       )}
 
-      {b.paso === 3 && page && (
+      {b.paso === 3 && (
         <div className="flow-body flow-split">
-          <div className="plan-stage"><PlanSvg page={page} paredes={ps} seleccionada={seleccionada} medida={b.medida} onPared={id => setSeleccionada(id)} label="Plano con las paredes encontradas" /></div>
+          <div>
+            {conParedes.length > 1 && <div className="plan-tabs" role="tablist" aria-label="Plano">{conParedes.map(p => <button key={p.id} type="button" role="tab" className="chip" aria-selected={planoParedes?.id === p.id} onClick={() => setPlanoVisto(p.id)}>{nombreUso(p.uso)} · {p.nombre}</button>)}</div>}
+            {planoParedes ? <div className="plan-stage"><PlanSvg page={paginaDe(planoParedes)} paredes={ps.filter(w => w.planoId === planoParedes.id)} seleccionada={seleccionada} medida={medidaDe(b, planoParedes) ?? undefined} onPared={id => setSeleccionada(id)} label={`${planoParedes.nombre} con las paredes encontradas`} /></div> : <div className="empty"><strong>Ningún plano de demolición u obra nueva</strong><span className="muted text-sm">Vuelve a «Tus planos» y marca cuál es cuál.</span></div>}
+          </div>
           <div className="flow-side">
-            <div className="panel"><div className="panel-body" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-              <span className="eyebrow">¿Qué significa cada color del plano?</span>
-              <p className="muted text-sm" style={{ margin: 0 }}>Los arquitectos pintan de un color lo que se tira y de otro lo nuevo. Las paredes que se quedan no hace falta marcarlas.</p>
-              {colores(page).length === 0 && <p className="muted text-sm" style={{ margin: 0 }}>Este plano no tiene rellenos de color, así que no podemos distinguir paredes. Puedes seguir y añadir las partidas a mano.</p>}
-              {colores(page).map(c => (
-                <div key={c.key} className="legend-row">
-                  <span className="legend-swatch" style={{ background: colorCss(c.color) }} aria-hidden="true" /><span style={{ flex: 1, minWidth: 0 }}><strong style={{ textTransform: "capitalize" }}>{c.nombre}</strong><small className="muted"> · {c.paths} trazos</small></span>
-                  <span className="seg" role="radiogroup" aria-label={`Significado del ${c.nombre}`}>{(["tira", "nueva", "nada"] as const).map(s => <button key={s} type="button" role="radio" aria-checked={(b.leyenda[c.key] ?? "nada") === s} onClick={() => significado(c.key, s)}>{s === "tira" ? "Se tira" : s === "nueva" ? "Nueva" : "Nada"}</button>)}</span>
-                </div>
-              ))}
-            </div></div>
+            {planoParedes && (
+              <div className="panel"><div className="panel-body" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                <span className="eyebrow">{nombreUso(planoParedes.uso)} · lo coloreado {planoParedes.uso === "demolicion" ? "se tira" : "es nuevo"}</span>
+                <p className="muted text-sm" style={{ margin: 0 }}>Estos colores cuentan como pared. Desmarca los que sean otra cosa (cotas, muebles, rayados).</p>
+                {colores(paginaDe(planoParedes)).length === 0 && <p className="muted text-sm" style={{ margin: 0 }}>Este plano no tiene rellenos de color, así que no podemos distinguir paredes.</p>}
+                {colores(paginaDe(planoParedes)).map(c => <label key={c.key} className="legend-row" style={{ cursor: "pointer" }}><input type="checkbox" checked={cuentaComoPared(planoParedes, c)} onChange={() => alternarColor(planoParedes, c.key)} /><span className="legend-swatch" style={{ background: colorCss(c.color) }} aria-hidden="true" /><span style={{ flex: 1 }}><strong style={{ textTransform: "capitalize" }}>{c.nombre}</strong><small className="muted"> · {c.paths} trazos</small></span></label>)}
+              </div></div>
+            )}
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               <span className="pill" data-tone="danger">Se tira · {resumen.tira.n} · {cantidad(resumen.tira.metros)} m</span>
               <span className="pill" data-tone="success">Nueva · {resumen.nueva.n} · {cantidad(resumen.nueva.metros)} m</span>
               {resumen.descartadas > 0 && <span className="pill">No son paredes · {resumen.descartadas}</span>}
             </div>
-            {ps.length === 0 && Object.values(b.leyenda).some(s => s !== "nada") && <p className="muted text-sm">Con esos colores no hemos encontrado franjas de pared. Prueba con otro color o sigue a mano.</p>}
             {ps.length > 0 && (
               <ul className="wall-list">{ps.map(w => (
                 <li key={w.id} className="wall-row" data-estado={w.estado} data-descartada={w.descartada || undefined} data-seleccionada={w.id === seleccionada || undefined}>
-                  <button type="button" className="wall-main" onClick={() => setSeleccionada(w.id)}><strong>{w.nombre}</strong><small className="muted">{w.estado === "tira" ? "Se tira" : "Nueva"} · {cantidad(w.longitud)} m</small></button>
+                  <button type="button" className="wall-main" onClick={() => { setSeleccionada(w.id); setPlanoVisto(w.planoId); }}><strong>{w.nombre}</strong><small className="muted">{w.estado === "tira" ? "Se tira" : "Nueva"} · {cantidad(w.longitud)} m{conParedes.length > 1 ? ` · ${w.plano}` : ""}</small></button>
                   <button type="button" className="btn btn-ghost" style={{ height: 32, fontSize: 13 }} onClick={() => alternarPared(w.id)}>{w.descartada ? "Sí es pared" : "No es pared"}</button>
                 </li>
               ))}</ul>
             )}
+            <p className="muted text-sm">Las paredes que se quedan no salen de estos planos. Toca una pared en el dibujo o en la lista para verla.</p>
             <footer className="flow-foot">
               <Button variant="ghost" onClick={() => ir(2)}><ArrowLeft size={15} strokeWidth={1.8} aria-hidden="true" />Volver a la medida</Button>
               <Button variant="primary" disabled={resumen.tira.n + resumen.nueva.n === 0} onClick={() => ir(4)}>Siguiente: ¿qué se hace?<ArrowRight size={16} strokeWidth={1.8} aria-hidden="true" /></Button>
@@ -242,7 +278,7 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
 
       {b.paso === 4 && (
         <div className="flow-body">
-          <p className="muted">Marca los trabajos. Las cantidades salen del plano; el precio, de tu catálogo. Todo se puede cambiar después en el presupuesto.</p>
+          <p className="muted">Marca los trabajos. Las cantidades salen de los planos; el precio, de tu catálogo. Todo se puede cambiar después en el presupuesto.</p>
           <div className="facts-2">
             <label className="field"><span className="field-label">Altura de las paredes</span><span className="field-inline"><input className="input pl-mono" inputMode="decimal" value={b.altura} onChange={e => set({ altura: e.target.value })} aria-label="Altura en metros" /><span className="muted">m</span></span><small className="muted">2,60 es la habitual en vivienda.</small></label>
             <label className="field"><span className="field-label">Huecos que no cuentan</span><span className="field-inline"><input className="input pl-mono" inputMode="decimal" value={b.huecos} onChange={e => set({ huecos: e.target.value })} aria-label="Huecos en metros cuadrados" /><span className="muted">m²</span></span><small className="muted">Puertas y ventanas en esas paredes. Una puerta, unos 1,7 m².</small></label>
@@ -251,14 +287,15 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
             const cfg = b.trabajos[t.id]; const hay = ps.some(p => !p.descartada && p.estado === t.aplicaA);
             const article = data.articles.find(a => a.id === cfg.articleId) ?? null;
             const q = hay ? cantidadTrabajo(t, ps, numero(b.altura), numero(b.huecos), article?.unit ?? "m²") : 0;
+            const origen = [...new Set(ps.filter(p => !p.descartada && p.estado === t.aplicaA).map(p => p.plano))];
             return (
               <div key={t.id} className="work-card" data-activo={cfg.activo && hay} data-disabled={!hay || undefined}>
-                <label className="work-head"><input type="checkbox" checked={cfg.activo && hay} disabled={!hay} onChange={e => set({ trabajos: { ...b.trabajos, [t.id]: { ...cfg, activo: e.target.checked } } })} /><span style={{ flex: 1 }}><strong>{t.titulo}</strong><small className="muted">{hay ? t.detalle : `No hay paredes marcadas como «${t.aplicaA === "tira" ? "se tira" : "nueva"}».`}</small></span>{hay && <span className="pl-mono">{cantidad(q)} {article?.unit ?? "m²"}</span>}</label>
+                <label className="work-head"><input type="checkbox" checked={cfg.activo && hay} disabled={!hay} onChange={e => set({ trabajos: { ...b.trabajos, [t.id]: { ...cfg, activo: e.target.checked } } })} /><span style={{ flex: 1 }}><strong>{t.titulo}</strong><small className="muted">{hay ? `${t.detalle} Sale de: ${origen.join(", ")}.` : `No hay paredes de «${t.aplicaA === "tira" ? "demolición" : "obra nueva"}».`}</small></span>{hay && <span className="pl-mono">{cantidad(q)} {article?.unit ?? "m²"}</span>}</label>
                 {hay && cfg.activo && <div className="work-body"><Select label="Artículo del catálogo" value={cfg.articleId ?? ""} onChange={v => set({ trabajos: { ...b.trabajos, [t.id]: { ...cfg, articleId: v } } })} options={medibles.map(a => ({ value: a.id, label: `${a.name} · ${money(a.unit_price)}/${a.unit}` }))} placeholder="Elegir artículo…" />{!article && <small className="muted">Sin artículo la partida queda pendiente; podrás ponerlo en el presupuesto.</small>}</div>}
               </div>
             );
           })}
-          <p className="muted text-sm">Otros trabajos (suelos, alicatados, instalaciones) todavía no salen del plano: añádelos a mano en el presupuesto.</p>
+          {b.planos.some(p => p.uso === "areas" || p.uso === "instalaciones") && <p className="muted text-sm">Los planos de áreas e instalaciones ya están guardados. Suelos, techos, pintura de lo existente y puntos de luz o clima saldrán de ellos en cuanto el motor los lea; de momento, añádelos a mano.</p>}
           <footer className="flow-foot">
             <Button variant="ghost" onClick={() => ir(3)}><ArrowLeft size={15} strokeWidth={1.8} aria-hidden="true" />Volver a las paredes</Button>
             <Button variant="primary" disabled={!trabajos.some(t => b.trabajos[t.id].activo && ps.some(p => !p.descartada && p.estado === t.aplicaA))} onClick={() => ir(5)}>Ver las partidas<ArrowRight size={16} strokeWidth={1.8} aria-hidden="true" /></Button>
@@ -275,7 +312,7 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
               <div className="panel">
                 {resultado.lineas.map(l => (
                   <div key={l.trabajo.id} className="proposal-row" data-pendiente={!l.item || undefined}>
-                    <span style={{ minWidth: 0, flex: 1 }}><span className="eyebrow">{l.article?.chapter ?? l.trabajo.titulo}</span><strong style={{ display: "block" }}>{l.article?.name ?? l.trabajo.titulo}</strong><small className="muted">{l.paredes} pared{l.paredes === 1 ? "" : "es"} · {cantidad(l.cantidad)} {l.article?.unit ?? ""}{l.article ? ` × ${money(l.article.unit_price)}` : ""}</small>{l.pendientes.map(p => <small key={p} className="pendiente">{p}</small>)}</span>
+                    <span style={{ minWidth: 0, flex: 1 }}><span className="eyebrow">{l.article?.chapter ?? l.trabajo.titulo}</span><strong style={{ display: "block" }}>{l.article?.name ?? l.trabajo.titulo}</strong><small className="muted">{l.paredes} pared{l.paredes === 1 ? "" : "es"} de {l.planos.join(" y ")} · {cantidad(l.cantidad)} {l.article?.unit ?? ""}{l.article ? ` × ${money(l.article.unit_price)}` : ""}</small>{l.pendientes.map(p => <small key={p} className="pendiente">{p}</small>)}</span>
                     <span className="pl-mono">{l.item ? money(lineTotal(l.item)) : <span className="pill" data-tone="warning">Pendiente</span>}</span>
                   </div>
                 ))}
@@ -283,11 +320,11 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
               {pares.map(par => (
                 <div key={par.nuevo.id} className="panel notice-panel"><div className="panel-body" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   <strong>Ya tenías «{par.existente.description}» ({cantidad(par.existente.quantity)} {par.existente.unit})</strong>
-                  <span className="muted text-sm">¿La sustituimos por la del plano ({cantidad(par.nuevo.quantity)} {par.nuevo.unit}) o la dejamos y añadimos esta aparte?</span>
+                  <span className="muted text-sm">¿La sustituimos por la de los planos ({cantidad(par.nuevo.quantity)} {par.nuevo.unit}) o la dejamos y añadimos esta aparte?</span>
                   <span className="seg" role="radiogroup" aria-label="Qué hacer con la partida repetida">{(["sustituir", "añadir"] as const).map(d => <button key={d} type="button" role="radio" aria-checked={(decisiones[par.nuevo.id] ?? "sustituir") === d} onClick={() => setDecisiones(prev => ({ ...prev, [par.nuevo.id]: d }))}>{d === "sustituir" ? "Sustituir" : "Añadir aparte"}</button>)}</span>
                 </div></div>
               ))}
-              <div className="proposal-total"><span className="muted">{pares.length ? "Partidas del plano · base sin IVA" : "Se añaden · base sin IVA"}</span><span className="pl-mono">+{money(sumaNuevos)}</span></div>
+              <div className="proposal-total"><span className="muted">{pares.length ? "Partidas de los planos · base sin IVA" : "Se añaden · base sin IVA"}</span><span className="pl-mono">+{money(sumaNuevos)}</span></div>
               {resultado.lineas.some(l => l.avisos.length) && <p className="muted text-sm"><Sparkles size={13} strokeWidth={1.8} aria-hidden="true" /> {resultado.lineas.flatMap(l => l.avisos)[0]}</p>}
               <p className="muted text-sm">Después se editan como cualquier partida. El presupuesto quedará con {finales.length} partida{finales.length === 1 ? "" : "s"}.</p>
             </>
@@ -302,7 +339,7 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
         </div>
       )}
 
-      {b.paso > 1 && <p className="muted text-xs" style={{ textAlign: "center" }}><button type="button" className="link-button" onClick={empezarDeNuevo}>Empezar de nuevo con otro plano</button></p>}
+      {b.paso > 1 && <p className="muted text-xs" style={{ textAlign: "center" }}><button type="button" className="link-button" onClick={empezarDeNuevo}>Empezar de nuevo con otros planos</button></p>}
     </div>
   );
 }
