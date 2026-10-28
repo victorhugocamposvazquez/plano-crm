@@ -17,7 +17,7 @@ export function Drawer({ open, onClose, title, subtitle, children, footer, size 
   }, [open]);
 
   return (
-    <dialog ref={ref} className="drawer" data-size={size} onClose={onClose} onClick={e => { if (e.target === e.currentTarget) onClose(); }} aria-label={title}>
+    <dialog ref={ref} className="drawer" data-size={size} onClose={e => { if (e.target === e.currentTarget) onClose(); }} onClick={e => { if (e.target === e.currentTarget) onClose(); }} aria-label={title}>
       <div className="drawer-body">
         <header className="drawer-head">
           <div style={{ minWidth: 0 }}>

@@ -38,3 +38,24 @@ describe("Referencias en el chat", () => {
     expect(destinoRef({ type: "c", id: demoId(300), label: "c" }, data, projectId)).toEqual({ href: `/proyectos/${projectId}?s=purchases` });
   });
 });
+
+import { categorias, clienteId, nombreCategoria } from "@/lib/chat-refs";
+
+describe("Selector por categorías", () => {
+  const data = createDemo();
+  const projectId = demoId(10);
+  it("ofrece clientes y otros proyectos además de lo propio del proyecto, y filtra por categoría", () => {
+    const opciones = referenciables(data, projectId);
+    expect(opciones.some(o => o.type === "k")).toBe(true);
+    expect(opciones.filter(o => o.type === "p").every(o => o.id !== projectId)).toBe(true);
+    expect(filtrarReferencias(opciones, "", "t").every(o => o.type === "t")).toBe(true);
+    expect(filtrarReferencias(opciones, "ejemplo 02", "k").map(o => o.label)).toEqual(["Cliente de ejemplo 02"]);
+    expect(categorias.map(c => c.type)).toEqual(["v", "d", "t", "c", "k", "p"]);
+    expect(nombreCategoria("k")).toBe("Cliente");
+  });
+  it("enlaza clientes y proyectos y acepta sus marcas", () => {
+    expect(destinoRef({ type: "k", id: clienteId("Cliente de ejemplo 02"), label: "Cliente de ejemplo 02" }, data, projectId)).toEqual({ href: "/clientes?q=Cliente%20de%20ejemplo%2002" });
+    expect(destinoRef({ type: "p", id: demoId(12), label: "Cocina" }, data, projectId)).toEqual({ href: `/proyectos/${demoId(12)}` });
+    expect(parseMessage(encodeRef({ type: "k", id: "cliente-de-ejemplo-02", label: "Cliente de ejemplo 02" }))[0].kind).toBe("ref");
+  });
+});
