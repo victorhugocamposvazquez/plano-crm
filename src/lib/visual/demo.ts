@@ -19,7 +19,7 @@ export const visualArticles=[
   article(21,"DEMO-E02","Estantería reforzada montada","Equipamiento","ud",108000)
 ];
 const asset=(n:number,article:number,kind:VisualAsset["kind"],color:VisualAsset["color"],dimensions_m?:VisualAsset["dimensions_m"]):VisualAsset=>({
-  id:visualId(n),organization_id:visualOrganization,article_id:visualId(article),kind,color,dimensions_m,revision:"demo-1",representation:"generic_demo"
+  id:visualId(n),organization_id:visualOrganization,article_id:visualId(article),kind,color,dimensions_m,revision:"demo-2-pbr",representation:"generic_demo"
 });
 export const visualAssets=[
   asset(110,10,"wood",[184,153,112]),asset(111,11,"stone",[188,184,174]),
@@ -37,7 +37,7 @@ function makeScene(industrial:boolean):SpatialScene {
     dimensions_m:industrial?{width:12,depth:8,height:5}:{width:4,depth:3,height:2.8},
     measurements:[
       {id:visualId(base+10),quantity:industrial?96:12,unit:"m²",reference:"Superficie sintética de suelo: ancho por fondo del ejemplo."},
-      {id:visualId(base+11),quantity:industrial?188:36.2,unit:"m²",reference:industrial?"Superficie sintética: perímetro por altura, menos portón de 12 m².":"Superficie sintética: perímetro por altura, menos 3 m² de huecos."},
+      {id:visualId(base+11),quantity:industrial?188:36.2,unit:"m²",reference:industrial?"Superficie sintética: perímetro por altura, menos portón de 12 m².":"Superficie sintética: perímetro por altura, menos una ventana ficticia de 3 m²."},
       {id:visualId(base+12),quantity:industrial?2:1,unit:"ud",reference:"Unidades expresamente elegidas para el ejemplo; no se cuentan objetos del visor."}
     ],
     slots:[

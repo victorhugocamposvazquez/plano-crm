@@ -1,0 +1,73 @@
+{
+  "provider": "Poly Haven",
+  "license": "CC0-1.0",
+  "license_url": "https://polyhaven.com/license",
+  "downloaded_at": "2026-10-28",
+  "runtime_external_requests": false,
+  "files": [
+    {
+      "asset": "laminate_floor_02",
+      "map": "Diffuse",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/laminate_floor_02/laminate_floor_02_diff_1k.jpg",
+      "file": "laminate_floor_02_diff_1k.jpg",
+      "bytes": 721641,
+      "md5": "34ab81c5882c1083028ffa71d40fe44d"
+    },
+    {
+      "asset": "laminate_floor_02",
+      "map": "nor_gl",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/laminate_floor_02/laminate_floor_02_nor_gl_1k.jpg",
+      "file": "laminate_floor_02_nor_gl_1k.jpg",
+      "bytes": 515725,
+      "md5": "40f4b1e4a5cafbd3bd1b02e8367cf3b1"
+    },
+    {
+      "asset": "laminate_floor_02",
+      "map": "Rough",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/laminate_floor_02/laminate_floor_02_rough_1k.jpg",
+      "file": "laminate_floor_02_rough_1k.jpg",
+      "bytes": 560815,
+      "md5": "6ef14a4d438a44103689739248ef50b7"
+    },
+    {
+      "asset": "marble_tiles",
+      "map": "Diffuse",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/marble_tiles/marble_tiles_diff_1k.jpg",
+      "file": "marble_tiles_diff_1k.jpg",
+      "bytes": 957660,
+      "md5": "8a023d7399c685ab7b539b05a433bc89"
+    },
+    {
+      "asset": "marble_tiles",
+      "map": "nor_gl",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/marble_tiles/marble_tiles_nor_gl_1k.jpg",
+      "file": "marble_tiles_nor_gl_1k.jpg",
+      "bytes": 601407,
+      "md5": "2514f9c3427e22a702338cdddff62349"
+    },
+    {
+      "asset": "marble_tiles",
+      "map": "Rough",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/marble_tiles/marble_tiles_rough_1k.jpg",
+      "file": "marble_tiles_rough_1k.jpg",
+      "bytes": 759292,
+      "md5": "43b46a37ebac482492e633bf81842af4"
+    },
+    {
+      "asset": "plastered_wall_02",
+      "map": "nor_gl",
+      "source": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/1k/plastered_wall_02/plastered_wall_02_nor_gl_1k.jpg",
+      "file": "plastered_wall_02_nor_gl_1k.jpg",
+      "bytes": 960241,
+      "md5": "5419137dd937f95a849b884258fb8bb5"
+    },
+    {
+      "asset": "studio_small_09",
+      "map": "hdri",
+      "source": "https://dl.polyhaven.org/file/ph-assets/HDRIs/hdr/1k/studio_small_09_1k.hdr",
+      "file": "studio_small_09_1k.hdr",
+      "bytes": 1615248,
+      "md5": "d5d7eb9d26d341d6aa4d11c1a54fd97c"
+    }
+  ]
+}

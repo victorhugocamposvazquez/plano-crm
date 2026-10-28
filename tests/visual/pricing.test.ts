@@ -6,7 +6,7 @@ const run=(changes:Partial<Parameters<typeof priceScene>[0]>={})=>priceScene({sc
 describe("Escena y catálogo comparten artículo y presupuesto",()=>{
   it("incluye los trabajos sin objeto y calcula precios del catálogo por medición",()=>{
     const p=run();expect(p.items).toHaveLength(4);expect(p.amounts.base).toBe(178920);
-    expect(p.links[0]).toMatchObject({article_id:visualId(10),measurement_id:visualId(210),asset_revision:"demo-1"});
+    expect(p.links[0]).toMatchObject({article_id:visualId(10),measurement_id:visualId(210),asset_revision:"demo-2-pbr"});
     expect(p).toMatchObject({status:"local_proposal",review_required:true,persisted:false});
   });
   it("cambiar acabado conserva cantidad e ID de partida y solo cambia su elección",()=>{
