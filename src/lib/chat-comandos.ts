@@ -12,7 +12,8 @@ export type AccionRespuesta =
   | { kind: "tarea"; label: string; taskId: string }
   | { kind: "documento"; label: string; documentId: string }
   | { kind: "buscar"; label: string; query: string }
-  | { kind: "ayuda"; label: string };
+  | { kind: "ayuda"; label: string }
+  | { kind: "presupuesto"; label: string; versionId: string };
 
 export type Respuesta = { titulo: string; lineas: string[]; acciones: AccionRespuesta[] };
 
@@ -44,7 +45,7 @@ const resumenVersion = (data: Workspace, projectId: string, x: ReturnType<typeof
       x.v.change_reason ? `Motivo: ${x.v.change_reason}` : ""
     ].filter(Boolean),
     acciones: [
-      { kind: "href", label: "Abrir en la ficha", href: `/proyectos/${projectId}?s=budget&p=${x.b.id}` },
+      { kind: "presupuesto", label: "Ver partidas", versionId: x.v.id },
       ...(x.v.items.length ? [{ kind: "href", label: "PDF", href: `/imprimir/presupuesto/${x.v.id}`, nueva: true } as AccionRespuesta] : [])
     ] as AccionRespuesta[]
   };
@@ -74,7 +75,7 @@ export const comandos: Comando[] = [
     descripcion: "Todas las revisiones del presupuesto con su estado.",
     ejecutar: ({ data, projectId }) => {
       const lista = versiones(data, projectId);
-      return { titulo: `${lista.length} revisiones`, lineas: lista.map(x => `V${x.v.number} · ${x.b.title} · ${x.b.approved_version_id === x.v.id ? "aprobada" : versionStatus[x.v.status].toLowerCase()} · ${money(totals(x.v.items).base)} base`), acciones: [{ kind: "href", label: "Abrir en la ficha", href: `/proyectos/${projectId}?s=budget` }] };
+      return { titulo: `${lista.length} revisiones`, lineas: lista.map(x => `V${x.v.number} · ${x.b.title} · ${x.b.approved_version_id === x.v.id ? "aprobada" : versionStatus[x.v.status].toLowerCase()} · ${money(totals(x.v.items).base)} base`), acciones: lista.slice(0, 4).map(x => ({ kind: "presupuesto", label: `V${x.v.number}`, versionId: x.v.id }) as AccionRespuesta) };
     }
   },
   {
