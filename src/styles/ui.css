@@ -36,7 +36,7 @@ p {
 .shell-main {
   flex: 1;
   min-width: 0;
-  padding: var(--pl-space-5) var(--pl-space-6) calc(var(--pl-nav-item) + 40px);
+  padding: var(--pl-space-5) var(--pl-space-6) calc(var(--pl-nav-bar) + env(safe-area-inset-bottom, 0px) + 12px);
 }
 
 .topbar {
@@ -74,7 +74,8 @@ p {
   z-index: 10;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  padding: 1px 14px calc(18px + env(safe-area-inset-bottom));
+  /* El fondo llega al borde físico; el safe-area solo aparta los iconos del home indicator. */
+  padding: 4px 4px env(safe-area-inset-bottom, 0px);
   background: var(--pl-bg);
   border-top: var(--pl-hairline) solid var(--pl-line);
 }
@@ -95,8 +96,9 @@ p {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 6px;
+  gap: 3px;
   min-height: var(--pl-nav-item);
+  padding: 4px 0 2px;
   font-size: var(--pl-text-xs);
   color: var(--pl-muted);
   text-decoration: none;
@@ -1330,7 +1332,7 @@ p {
 .notice {
   position: fixed;
   left: 50%;
-  bottom: calc(var(--pl-nav-item) + 40px);
+  bottom: calc(var(--pl-nav-bar) + env(safe-area-inset-bottom, 0px) + 12px);
   transform: translateX(-50%);
   z-index: 20;
   display: flex;
@@ -2797,7 +2799,7 @@ p {
   /* En móvil el menú contextual se ancla abajo, sobre la barra de navegación, para no salirse de pantalla. */
   .menu-list,
   .menu-list[data-align="end"],
-  .menu-list[data-align="start"] { position: fixed; top: auto; left: 12px; right: 12px; bottom: calc(76px + env(safe-area-inset-bottom)); min-width: 0; }
+  .menu-list[data-align="start"] { position: fixed; top: auto; left: 12px; right: 12px; bottom: calc(var(--pl-nav-bar) + env(safe-area-inset-bottom, 0px) + 8px); min-width: 0; }
   .menu-item { min-height: 48px; }
 }
 
@@ -3068,9 +3070,9 @@ p {
 
 /* ---------- Qué toca ahora: fase y siguiente paso ---------- */
 
-.next-step { padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; }
+.next-step { padding: 12px 14px; display: flex; flex-direction: column; gap: 10px; }
 .next-step[data-urgencia="2"] { border-left: 3px solid var(--pl-warning); }
-.stepper { list-style: none; margin: 0; padding: 0; display: flex; align-items: center; gap: 0; }
+.stepper { list-style: none; margin: 0; padding: 0; display: flex; align-items: center; gap: 0; width: 100%; }
 .stepper li { position: relative; flex: 1 1 0; display: flex; flex-direction: column; align-items: center; gap: 5px; min-width: 0; }
 .stepper li::before { content: ""; position: absolute; top: 8px; left: -50%; width: 100%; height: 2px; background: var(--pl-line); z-index: 0; }
 .stepper li:first-child::before { display: none; }
@@ -3149,21 +3151,56 @@ p {
 .composer-send:disabled { background: var(--pl-raised); color: var(--pl-muted); cursor: default; }
 .composer-hint { display: flex; justify-content: space-between; gap: 10px; padding: 6px 8px 0; }
 
-/* ---------- Línea de fases: pista continua ---------- */
+/* ---------- Línea de fases: pista continua a todo el ancho ---------- */
 
-.stepper-wrap { display: flex; flex-direction: column; gap: 6px; }
-.stepper { position: relative; padding: 0 0 2px; }
+.stepper-wrap { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+.stepper {
+  position: relative;
+  width: 100%;
+  padding: 0;
+  /* Primer y último punto en los bordes; el resto reparte el hueco. */
+  justify-content: space-between;
+}
+.stepper li {
+  flex: 0 0 auto;
+  z-index: 1;
+  width: 18px;
+}
 .stepper li::before { display: none; }
-/* Pista gris de centro a centro del primer y último punto, y encima el tramo hecho en verde. */
-.stepper::before, .stepper::after { content: ""; position: absolute; top: 8px; height: 2px; left: calc(100% / (var(--steps) * 2)); right: calc(100% / (var(--steps) * 2)); background: var(--pl-line); border-radius: 1px; }
-.stepper::after { right: auto; width: calc((100% - 100% / var(--steps)) * var(--progress)); background: var(--pl-success); }
-.stepper li { z-index: 1; }
-.stepper-current { display: none; font-size: var(--pl-text-sm); color: var(--pl-muted); }
+/* Pista de centro a centro del primer y último punto (radio del dot = 9px). */
+.stepper::before,
+.stepper::after {
+  content: "";
+  position: absolute;
+  top: 8px;
+  left: 9px;
+  right: 9px;
+  height: 2px;
+  background: var(--pl-line);
+  border-radius: 1px;
+}
+.stepper::after {
+  right: auto;
+  width: calc((100% - 18px) * var(--progress));
+  background: var(--pl-success);
+}
+.stepper-current { display: none; font-size: var(--pl-text-sm); color: var(--pl-muted); line-height: 1.3; }
 .stepper-current strong { color: var(--pl-ink); font-weight: var(--pl-weight-medium); }
 @media (max-width: 639px) {
+  .next-step { padding: 12px 14px 10px; gap: 8px; }
   .stepper-label { display: none; }
   .stepper-current { display: block; text-align: center; }
   .stepper li { gap: 0; }
+}
+@media (min-width: 640px) {
+  /* En anchos con etiqueta, cada fase reparte el ancho y centra su punto. */
+  .stepper { justify-content: stretch; }
+  .stepper li { flex: 1 1 0; width: auto; align-items: center; }
+  .stepper li:first-child { align-items: flex-start; }
+  .stepper li:last-child { align-items: flex-end; }
+  .stepper::before,
+  .stepper::after { left: 9px; right: 9px; }
+  .stepper::after { width: calc((100% - 18px) * var(--progress)); }
 }
 
 /* ---------- Chat: editar y borrar ---------- */
