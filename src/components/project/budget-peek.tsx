@@ -1,18 +1,16 @@
 "use client";
-import Link from "next/link";
-import { ArrowLeft, ArrowRight, ExternalLink, FileText } from "lucide-react";
 import { money, dateLabel, totals, versionStatus, lineTotal, type Workspace } from "@/lib/domain";
 import { capitulosDocumento, alternativas, unidadLarga } from "@/lib/documento-presupuesto";
 
 /**
- * Presupuesto visto desde el chat sin salir de él: cabecera con estado e importes, partidas por capítulo,
- * alternativas y, si procede, la diferencia respecto a la revisión aprobada. Ir a la ficha o al PDF es
- * una decisión explícita (botones al final), no la consecuencia de consultar.
+ * Presupuesto consultado desde el chat: estado e importes, diferencia respecto a la revisión aprobada,
+ * partidas por capítulo, alternativas y notas. Se cambia de revisión con los chips; ir a la ficha o al PDF
+ * lo decide quien lo lee desde el pie del modal, no la consulta.
  */
-export function BudgetPeek({ versionId, data, projectId, onBack, onVersion }: { versionId: string; data: Workspace; projectId: string; onBack: () => void; onVersion: (id: string) => void }) {
+export function BudgetPeek({ versionId, data, onVersion }: { versionId: string; data: Workspace; onVersion: (id: string) => void }) {
   const v = data.versions.find(x => x.id === versionId);
   const b = v ? data.budgets.find(x => x.id === v.budget_id) : undefined;
-  if (!v || !b) return <div className="chat-info"><button type="button" className="chat-top-back" onClick={onBack}><ArrowLeft size={16} strokeWidth={1.8} aria-hidden="true" />Volver al chat</button><p className="muted text-sm">Esa revisión ya no existe.</p></div>;
+  if (!v || !b) return <p className="muted text-sm">Esa revisión ya no existe.</p>;
   const t = totals(v.items);
   const aprobada = b.approved_version_id === v.id;
   const ref = !aprobada && b.approved_version_id ? data.versions.find(x => x.id === b.approved_version_id) : undefined;
@@ -22,7 +20,7 @@ export function BudgetPeek({ versionId, data, projectId, onBack, onVersion }: { 
   const hermanas = data.versions.filter(x => x.budget_id === b.id).sort((a, c) => a.number - c.number);
   const tono = aprobada ? "success" : v.status === "issued" ? "info" : v.status === "superseded" ? undefined : "warning";
   return (
-    <div className="chat-info budget-peek">
+    <div className="budget-peek">
       <header className="peek-head">
         <span style={{ minWidth: 0 }}>
           <strong className="h3" style={{ display: "block" }}>V{v.number} · {b.title}</strong>
@@ -56,11 +54,6 @@ export function BudgetPeek({ versionId, data, projectId, onBack, onVersion }: { 
         </section>
       )}
       {v.notes && <p className="text-sm muted" style={{ whiteSpace: "pre-wrap" }}>{v.notes}</p>}
-      <footer className="peek-foot">
-        <button type="button" className="btn btn-secondary" onClick={onBack}><ArrowLeft size={15} strokeWidth={1.8} aria-hidden="true" />Volver al chat</button>
-        {v.items.length > 0 && <Link href={`/imprimir/presupuesto/${v.id}`} target="_blank" rel="noopener" className="btn btn-secondary"><FileText size={15} strokeWidth={1.8} aria-hidden="true" />PDF<ExternalLink size={12} strokeWidth={1.8} aria-hidden="true" /></Link>}
-        <Link href={`/proyectos/${projectId}?s=budget&p=${b.id}`} className="btn btn-ghost" style={{ marginLeft: "auto" }}>Ir a la ficha<ArrowRight size={15} strokeWidth={1.8} aria-hidden="true" /></Link>
-      </footer>
     </div>
   );
 }
