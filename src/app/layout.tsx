@@ -11,7 +11,12 @@ import { themeBootScript } from "@/components/ui/theme-toggle";
 export const metadata: Metadata = {
   title: { default: "Plano", template: "%s · Plano" },
   description: "CRM de reformas: de la primera visita a la entrega de llaves.",
-  applicationName: "Plano"
+  applicationName: "Plano",
+  appleWebApp: {
+    capable: true,
+    title: "Plano",
+    statusBarStyle: "default"
+  }
 };
 
 export const viewport: Viewport = {
