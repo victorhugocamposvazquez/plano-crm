@@ -38,9 +38,11 @@ export function createEstimateProposal(raw: unknown, context: { organization_id:
       const article=intent.article_id ? articles.get(intent.article_id) : undefined;
       if(!article) problem("missing_article","Selecciona un artículo del catálogo de esta organización.");
       const formula=intent.formula;
-      const ids=formula.kind==="sum" ? formula.measurement_ids : [formula.length_id,formula.height_id,...formula.opening_ids];
+      const lengthIds=formula.kind==="wall_area" ? formula.length_ids ?? [formula.length_id!] : [];
+      const ids=formula.kind==="sum" ? formula.measurement_ids : [...lengthIds,formula.height_id,...formula.opening_ids];
       const additiveIds=formula.kind==="sum" ? ids : formula.opening_ids;
-      if(new Set(additiveIds).size!==additiveIds.length) problem("duplicate_measurement","Una medición aparece sumada o descontada más de una vez.");
+      if(new Set(additiveIds).size!==additiveIds.length || new Set(lengthIds).size!==lengthIds.length)
+        problem("duplicate_measurement","Una medición aparece sumada o descontada más de una vez.");
       line.measurements=[...new Set(ids)].map(resolve);
       let value: number, unit: BudgetItem["unit"];
       if(formula.kind==="sum") {
@@ -48,10 +50,10 @@ export function createEstimateProposal(raw: unknown, context: { organization_id:
         if(values.some(m=>m.unit!==unit)) problem("unit_mismatch","No se pueden sumar mediciones con unidades diferentes.");
         value=values.reduce((sum,m)=>sum+m.value,0);
       } else {
-        const length=resolve(formula.length_id), height=resolve(formula.height_id), openings=formula.opening_ids.map(resolve);
-        if(length.unit!=="ml" || height.unit!=="ml" || openings.some(m=>m.unit!=="m²"))
+        const lengths=lengthIds.map(resolve), height=resolve(formula.height_id), openings=formula.opening_ids.map(resolve);
+        if(lengths.some(m=>m.unit!=="ml") || height.unit!=="ml" || openings.some(m=>m.unit!=="m²"))
           problem("unit_mismatch","La pared requiere longitud y altura en metros y huecos en metros cuadrados.");
-        value=length.value*height.value-openings.reduce((sum,m)=>sum+m.value,0); unit="m²";
+        value=(lengths.reduce((sum,m)=>sum+m.value,0)*height.value-openings.reduce((sum,m)=>sum+m.value,0))*(formula.faces ?? 1); unit="m²";
       }
       if(article!.unit!==unit) problem("article_unit_mismatch","La unidad de la medición no coincide con la del artículo. Revisa la fórmula o el artículo.");
       const quantity=roundQuantity(value);

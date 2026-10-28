@@ -3505,3 +3505,8 @@ p {
 @media (min-width: 640px) { .plan-add { grid-template-columns: 1fr 1fr; align-items: center; } }
 @media (max-width: 479px) { .plan-card { grid-template-columns: 1fr auto; } .plan-card .plan-stage-xs { display: none; } }
 a.flow-back, a.flow-back:hover { text-decoration: none; }
+
+/* Confirmación de escala: nombre y decisión legibles también en móvil. */
+.plan-scale-row { align-items: flex-start; flex-wrap: wrap; cursor: default; }
+.plan-scale-row > span { flex: 1; min-width: 0; }
+.plan-scale-row .legend-row { min-height: var(--pl-touch); white-space: normal; }

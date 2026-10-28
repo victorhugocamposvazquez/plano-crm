@@ -35,6 +35,32 @@ describe("Medición y propuesta trazable",()=>{
     expect(run(input).lines[0].item?.quantity).toBe(8);
     if(input.measurements[0].kind!=="quantity") throw new Error("Fixture inválido"); input.measurements[0].value=0.1;expect(run(input).lines[0].issues[0].code).toBe("invalid_quantity");
   });
+  it("suma varias paredes y descuenta los huecos antes de aplicar dos caras",()=>{
+    const input=fixture();input.sources.push({id:id(11),kind:"manual",label:"Medidas declaradas",phase:"proposed",legend:""});
+    input.measurements=[
+      {id:id(30),source_id:id(11),kind:"quantity",label:"Pared A",value:2,unit:"ml",method:"manual",reference:"Visita"},
+      {id:id(31),source_id:id(11),kind:"quantity",label:"Pared B",value:3,unit:"ml",method:"manual",reference:"Visita"},
+      {id:id(32),source_id:id(11),kind:"quantity",label:"Altura",value:2.5,unit:"ml",method:"manual",reference:"Visita"},
+      {id:id(33),source_id:id(11),kind:"quantity",label:"Huecos",value:8,unit:"m²",method:"manual",reference:"Una cara"}
+    ];
+    input.intents[0].article_id=id(4);
+    input.intents[0].formula={kind:"wall_area",length_ids:[id(30),id(31)],height_id:id(32),opening_ids:[id(33)],faces:2};
+    const p=run(input);expect(p.lines[0].item?.quantity).toBe(9);expect(p.lines[0].measurements).toHaveLength(4);
+    const f=input.intents[0].formula;
+    f.length_ids=[id(30),id(30)];expect(run(input).lines[0].issues[0].code).toBe("duplicate_measurement");
+    f.length_ids=[id(30),id(99)];expect(run(input).lines[0].issues[0].code).toBe("missing_measurement");
+    f.length_ids=[id(30),id(33)];expect(run(input).lines[0].issues[0].code).toBe("unit_mismatch");
+    f.length_ids=[id(30)];expect(run(input).lines[0].issues[0].code).toBe("invalid_quantity");
+  });
+  it("requiere una sola forma de declarar las longitudes",()=>{
+    const input=fixture();
+    for(const formula of [
+      {kind:"wall_area",height_id:id(31),opening_ids:[]},
+      {kind:"wall_area",length_id:id(30),length_ids:[id(30)],height_id:id(31),opening_ids:[]},
+      {kind:"wall_area",length_ids:[],height_id:id(31),opening_ids:[]},
+      {kind:"wall_area",length_ids:[id(30)],height_id:id(31),opening_ids:[],faces:3}
+    ]) expect(()=>run({...input,intents:[{...input.intents[0],formula}]})).toThrow();
+  });
   it("bloquea conversiones de unidades y referencias repetidas",()=>{
     const input=fixture();input.intents[0].formula={kind:"sum",measurement_ids:[id(30),id(30)]};
     expect(run(input).lines[0].issues[0].code).toBe("duplicate_measurement");

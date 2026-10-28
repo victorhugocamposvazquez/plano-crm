@@ -32,7 +32,9 @@ export const measurementSchema = z.discriminatedUnion("kind", [
 ]);
 export const formulaSchema = z.discriminatedUnion("kind", [
   z.object({ kind: z.literal("sum"), measurement_ids: z.array(id).min(1).max(100) }).strict(),
-  z.object({ kind: z.literal("wall_area"), length_id: id, height_id: id, opening_ids: z.array(id).max(100).default([]) }).strict()
+  z.object({ kind: z.literal("wall_area"), length_id: id.optional(), length_ids: z.array(id).min(1).max(100).optional(),
+    height_id: id, opening_ids: z.array(id).max(100).default([]), faces: z.number().int().min(1).max(2).optional()
+  }).strict().refine(f => Boolean(f.length_id) !== Boolean(f.length_ids), "Indica una longitud o un conjunto de longitudes, sin mezclar ambas formas.")
 ]);
 export const intentSchema = z.object({
   id, label, article_id: id.nullable(), formula: formulaSchema,

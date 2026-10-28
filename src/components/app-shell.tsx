@@ -43,13 +43,13 @@ export function AppShell({ children }: { children: ReactNode }) {
   return (
     <div className="shell">
       <nav className="nav" aria-label="Principal">
-        <Link href="/" className="nav-brand" aria-label="Inicio"><Brand /></Link>
+        <Link prefetch={false} href="/" className="nav-brand" aria-label="Inicio"><Brand /></Link>
         <button type="button" className="nav-search" onClick={() => setSearch(true)} aria-label="Buscar en Plano" title="Buscar (⌘K)"><Search size={17} strokeWidth={1.7} aria-hidden="true" /><span>Buscar…</span><span className="pl-mono">⌘K</span></button>
         {items.map(item => {
           const Icon = item.icon;
           const active = isActive(item.href, item.exact);
           return (
-            <Link key={item.href} href={item.href} className="nav-item" data-primary={item.primary || undefined} aria-current={active ? "page" : undefined} aria-label={item.label} title={item.label}>
+            <Link key={item.href} prefetch={false} href={item.href} className="nav-item" data-primary={item.primary || undefined} aria-current={active ? "page" : undefined} aria-label={item.label} title={item.label}>
               <span className="nav-icon"><Icon {...iconProps} /></span>
               <span>{item.label}</span>
             </Link>
@@ -66,10 +66,10 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <div style={{ flex: 1, minWidth: 0, display: "flex", flexDirection: "column" }}>
         <header className="topbar">
-          <Link href="/" aria-label="Inicio" style={{ color: "inherit", textDecoration: "none" }}><Brand /></Link>
+          <Link prefetch={false} href="/" aria-label="Inicio" style={{ color: "inherit", textDecoration: "none" }}><Brand /></Link>
           <div className="topbar-tools">
             <button type="button" className="topbar-search" onClick={() => setSearch(true)} aria-label="Buscar en Plano"><Search size={19} strokeWidth={1.6} aria-hidden="true" /></button>
-            <Link href="/proyectos?nuevo=1" aria-label="Nuevo proyecto" title="Nuevo proyecto" className="topbar-new"><Plus size={18} strokeWidth={1.9} aria-hidden="true" /></Link>
+            <Link prefetch={false} href="/proyectos?nuevo=1" aria-label="Nuevo proyecto" title="Nuevo proyecto" className="topbar-new"><Plus size={18} strokeWidth={1.9} aria-hidden="true" /></Link>
             <ThemeToggle />
             <button type="button" className="avatar avatar-button" onClick={() => setAccount(true)} aria-label={`Tu cuenta · ${actor.name}`} aria-haspopup="dialog" aria-expanded={account}>{initials || "·"}</button>
           </div>
