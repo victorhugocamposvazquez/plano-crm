@@ -61,7 +61,8 @@ Fuentes ya instaladas en el proyecto (`@fontsource-variable/inter`, `@fontsource
 ## 4. Medidas
 
 - **Base de espaciado:** 4 px. Escala habitual 4 · 8 · 12 · 16 · 20 · 24 · 32.
-- **Radios:** pantalla móvil 24 · panel y campo 10 · botón 10 · botón-icono 8 · pestaña píldora 6 · barra de comando 17 (Grafito 11) · circular para avatar y botón de enviar.
+- **Radios:** pantalla móvil 24 · panel y campo 10 · botón 10 · botón-icono 8 · pestaña píldora 6 · barra de comando 17 (Grafito 11) · circular para avatar (36 px, iniciales 12 px) y botón de enviar.
+- **Campos en móvil:** el texto de `input` / `select` / `textarea` es siempre ≥ 16 px (`--pl-text-base`) para que iOS no haga zoom al enfocar.
 - **Filetes:** 1 px; pestaña activa 1,5 px; medidor de avance 3 px.
 - **Táctil:** botones 44 px (38 px en cabecera de escritorio) · campos 46 px · filas de lista ≥ 56 px, filas de obra 90 px en móvil y 60 px en escritorio · navegación inferior 48 px de ítem (`--pl-nav-bar` 52 px + `safe-area-inset-bottom`, sin padding extra bajo los iconos) · botón-icono 34–36 px (mínimo 44 px de área activa).
 - **Iconos:** trazo 1,55 px, 19 px por defecto; 13–16 px dentro de etiquetas y meta. Conjunto: Lucide (ya en dependencias).
@@ -79,7 +80,7 @@ Las pantallas son las mismas en los tres anchos; lo que cambia es dónde vive la
 ## 6. Componentes
 
 - **Botón principal:** `--pl-action` / `--pl-on-action`, 44 px, radio 10, texto 15/500. Variante naranja por pantalla. Secundario: borde `--pl-strong-line`, fondo transparente. Fantasma: texto en `--pl-blue`. Deshabilitado: fondo `--pl-raised`, texto `--pl-faint`.
-- **Campo:** 46 px, borde `--pl-line`, radio 10, etiqueta de 11 px encima en `--pl-muted`. Foco: borde 1,5 px en `--pl-ink`. Aviso: borde y texto de ayuda en `--pl-warning`. Cifras en mono con la unidad a la derecha.
+- **Campo:** 46 px, borde `--pl-line`, radio 10, etiqueta de 11 px encima en `--pl-muted`; texto del control 15 px en escritorio y 16 px en móvil (anti-zoom de iOS). Foco: borde 1,5 px en `--pl-ink`. Aviso: borde y texto de ayuda en `--pl-warning`. Cifras en mono con la unidad a la derecha.
 - **Pestañas:** Workspace subrayado 1,5 px en `--pl-ink`; Grafito píldora con fondo `--pl-raised` y radio 6. Contador en mono 11 px.
 - **Fila de obra:** icono en caja de 32×36 con borde, nombre 15/500, meta 11, porcentaje en mono a la derecha. El medidor de avance (3 px) solo en paneles y fichas, no en cada fila de móvil.
 - **Panel (Grafito y escritorio):** borde `--pl-line`, radio 10, cabecera en `--pl-soft` con etiqueta de 11 px en mayúsculas opcionales.

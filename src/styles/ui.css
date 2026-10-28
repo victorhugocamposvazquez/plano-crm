@@ -18,6 +18,18 @@ textarea {
   color: inherit;
 }
 
+/*
+ * iPhone hace zoom al enfocar un campo con texto < 16 px.
+ * En móvil todos los controles editables van al menos a --pl-text-base.
+ */
+@media (max-width: 767px) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]):not([type="color"]):not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="image"]):not([type="hidden"]),
+  select,
+  textarea {
+    font-size: var(--pl-text-base) !important;
+  }
+}
+
 h1,
 h2,
 h3,
@@ -56,13 +68,15 @@ p {
 }
 
 .avatar {
-  width: 29px;
-  height: 29px;
+  width: 36px;
+  height: 36px;
   border-radius: var(--pl-radius-full);
   background: var(--pl-raised);
   color: var(--pl-muted);
-  font-size: var(--pl-text-xs);
+  font-size: var(--pl-text-sm);
   font-weight: var(--pl-weight-medium);
+  letter-spacing: 0.04em;
+  line-height: 1;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -2541,9 +2555,10 @@ p {
 }
 
 .avatar-lg {
-  width: 48px;
-  height: 48px;
-  font-size: var(--pl-text-md);
+  width: 52px;
+  height: 52px;
+  font-size: var(--pl-text-ui);
+  letter-spacing: 0.04em;
 }
 
 .account { display: flex; flex-direction: column; gap: var(--pl-space-4); }
