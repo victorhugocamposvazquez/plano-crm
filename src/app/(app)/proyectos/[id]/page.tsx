@@ -19,6 +19,8 @@ import { BudgetEditor } from "@/components/project/budget-editor";
 import { BudgetActions } from "@/components/project/budget-actions";
 import { ProjectMenu } from "@/components/project/project-menu";
 import { NextStep } from "@/components/project/next-step";
+import { AddToBudget } from "@/components/plan/add-to-budget";
+import { cargarBorrador } from "@/lib/plano-flujo";
 import { siguientePaso, type TipoAccion } from "@/lib/siguiente-paso";
 import { projectProgress, money, totals, dateLabel, compareVersions, kindNames, lineTotal, can, type Budget, type BudgetVersion, type ItemChange, type Task, type Workspace } from "@/lib/domain";
 
@@ -59,6 +61,8 @@ export default function ObraPage() {
   const project = data.projects.find(p => p.id === id);
   const canBudget = can(actor.role, "budget.create");
   const [creatingBudget, setCreatingBudget] = useState(false);
+  const [borradorPlano, setBorradorPlano] = useState(false);
+  useEffect(() => { setBorradorPlano(Boolean(cargarBorrador(id))); }, [id]);
   /** Abre el primer presupuesto de un proyecto dado de alta en oficina; queda en borrador y seleccionado. */
   async function crearPresupuesto() {
     if (!project || busy || creatingBudget) return;
@@ -241,6 +245,8 @@ export default function ObraPage() {
                   )}
                 </div>
               )}
+
+              {canBudget && <AddToBudget planoHref={`/proyectos/${project.id}/plano${budget ? `?p=${budget.id}` : ""}`} visitaHref={sinPartidas ? `/proyectos/nueva?proyecto=${project.id}` : undefined} haPresupuesto={budgets.length > 0} borradorPlano={borradorPlano} onManual={() => { if (budgets.length === 0) void crearPresupuesto(); else if (editable) setEditParam("1"); else document.getElementById("acciones-presupuesto")?.scrollIntoView({ behavior: "smooth", block: "center" }); }} />}
 
               {budget && <div id="acciones-presupuesto"><BudgetActions budget={budget} approved={approved} working={working} shown={shown} onEdit={() => setEditParam("1")} /></div>}
             </div>
