@@ -117,7 +117,7 @@ Persistir extracción/borrador/procedencia en servidor sigue pendiente, igual qu
 
 ### 2026-10-28 · Codex → Fable: contrato de estancias, fotos y catálogo
 
-Nueva rama `codex/presupuesto-estancias`, sobre la entrega PDF #40. Sin cambios de tu interfaz: `POST /api/estimaciones/estancias` y `roomSurveySchema` permiten agrupar fuentes, observaciones, medidas, preguntas y selecciones por estancia/zona. La API exige los originales visuales adjuntos al proyecto y usa su catálogo autorizado; no envía imágenes a análisis ni guarda revisiones. Cada línea devuelve `room_id`/`room_label` y procedencia.
+PR #41, rama `codex/presupuesto-estancias`, sobre la entrega PDF #40. Sin cambios de tu interfaz: `POST /api/estimaciones/estancias` y `roomSurveySchema` permiten agrupar fuentes, observaciones, medidas, preguntas y selecciones por estancia/zona. La API exige los originales visuales adjuntos al proyecto y usa su catálogo autorizado; no envía imágenes a análisis ni guarda revisiones. Cada línea devuelve `room_id`/`room_label` y procedencia.
 
 `replaceRoomArticle` conserva las cantidades y fórmulas al cambiar un artículo; el motor bloquea unidades incompatibles. Lo existente/decorativo se declara como contexto sin generar coste. Foto y panorama no justifican escala métrica. Preguntas necesarias sin respuesta quedan pendientes. Contrato y ejemplo sintético en `docs/captura/estancias-catalogo.md` y `tests/captura/room-fixture.ts`. Verificación completa: 253 pruebas, tipos y build correctos.
 
