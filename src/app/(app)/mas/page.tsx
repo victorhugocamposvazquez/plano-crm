@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import Link from "next/link";
-import { Menu, FileText, BookOpen, Users, Package, FolderOpen, Wallet, ChevronRight, UserRound, Palette } from "lucide-react";
+import { Menu, FileText, BookOpen, Users, Package, FolderOpen, Wallet, ChevronRight, UserRound, Palette, FolderDown } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
 import { AccountDialog } from "@/components/account-dialog";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -14,7 +14,8 @@ const entradas = [
   { href: "/compras", label: "Compras", hint: "Materiales por pedir, pedidos y en obra", icon: Package },
   { href: "/documentos", label: "Documentos", hint: "Planos, contratos, fotos y vídeos", icon: FolderOpen },
   { href: "/finanzas", label: "Finanzas", hint: "Aprobado, certificado y pendiente", icon: Wallet },
-  { href: "/configuracion/identidad", label: "Identidad de la empresa", hint: "Logo, colores, portada y datos legales de los documentos", icon: Palette }
+  { href: "/configuracion/identidad", label: "Identidad de la empresa", hint: "Logo, colores, portada y datos legales de los documentos", icon: Palette },
+  { href: "/configuracion/importar", label: "Importar expedientes", hint: "Carga proyectos, presupuestos y documentos desde una carpeta", icon: FolderDown }
 ];
 
 /** En móvil es la puerta a las secciones que no caben en la barra inferior; en escritorio repite el menú lateral. */
