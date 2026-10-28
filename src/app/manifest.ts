@@ -1,6 +1,6 @@
 import type { MetadataRoute } from "next";
 
-/** Manifiesto PWA: iconos generados en `icon.tsx` (P + punto naranja). */
+/** Manifiesto PWA: iconos generados en `icon.tsx` («PLA / NO■» sobre azul). */
 export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "Plano",
@@ -8,7 +8,7 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "CRM de reformas: de la primera visita a la entrega de llaves.",
     start_url: "/",
     display: "standalone",
-    background_color: "#ffffff",
+    background_color: "#16232E",
     theme_color: "#ffffff",
     lang: "es",
     icons: [

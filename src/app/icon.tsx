@@ -1,5 +1,5 @@
 import { ImageResponse } from "next/og";
-import { BrandIconMark } from "@/lib/brand-icon";
+import { BrandIconMark, brandIconFonts } from "@/lib/brand-icon";
 
 export function generateImageMetadata() {
   return [
@@ -9,12 +9,9 @@ export function generateImageMetadata() {
   ];
 }
 
-/** Favicon y iconos PWA: P + cuadrado naranja de la marca. */
+/** Favicon y iconos PWA: «PLA / NO■» sobre azul. */
 export default async function Icon({ id }: { id: Promise<string> }) {
   const key = await id;
   const size = key === "512" ? 512 : key === "192" ? 192 : 32;
-  return new ImageResponse(<BrandIconMark size={size} />, {
-    width: size,
-    height: size
-  });
+  return new ImageResponse(<BrandIconMark size={size} />, { width: size, height: size, fonts: await brandIconFonts() });
 }

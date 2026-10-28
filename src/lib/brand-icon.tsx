@@ -1,56 +1,36 @@
 import type { ReactElement } from "react";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 
-/** Colores de la marca en Workspace (favicon y PWA siempre en claro). */
+/** Colores del icono según la identidad: Tinta de marca de fondo, texto blanco y el naranja que la identidad fija sobre Tinta para el cuadrado. */
 export const brandIconColors = {
-  bg: "#ffffff",
-  ink: "#20272d",
-  orange: "#e25a12"
+  bg: "#16232E",
+  ink: "#ffffff",
+  orange: "#F2793A"
 } as const;
 
 /**
- * Marca «P■» para favicon y iconos de la PWA.
- * JSX compatible con `ImageResponse` de `next/og` (sin CSS externo ni ::after).
+ * Marca para favicon y PWA: «PLA» y debajo «NO■» sobre azul, en Archivo 800 como la marca en interfaz.
+ * JSX compatible con `ImageResponse` de `next/og` (sin CSS externo ni ::after); la fuente se pasa en `brandIconFonts()`.
  */
 export function BrandIconMark({ size }: { size: number }): ReactElement {
-  const fontSize = Math.round(size * 0.62);
-  const dot = Math.max(3, Math.round(size * 0.14));
-  const gap = Math.max(2, Math.round(size * 0.04));
-  const pad = Math.round(size * 0.14);
-
+  const fontSize = Math.round(size * 0.4);
+  const dot = Math.max(3, Math.round(size * 0.1));
+  const letterSpacing = -fontSize * 0.07;
+  const row = { display: "flex", alignItems: "flex-end", fontSize, fontWeight: 800, lineHeight: 0.84, letterSpacing, fontFamily: "Archivo", color: brandIconColors.ink } as const;
   return (
-    <div
-      style={{
-        width: "100%",
-        height: "100%",
-        display: "flex",
-        alignItems: "flex-end",
-        justifyContent: "center",
-        paddingBottom: pad,
-        background: brandIconColors.bg,
-        color: brandIconColors.ink
-      }}
-    >
-      <div style={{ display: "flex", alignItems: "flex-end", gap }}>
-        <span
-          style={{
-            fontSize,
-            fontWeight: 800,
-            lineHeight: 1,
-            letterSpacing: "-0.06em",
-            fontFamily: 'Archivo, "Arial Black", Arial, sans-serif'
-          }}
-        >
-          P
-        </span>
-        <div
-          style={{
-            width: dot,
-            height: dot,
-            background: brandIconColors.orange,
-            marginBottom: Math.round(fontSize * 0.06)
-          }}
-        />
+    <div style={{ width: "100%", height: "100%", display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: Math.round(size * 0.035), background: brandIconColors.bg }}>
+      <div style={row}>PLA</div>
+      <div style={row}>
+        NO
+        <div style={{ width: dot, height: dot, background: brandIconColors.orange, marginLeft: Math.max(1, Math.round(size * 0.03)), marginBottom: Math.round(fontSize * 0.04) }} />
       </div>
     </div>
   );
+}
+
+/** Archivo 800 (latín) para que el icono se pinte con la tipografía de la marca; licencia OFL en `fonts/LICENSE-archivo.txt`. */
+export async function brandIconFonts() {
+  const data = await readFile(join(process.cwd(), "src/lib/fonts/archivo-latin-800-normal.woff"));
+  return [{ name: "Archivo", data, weight: 800 as const, style: "normal" as const }];
 }
