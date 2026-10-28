@@ -3470,3 +3470,8 @@ p {
 @media (min-width: 1024px) { .flow-split { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 20px; align-items: start; } .flow-split .plan-stage { position: sticky; top: 12px; } }
 .flow-head-text .eyebrow { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 @media (max-width: 639px) { .flow-head-save { display: none; } .flow-head .btn { padding-inline: 8px; } }
+
+/* ---------- Puertas del presupuesto en la cabecera de la ficha ---------- */
+.doors-wide { display: inline-flex; gap: 8px; flex-wrap: wrap; }
+.doors-compact { display: none; }
+@media (max-width: 1199px) { .doors-wide { display: none; } .doors-compact { display: inline-flex; } }

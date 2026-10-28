@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
-import { MessageSquare, Plus, Footprints } from "lucide-react";
+import { MessageSquare, Plus } from "lucide-react";
 import { Drawer } from "@/components/ui/drawer";
 import { BackLink } from "@/components/ui/back-link";
 import { TaskRow } from "@/components/project/task-row";
@@ -20,6 +20,7 @@ import { BudgetActions } from "@/components/project/budget-actions";
 import { ProjectMenu } from "@/components/project/project-menu";
 import { NextStep } from "@/components/project/next-step";
 import { AddToBudget } from "@/components/plan/add-to-budget";
+import { BudgetDoors } from "@/components/plan/budget-doors";
 import { cargarBorrador } from "@/lib/plano-flujo";
 import { siguientePaso, type TipoAccion } from "@/lib/siguiente-paso";
 import { projectProgress, money, totals, dateLabel, compareVersions, kindNames, lineTotal, can, type Budget, type BudgetVersion, type ItemChange, type Task, type Workspace } from "@/lib/domain";
@@ -140,9 +141,9 @@ export default function ObraPage() {
         <div className="page-head">
           <h1 className="h2" style={{ fontSize: "var(--pl-text-h1)" }}>{project.name}</h1>
           <div className="head-actions">
-            {canBudget && sinPartidas && (project.status === "lead" || project.status === "estimating") && <LinkButton href={`/proyectos/nueva?proyecto=${project.id}`} variant="secondary"><Footprints size={17} strokeWidth={1.6} aria-hidden="true" />Estimar en visita</LinkButton>}
+            {canBudget && <BudgetDoors planoHref={`/proyectos/${project.id}/plano${budget ? `?p=${budget.id}` : ""}`} fotosHref={`/proyectos/nueva?proyecto=${project.id}`} onManual={() => { setSection("budget"); if (budgets.length === 0) void crearPresupuesto(); else if (editable) setEditParam("1"); else setTimeout(() => document.getElementById("acciones-presupuesto")?.scrollIntoView({ behavior: "smooth", block: "center" }), 50); }} />}
             <Button variant="secondary" className="chat-launcher" onClick={() => setChatParam("1")} aria-haspopup="dialog" aria-expanded={chatAbierto}><MessageSquare size={17} strokeWidth={1.6} aria-hidden="true" />Chat<span className="pl-mono">{messages.length}</span></Button>
-            <ProjectMenu project={project} approvedVersion={approved} puedeEstimar={canBudget && sinPartidas && (project.status === "lead" || project.status === "estimating")} onChat={() => setChatParam("1")} solicitud={solicitud} onAtendida={() => setSolicitud(null)} />
+            <ProjectMenu project={project} approvedVersion={approved} puedeEstimar={canBudget} onChat={() => setChatParam("1")} solicitud={solicitud} onAtendida={() => setSolicitud(null)} />
           </div>
         </div>
         <p className="subtitle">{[project.client_name, project.location, `desde ${dateLabel(project.created_at)}`].filter(Boolean).join(" · ")}</p>
@@ -246,7 +247,7 @@ export default function ObraPage() {
                 </div>
               )}
 
-              {canBudget && <AddToBudget planoHref={`/proyectos/${project.id}/plano${budget ? `?p=${budget.id}` : ""}`} visitaHref={sinPartidas ? `/proyectos/nueva?proyecto=${project.id}` : undefined} haPresupuesto={budgets.length > 0} borradorPlano={borradorPlano} onManual={() => { if (budgets.length === 0) void crearPresupuesto(); else if (editable) setEditParam("1"); else document.getElementById("acciones-presupuesto")?.scrollIntoView({ behavior: "smooth", block: "center" }); }} />}
+              {canBudget && <AddToBudget planoHref={`/proyectos/${project.id}/plano${budget ? `?p=${budget.id}` : ""}`} visitaHref={`/proyectos/nueva?proyecto=${project.id}`} haPresupuesto={budgets.length > 0} borradorPlano={borradorPlano} onManual={() => { if (budgets.length === 0) void crearPresupuesto(); else if (editable) setEditParam("1"); else document.getElementById("acciones-presupuesto")?.scrollIntoView({ behavior: "smooth", block: "center" }); }} />}
 
               {budget && <div id="acciones-presupuesto"><BudgetActions budget={budget} approved={approved} working={working} shown={shown} onEdit={() => setEditParam("1")} /></div>}
             </div>
