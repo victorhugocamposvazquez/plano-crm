@@ -2,11 +2,11 @@ import type { ReactElement } from "react";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-/** Colores de la marca en el icono: azul de Plano de fondo, texto blanco y el cuadrado naranja de «PLANO■». */
+/** Colores del icono según la identidad: Tinta de marca de fondo, texto blanco y el naranja que la identidad fija sobre Tinta para el cuadrado. */
 export const brandIconColors = {
-  bg: "#2c5a85",
+  bg: "#16232E",
   ink: "#ffffff",
-  orange: "#e25a12"
+  orange: "#F2793A"
 } as const;
 
 /**

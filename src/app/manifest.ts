@@ -8,7 +8,7 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "CRM de reformas: de la primera visita a la entrega de llaves.",
     start_url: "/",
     display: "standalone",
-    background_color: "#2c5a85",
+    background_color: "#16232E",
     theme_color: "#ffffff",
     lang: "es",
     icons: [
