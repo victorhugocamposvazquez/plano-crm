@@ -152,7 +152,7 @@ export default function NuevaVisitaPage() {
         <div className="eyebrow"><Link href={existente ? `/proyectos/${existente.id}` : "/proyectos"} className="muted" style={{ display: "inline-flex", alignItems: "center", gap: 6, textDecoration: "none" }}><ArrowLeft size={13} strokeWidth={1.8} aria-hidden="true" />{existente ? existente.name : "Proyectos"}</Link><span>· {existente ? `${existente.code} · fotos y notas` : "Nueva visita"}</span></div>
         <div className="page-head">
           <h1 className="h1">{existente ? "Fotos y notas de la obra." : "Estimar en la visita."}</h1>
-          <Button variant="ghost" onClick={salir} aria-label={existente ? "Salir y volver al proyecto" : "Salir de la visita"}><X size={17} strokeWidth={1.7} aria-hidden="true" />{existente ? "Volver al proyecto" : "Salir"}</Button>
+          <button type="button" className="btn btn-icon" aria-label={existente ? "Salir y volver al proyecto" : "Salir de la visita"} title={existente ? "Volver al proyecto" : "Salir"} onClick={salir}><X size={19} strokeWidth={1.6} aria-hidden="true" /></button>
         </div>
         <p className="subtitle">{existente ? "Hazlas ahora con la cámara o elígelas de la galería, apunta lo que se quiere hacer y, si quieres, deja una cifra orientativa con los precios del catálogo. Puedes volver y añadir más fotos cuando haga falta." : "Sal de la visita con una cifra orientativa, calculada con los precios del catálogo. Lo que no se mide queda marcado como pendiente."}</p>
       </div>

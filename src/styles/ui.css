@@ -3397,8 +3397,10 @@ p {
 
 .flow { display: flex; flex-direction: column; gap: 16px; max-width: 1180px; }
 .flow-head { display: flex; align-items: center; gap: 12px; }
-.flow-head-text { flex: 1; min-width: 0; display: flex; flex-direction: column; }
-.flow-head-text strong { font-size: var(--pl-text-sm); font-weight: var(--pl-weight-medium); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.flow-back { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 40%; color: var(--pl-muted); text-decoration: none; font-size: var(--pl-text-sm); }
+.flow-back:hover { color: var(--pl-ink); }
+.flow-back span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.flow-head-text { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: flex-end; text-align: right; }
 .flow-head-save { flex: 0 0 auto; }
 .flow-steps { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 6px; }
 .flow-steps li button { width: 100%; display: flex; flex-direction: column; align-items: flex-start; gap: 6px; padding: 0; border: 0; background: transparent; color: var(--pl-muted); font: inherit; font-size: var(--pl-text-xs); cursor: pointer; }
@@ -3469,7 +3471,7 @@ p {
 @media (min-width: 640px) { .facts-2 { grid-template-columns: 1fr 1fr; } }
 @media (min-width: 1024px) { .flow-split { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 20px; align-items: start; } .flow-split .plan-stage { position: sticky; top: 12px; } }
 .flow-head-text .eyebrow { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-@media (max-width: 639px) { .flow-head-save { display: none; } .flow-head .btn { padding-inline: 8px; } }
+@media (max-width: 639px) { .flow-head-save { display: none; } .flow-back span { display: none; } .flow-head-text { align-items: flex-start; text-align: left; } }
 
 /* ---------- Tabla de aplicación (importar expedientes) ---------- */
 .table-wrap { overflow-x: auto; border-top: var(--pl-hairline) solid var(--pl-line); }
