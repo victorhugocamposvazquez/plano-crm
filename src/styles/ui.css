@@ -3478,3 +3478,7 @@ p {
 .table thead th { font-family: var(--pl-font-mono); font-size: 11px; font-weight: var(--pl-weight-regular); letter-spacing: 0.06em; text-transform: uppercase; color: var(--pl-muted); background: var(--pl-raised); }
 .table .num { text-align: right; white-space: nowrap; }
 .table tbody tr:last-child td { border-bottom: 0; }
+/* ---------- Puertas del presupuesto en la cabecera de la ficha ---------- */
+.doors-wide { display: inline-flex; gap: 8px; flex-wrap: wrap; }
+.doors-compact { display: none; }
+@media (max-width: 1199px) { .doors-wide { display: none; } .doors-compact { display: inline-flex; } }

@@ -18,7 +18,7 @@ export function AddToBudget({ planoHref, visitaHref, onManual, haPresupuesto, bo
       {visitaHref && (
         <Link href={visitaHref} className="opt-row">
           <span className="opt-ico" data-tone="warning"><Footprints size={18} strokeWidth={1.7} aria-hidden="true" /></span>
-          <span className="opt-text"><strong>Con fotos y medidas de la visita</strong><small>Lo que apuntes en la obra se convierte en partidas propuestas.</small></span>
+          <span className="opt-text"><strong>Desde fotos</strong><small>Hazlas con la cámara o elígelas de la galería, apunta lo que se quiere hacer y, si quieres, una cifra orientativa.</small></span>
           <ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" className="muted" />
         </Link>
       )}
