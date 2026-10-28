@@ -17,3 +17,6 @@ private-imports/
 __pycache__/
 *.pyc
 .venv/
+
+# Trabajador de PDF.js generado desde la versión fijada de npm.
+public/pdfjs/

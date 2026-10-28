@@ -6,7 +6,7 @@ import { supabaseConfigured } from "@/lib/supabase/browser";
 import { readLocalFile, saveLocalFile } from "@/lib/local-files";
 
 const key = "plano.workspace.v1";
-type Context = { data: Workspace; actor: Actor; mode: "demo" | "supabase"; loading: boolean; error: string; notice: string; busy: boolean; refresh: () => Promise<void>; send: (command: Command) => Promise<Workspace>; upload: (file: File, projectId: string, category: Document["category"]) => Promise<void>; fileUrl: (document: Document) => Promise<string>; notify: (message: string) => void };
+type Context = { data: Workspace; actor: Actor; mode: "demo" | "supabase"; loading: boolean; error: string; notice: string; busy: boolean; refresh: () => Promise<void>; send: (command: Command) => Promise<Workspace>; upload: (file: File, projectId: string, category: Document["category"]) => Promise<Document>; fileUrl: (document: Document) => Promise<string>; notify: (message: string) => void };
 const WorkspaceContext = createContext<Context | null>(null);
 function savedDemo(): Workspace {
   const raw = localStorage.getItem(key);
@@ -62,14 +62,20 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     if (mode === "demo") {
       const path = `${data.organization_id}/${projectId}/${crypto.randomUUID()}`;
       await saveLocalFile(path, file);
-      await send({ type: "document.add", project_id: projectId, name: file.name, category, storage_path: path, mime_type: file.type, size_bytes: file.size });
+      const next = await send({ type: "document.add", project_id: projectId, name: file.name, category, storage_path: path, mime_type: file.type, size_bytes: file.size });
+      const document = next.documents.find(d => d.storage_path === path);
+      if (!document) throw new Error("No se ha podido vincular el archivo al proyecto.");
+      return document;
     } else {
       const response = await fetch("/api/uploads", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ project_id: projectId, name: file.name, category, mime_type: file.type, size_bytes: file.size }) });
       const result = await response.json(); if (!response.ok) throw new Error(result.error);
       const { createClient } = await import("@/lib/supabase/browser");
       const { error: uploadError } = await createClient().storage.from("project-files").uploadToSignedUrl(result.path, result.token, file, { contentType: file.type });
       if (uploadError) throw new Error(uploadError.message);
-      await send({ type: "document.add", project_id: projectId, name: file.name, category, storage_path: result.path, mime_type: file.type, size_bytes: file.size });
+      const next = await send({ type: "document.add", project_id: projectId, name: file.name, category, storage_path: result.path, mime_type: file.type, size_bytes: file.size });
+      const document = next.documents.find(d => d.storage_path === result.path);
+      if (!document) throw new Error("No se ha podido vincular el archivo al proyecto.");
+      return document;
     }
   }
   async function fileUrl(document: Document) {

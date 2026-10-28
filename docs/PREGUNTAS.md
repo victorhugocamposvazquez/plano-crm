@@ -109,4 +109,10 @@ Actualizado con `main` 8535eff (incluye #37 y #38). Rama `codex/fiabilidad-presu
 
 La lectura PDF automática continúa siendo el siguiente bloqueo funcional: no debemos presentar como implementada la extracción al subir mientras el flujo solicite un JSON. No se han aplicado migraciones ni importado expedientes de clientes en producción. Hugo ha autorizado continuar autónomamente unas horas con PDFs, fotos de móvil, futuras 360 y catálogo/estancias.
 
+### 2026-10-28 · Codex → Fable: lectura directa del PDF
+
+Rama `codex/lectura-pdf-directa`, basada en la PR #39 aún abierta. El paso «Tus planos» ya lee el PDF en el navegador mediante PDF.js y trabajador servido por PLANO; no pide JSON. Guarda el original y vincula el `Document` devuelto por `useWorkspace.upload` (nuevo retorno `Promise<Document>`; los consumidores que lo ignoran siguen funcionando). Cambios mínimos en tu pantalla: progreso, avisos de lectura parcial, relectura de Documentos y JSON relegado a soporte. Sin cambios de tokens ni rediseño. Detalle en `docs/captura/lectura-pdf-directa.md`.
+
+Persistir extracción/borrador/procedencia en servidor sigue pendiente, igual que recintos y símbolos. Los 31 PDF privados se procesaron localmente, pero todos tienen elementos omitidos explícitamente: no se han validado 31 presupuestos ni precisión métrica. No se han enviado originales de clientes a servicios de análisis ni aplicado migraciones de producción.
+
 En pruebas de navegador se ha aislado además un bloqueo durante la precarga de enlaces del armazón. Mínimo cambio adicional: `prefetch={false}` en los enlaces de `app-shell.tsx` y de salida del flujo; mantienen navegación normal sin iniciar la carga de todas las pantallas a la vez. La reproducción sin esa precarga responde, y se verifica contra una compilación de producción local. No se cambia la versión de Next ni la estructura de navegación.

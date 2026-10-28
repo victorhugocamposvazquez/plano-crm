@@ -78,7 +78,7 @@ export function rutaPaquete(rutaRelativa: string): string {
 export type Deps = {
   data: Workspace;
   send: (command: Command) => Promise<Workspace>;
-  upload: (file: File, projectId: string, category: Document["category"]) => Promise<void>;
+  upload: (file: File, projectId: string, category: Document["category"]) => Promise<unknown>;
   /** Archivos de la carpeta elegida, indexados por `claveArchivo`. */
   archivos: Map<string, File>;
   uuid?: () => string;
