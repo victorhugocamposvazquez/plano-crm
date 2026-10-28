@@ -4,7 +4,7 @@
 
 La primera entrega es la medición calibrada y el motor de propuestas, descritos en `README.md`. El criterio de finalización es poder seguir una cantidad hasta su fuente, detectar carencias y demostrar que el cálculo usa el catálogo de la organización. Está implementada sin cambiar el contrato del CRM existente.
 
-La segunda entrega será un laboratorio de lectura de planos: cargar una extracción, presentar el original, calibrar una cota, seleccionar o dibujar un eje/contorno y elegir la actuación. Debe usar los componentes y tokens compartidos, con números legibles y controles accesibles en móvil. El resultado será una previsualización; su persistencia necesita el contrato transaccional descrito en el README.
+La segunda entrega ya incorpora un laboratorio de lectura de planos: cargar una extracción, presentar sus trazados, calibrar una distancia conocida, asignar leyenda y revisar candidatos de franjas rectangulares (incluidos pares de triángulos de AutoCAD). Usa componentes y tokens compartidos, con controles accesibles en móvil. El dibujo libre de contornos, la selección general y la incorporación a partidas siguen pendientes. La persistencia necesita el contrato transaccional descrito en el README.
 
 La tercera entrega abordará reconocimiento asistido: detectar candidatos de muros, huecos y estancias, interpretar la leyenda y comparar planos actual/propuesto alineados. La IA propondrá estructura, no precios inventados. Evaluaremos extracción vectorial más reglas geométricas antes de añadir OCR o visión a toda la página. Las cotas impresas se usarán para comprobar/calibrar cuando se reconozcan con evidencia suficiente.
 

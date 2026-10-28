@@ -91,3 +91,23 @@ Para paredes se necesita altura; para acabados, alcance y calidades; para residu
 - [RoomPlan: captura con cámara y LiDAR y representación paramétrica](https://developer.apple.com/augmented-reality/roomplan/).
 
 Las capacidades de equipos, formatos y modelos se verificarán con documentación del fabricante y una prueba propia antes de elegirlos.
+
+## Segunda entrega: laboratorio y propuestas de franjas
+
+`/laboratorio/planos` permite probar el trabajo en el navegador con geometría sintética o abrir un JSON del lector local. La geometría real no se incluye en la aplicación ni en las pruebas versionadas. El archivo se procesa en la pestaña: no se sube al servidor, no llama a la API económica ni usa el catálogo de producción.
+
+La vista conserva escala, leyenda y decisiones por página. Se puede marcar una distancia conocida con dos pulsaciones o introducir sus coordenadas, indicar su longitud en metros y describir la referencia. El significado de los rellenos se asigna explícitamente a Demoler/Construir/Ignorar; no se infiere por rojo/verde en archivos importados. Los colores gris, RGB y CMYK básicos se normalizan para presentar la leyenda, sin interpretación de perfiles ICC o patrones.
+
+`proposeWallCandidates` propone ejes de franjas rectangulares rellenas con relación largo/ancho de al menos 5. Admite rectángulos rotados y elimina vértices intermedios colineales. Los planos de AutoCAD examinados también contienen franjas como dos triángulos: se unen solo parejas del mismo significado/color que comparten la diagonal y reconstruyen un rectángulo compatible. Los trazados duplicados se agrupan manteniendo todos sus identificadores; los dos triángulos que forman una franja no se cuentan como duplicados.
+
+El detector no reconoce de forma general qué es un muro: puede proponer mobiliario o símbolos alargados del mismo color. No une tramos contiguos, no resuelve encuentros, no detecta curvas, no interpreta trazos sin relleno y no completa partes ausentes. Las propuestas siempre requieren revisión. Las longitudes no equivalen a superficie de tabique: faltan altura, huecos y reglas de medición.
+
+Se revisaron dos extracciones del paquete de GARAL, con reglas de leyenda explícitas para esa exploración: 11 candidatos en demolición y 8 en tabiquería nueva. Estas cifras son resultados del detector, no número comprobado de muros ni precisión acreditada.
+
+El laboratorio descarga `revision-plano.json`, con identidad del original, referencias, leyenda, candidatos y decisiones. Es un archivo de revisión local, no un presupuesto ni una decisión persistida en el CRM. La descarga todavía no se puede reabrir directamente como extracción: debe conservarse junto al JSON de geometría. Una incorporación transaccional al proyecto sigue pendiente.
+
+Límites de la vista: JSON de hasta 20 MiB, máximo 12.000 trazados por página y presentación de los 20 colores de relleno más frecuentes, con aviso si hay más. Los archivos que exceden el límite se rechazan antes de sustituir la revisión actual. La vista muestra geometría lineal, sin imágenes incrustadas ni curvas omitidas.
+
+`measurementFromWallCandidate` vuelve a calcular el candidato desde la extracción y la leyenda antes de producir su medición de eje. Comprueba identidad de fuente, página y escala, y conserva `derived_from_path_ids`, incluidos los trazados triangulados o duplicados. Una prueba sintética conecta ese eje de 5 m con una altura declarada de 2,5 m, obtiene 12,5 m² y aplica el artículo de demolición del catálogo de prueba. Es una prueba del circuito de cálculo; no acredita esas dimensiones en un plano real.
+
+La comprobación de navegador está en `tests/captura/lab.browser-check.cjs`. Con un servidor local arrancado en el puerto 3117, ejecutar `node tests/captura/lab.browser-check.cjs`; usa el Chromium de Playwright instalado. Se puede indicar `PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH` para un Chrome existente y `PLAYWRIGHT_BASE_URL` para otro puerto. Las capturas van a `test-results/captura-lab` (o `PLANO_BROWSER_OUTPUT`). La prueba opcional del ejemplo local 040 se activa con `PLANO_BENCH_PLAN_040`; ese archivo no forma parte del repositorio. Se comprueban decisiones, descarga, invalidación por cambio de escala, protección al cambiar de archivo y ausencia de desbordamiento en 390/768/1280 px con los dos temas.

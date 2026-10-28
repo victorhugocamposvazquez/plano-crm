@@ -199,3 +199,9 @@ Presupuestos, Clientes, Documentos y Finanzas leen todo el espacio y enlazan a l
 ### Ciclo del presupuesto en la ficha
 
 Bajo las partidas, una fila de acciones según el estado (`accionesPresupuesto`): borrador → «Editar partidas» y «Cerrar Vn»; cerrada → «Aprobar Vn para obra» (oficina y administración) o «Nueva revisión»; aprobada sin borrador → «Nueva revisión». Con aprobada y borrador a la vez, «Ver cambios completos» abre el comparador campo a campo con la diferencia en base.
+
+### Laboratorio de planos · aportación de Codex, 28-10-2026
+
+Ruta independiente `/laboratorio/planos`, fuera del proveedor del CRM: trabaja con una extracción local y un ejemplo sintético. Reutiliza Brand, Button, Select, ThemeToggle y Modal. No se añade al menú ni cambia las pantallas de Fable en esta rama. Nuevo token `--pl-document-bg`, blanco fijo en ambos temas, para que los trazados del original sigan siendo legibles sobre papel en Grafito.
+
+El plano mantiene sus colores originales como datos del documento; las superposiciones de medición usan `--pl-blue`. Una lista textual acompaña a las propuestas: pendiente, incluida en revisión o descartada. La selección de referencia mediante dos pulsaciones tiene alternativa con campos de coordenadas. Cada página conserva escala, leyenda y decisiones; cambiar una referencia reabre su revisión. Cambiar de archivo con decisiones abiertas permite descargarlas antes, con confirmación sobre la pantalla. El laboratorio descarga una revisión local y no ofrece acciones de guardar/aprobar presupuestos.

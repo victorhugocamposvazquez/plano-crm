@@ -7,6 +7,9 @@
 :root {
   color-scheme: light;
 
+  /* Papel de documentos: conserva el fondo blanco también en Grafito. */
+  --pl-document-bg: #ffffff;
+
   /* Color · Workspace */
   --pl-bg: #ffffff;
   --pl-soft: #f6f6f4;

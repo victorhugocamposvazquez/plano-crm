@@ -25,7 +25,7 @@ const common = { id, source_id: id, label };
 export const measurementSchema = z.discriminatedUnion("kind", [
   z.object({ ...common, kind: z.literal("quantity"), value: z.number().positive().max(1000000), unit: unitSchema,
     method: z.enum(["manual", "laser", "metric_export", "reported", "visual_estimate"]), reference: label }).strict(),
-  z.object({ ...common, kind: z.literal("plan_length"), page: z.number().int().min(1).max(10000), calibration_id: id, path_id: z.string().min(1).max(120).optional(),
+  z.object({ ...common, kind: z.literal("plan_length"), derived_from_path_ids: z.array(z.string().min(1).max(120)).min(1).max(100).optional(), page: z.number().int().min(1).max(10000), calibration_id: id, path_id: z.string().min(1).max(120).optional(),
     points: z.array(pointSchema).min(2).max(500) }).strict(),
   z.object({ ...common, kind: z.literal("plan_area"), page: z.number().int().min(1).max(10000), calibration_id: id, path_id: z.string().min(1).max(120).optional(),
     points: z.array(pointSchema).min(3).max(500) }).strict()
