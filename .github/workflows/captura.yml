@@ -1,0 +1,22 @@
+name: Comprobar lector de planos
+on:
+  pull_request:
+    paths: ["scripts/captura/**", ".github/workflows/captura.yml"]
+  push:
+    branches: [main, "codex/**"]
+    paths: ["scripts/captura/**", ".github/workflows/captura.yml"]
+permissions:
+  contents: read
+jobs:
+  pdf:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: "scripts/captura/requirements*.txt"
+      - run: python -m pip install -r scripts/captura/requirements-test.txt
+      - run: python -m unittest discover -s scripts/captura -p 'test_*.py'
