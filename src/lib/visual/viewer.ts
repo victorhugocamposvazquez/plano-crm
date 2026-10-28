@@ -1,14 +1,13 @@
 import * as THREE from "three";
 import { OrbitControls } from "three/addons/controls/OrbitControls.js";
+import { RoundedBoxGeometry } from "three/addons/geometries/RoundedBoxGeometry.js";
+import { loadVisualMaterials,plainMaterial as material,sceneColor as color,type VisualMaterials } from "./materials";
 import type { SceneSelection,SpatialScene,VisualAsset } from "./schema";
 
 export type SceneView="overview"|"inside"|"focus";
 export type ViewerCommand="left"|"right"|"closer"|"farther";
-const color=(rgb:readonly number[])=>new THREE.Color().setRGB(rgb[0]/255,rgb[1]/255,rgb[2]/255,THREE.SRGBColorSpace);
-const material=(rgb:readonly number[],roughness=0.75)=>new THREE.MeshStandardMaterial({color:color(rgb),roughness});
-const rgbCss=(rgb:readonly number[])=>`rgb(${rgb.map(Math.round).join(" ")})`;
-function box(parent:THREE.Object3D,size:number[],position:number[],surface:THREE.Material) {
-  const mesh=new THREE.Mesh(new THREE.BoxGeometry(...size as [number,number,number]),surface);
+function box(parent:THREE.Object3D,size:number[],position:number[],surface:THREE.Material,bevel=0) {
+  const mesh=new THREE.Mesh(bevel?new RoundedBoxGeometry(...size as [number,number,number],2,bevel):new THREE.BoxGeometry(...size as [number,number,number]),surface);
   mesh.position.set(...position as [number,number,number]);mesh.castShadow=true;mesh.receiveShadow=true;parent.add(mesh);return mesh;
 }
 function disposeTree(root:THREE.Object3D) {
@@ -18,35 +17,18 @@ function disposeTree(root:THREE.Object3D) {
       geometries.add(object.geometry);for(const m of Array.isArray(object.material)?object.material:[object.material]) materials.add(m);
     }
   });
-  for(const m of materials) {if(m instanceof THREE.MeshStandardMaterial && m.map) textures.add(m.map);m.dispose();}
+  for(const m of materials) {for(const value of Object.values(m)) if(value instanceof THREE.Texture) textures.add(value);m.dispose();}
   for(const texture of textures) texture.dispose();for(const geometry of geometries) geometry.dispose();
 }
-function floorMaterial(asset:VisualAsset,width:number,depth:number) {
-  const mat=material(asset.color,asset.kind==="resin"?0.45:0.8);
-  if(asset.kind==="resin") return mat;
-  const canvas=document.createElement("canvas");canvas.width=256;canvas.height=256;
-  const ctx=canvas.getContext("2d");if(!ctx) return mat;
-  ctx.fillStyle=rgbCss(asset.color);ctx.fillRect(0,0,256,256);
-  if(asset.kind==="wood") {
-    for(let row=0;row<8;row++) {
-      const tint=1+(row%3-1)*0.045;ctx.fillStyle=rgbCss(asset.color.map(v=>Math.min(255,v*tint)));ctx.fillRect(0,row*32,256,32);
-      ctx.strokeStyle=rgbCss(asset.color.map(v=>v*0.72));ctx.lineWidth=1;ctx.beginPath();ctx.moveTo(0,row*32);ctx.lineTo(256,row*32);ctx.stroke();
-      for(let line=0;line<4;line++){ctx.strokeStyle=rgbCss(asset.color.map(v=>v*(0.9+line*0.02)));ctx.beginPath();ctx.moveTo(0,row*32+5+line*6);ctx.lineTo(256,row*32+7+line*6);ctx.stroke();}
-      ctx.strokeStyle=rgbCss(asset.color.map(v=>v*0.72));ctx.beginPath();ctx.moveTo(row%2?96:192,row*32);ctx.lineTo(row%2?96:192,row*32+32);ctx.stroke();
-    }
-  } else {ctx.strokeStyle=rgbCss(asset.color.map(v=>Math.min(255,v+25)));ctx.lineWidth=3;ctx.strokeRect(0,0,256,256);}
-  const texture=new THREE.CanvasTexture(canvas);texture.colorSpace=THREE.SRGBColorSpace;texture.wrapS=texture.wrapT=THREE.RepeatWrapping;
-  texture.repeat.set(width/(asset.kind==="wood"?2:0.6),depth/(asset.kind==="wood"?2:0.6));mat.map=texture;return mat;
-}
-function furnishing(parent:THREE.Group,asset:VisualAsset) {
+function furnishing(parent:THREE.Group,asset:VisualAsset,resources:VisualMaterials) {
   const [w,h,d]=asset.dimensions_m!;
   if(asset.kind==="cabinet") {
-    const body=material(asset.color),top=material([229,226,215],0.35),metal=material([56,62,65],0.3);
-    box(parent,[w,h-0.16,d-0.04],[0,h/2+0.04,-0.02],body);box(parent,[w,0.04,d],[0,h-0.02,0],top);
-    for(const x of [-w/4,w/4]) {box(parent,[w/2-0.012,h-0.20,0.018],[x,h/2+0.02,d/2-0.031],body);box(parent,[0.09,0.014,0.022],[x,h*0.73,d/2-0.011],metal);}
+    const body=resources.surface(asset,1,1,true),top=material([225,222,211],0.25),metal=material([48,48,43],0.3);metal.metalness=0.85;
+    box(parent,[w,h-0.16,d-0.04],[0,h/2+0.04,-0.02],body,0.006);box(parent,[w,0.04,d],[0,h-0.02,0],top,0.008);
+    for(const x of [-w/4,w/4]) {box(parent,[w/2-0.012,h-0.20,0.018],[x,h/2+0.02,d/2-0.031],body,0.004);box(parent,[0.09,0.014,0.022],[x,h*0.73,d/2-0.011],metal);}
     for(const x of [-w/2+0.07,w/2-0.07]) for(const z of [-d/2+0.06,d/2-0.06]) box(parent,[0.035,0.12,0.035],[x,0.06,z],metal);
   } else {
-    const steel=material(asset.color,0.38),shelf=material([175,182,184],0.55),carton=material([171,148,110]);
+    const steel=material(asset.color,0.38),shelf=material([175,182,184],0.55),carton=material([171,148,110]);steel.metalness=0.75;shelf.metalness=0.6;
     for(const x of [-w/2+0.0325,w/2-0.0325]) for(const z of [-d/2+0.0325,d/2-0.0325]) box(parent,[0.065,h,0.065],[x,h/2,z],steel);
     for(let level=0;level<4;level++) {
       const y=0.15+level*(h-0.3)/3;box(parent,[w,0.05,d],[0,y,0],shelf);
@@ -56,20 +38,29 @@ function furnishing(parent:THREE.Group,asset:VisualAsset) {
   }
 }
 
-/** Visor procedural de demostración. La geometría no determina precios ni cantidades. */
-export function createSpaceViewer(container:HTMLElement,spatial:SpatialScene,assets:VisualAsset[],selection:SceneSelection,onSelect:(slotId:string)=>void,onFailure:()=>void) {
+/** Escena sintética con materiales físicos. La geometría no determina precios ni cantidades. */
+export async function createSpaceViewer(container:HTMLElement,spatial:SpatialScene,assets:VisualAsset[],selection:SceneSelection,onSelect:(slotId:string)=>void,onFailure:()=>void,signal?:AbortSignal) {
   const {width:w,depth:d,height:h}=spatial.dimensions_m;
   const renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:"low-power"});
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1,2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFShadowMap;
-  renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=1.15;
-  const canvas=renderer.domElement;canvas.setAttribute("aria-label","Espacio tridimensional. También puedes usar los botones de vista y la lista de artículos.");canvas.setAttribute("role","img");canvas.tabIndex=0;
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1,2));renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  renderer.outputColorSpace=THREE.SRGBColorSpace;renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=0.95;
+  const abort=()=>{renderer.dispose();renderer.forceContextLoss();};
+  signal?.addEventListener("abort",abort,{once:true});
+  let resources:VisualMaterials;
+  try {resources=await loadVisualMaterials(Math.min(8,renderer.capabilities.getMaxAnisotropy()));}
+  catch(error) {signal?.removeEventListener("abort",abort);abort();throw error;}
+  signal?.removeEventListener("abort",abort);
+  if(signal?.aborted) {resources.dispose();abort();throw new DOMException("Carga cancelada","AbortError");}
+  const canvas=renderer.domElement;canvas.dataset.materialStatus=resources.complete?"ready":"degraded";canvas.setAttribute("aria-label","Espacio tridimensional. También puedes usar los botones de vista y la lista de artículos.");canvas.setAttribute("role","img");canvas.tabIndex=0;
   container.appendChild(canvas);
   const world=new THREE.Scene(),camera=new THREE.PerspectiveCamera(48,1,0.05,Math.max(w,d)*15);
   const controls=new OrbitControls(camera,canvas);controls.enableDamping=false;controls.minDistance=0.5;controls.maxDistance=Math.max(w,d)*4;
   controls.maxPolarAngle=Math.PI*0.495;controls.screenSpacePanning=false;
-  const ambient=new THREE.HemisphereLight(new THREE.Color(1,1,1),color([157,146,128]),2.3);world.add(ambient);
-  const light=new THREE.DirectionalLight(new THREE.Color(1,1,1),3.5);light.position.set(w*0.2,h*2,d);light.castShadow=true;
-  light.shadow.mapSize.set(1024,1024);light.shadow.camera.left=-w;light.shadow.camera.right=w;light.shadow.camera.top=d;light.shadow.camera.bottom=-d;light.shadow.bias=-0.0003;world.add(light);
+  world.environment=resources.environment;world.environmentIntensity=0.65;
+  const ambient=new THREE.HemisphereLight(color([218,231,250]),color([156,142,121]),resources.environment?0.4:1.7);world.add(ambient);
+  const light=new THREE.DirectionalLight(color([255,242,220]),3);light.position.set(-w*1.5,h*2,d*0.5);light.castShadow=true;
+  light.shadow.mapSize.set(1024,1024);light.shadow.normalBias=0.015;light.shadow.camera.near=0.1;light.shadow.camera.far=Math.max(w,d,h)*8;light.shadow.camera.left=-w;light.shadow.camera.right=w;light.shadow.camera.top=d;light.shadow.camera.bottom=-d;light.shadow.bias=-0.0003;world.add(light);
+  const enclosure=new THREE.Group();world.add(enclosure);
   const roots=new Map<string,THREE.Group>();let highlight:THREE.BoxHelper|null=null,selectedSlot=spatial.slots[0].id,currentSelection="",disposed=false;
   function render() {if(!disposed) {canvas.dataset.cameraDistance=String(controls.getDistance());renderer.render(world,camera);}}
   function theme() {world.background=new THREE.Color(getComputedStyle(container).getPropertyValue("--pl-document-bg").trim());if(highlight) highlight.material.color.set(getComputedStyle(container).getPropertyValue("--pl-blue").trim());render();}
@@ -79,29 +70,47 @@ export function createSpaceViewer(container:HTMLElement,spatial:SpatialScene,ass
     const key=JSON.stringify(next);
     if(key!==currentSelection) {
       for(const root of roots.values()) {world.remove(root);disposeTree(root);}roots.clear();
+      disposeTree(enclosure);enclosure.clear();
       for(const slot of spatial.slots) {
         const asset=assets.find(a=>a.id===next[slot.id])!;
         const root=new THREE.Group();root.userData.slotId=slot.id;roots.set(slot.id,root);world.add(root);
-        if(slot.category==="floor") box(root,[w,0.08,d],[0,-0.04,0],floorMaterial(asset,w,d));
+        if(slot.category==="floor") box(root,[w,0.08,d],[0,-0.04,0],resources.surface(asset,w,d));
         else if(slot.category==="wall") {
-          const paint=material(asset.color),trim=material([224,222,213]);
-          // Sección abierta para inspeccionar el interior; no representa un cerramiento completo.
-          box(root,[w+0.16,h,0.12],[0,h/2,-d/2-0.06],paint);box(root,[0.12,h,d],[-w/2-0.06,h/2,0],paint);
-          box(root,[w,0.10,0.035],[0,0.05,-d/2+0.02],trim);box(root,[0.035,0.10,d],[-w/2+0.02,0.05,0],trim);
+          const paint=resources.surface(asset,w,h),trim=material([221,217,208],0.5);
+          box(root,[w+0.16,h,0.12],[0,h/2,-d/2-0.06],paint);
+          if(spatial.space_kind!=="industrial" && d>1.5 && h>2.5) {
+            // Hueco ficticio de 1,5 × 2 m: coincide con los 3 m² descontados en este ejemplo.
+            const opening=1.5,bottom=0.5,top=2.5,side=(d-opening)/2;
+            const sidePaint=resources.surface(asset,d,h);
+            for(const z of [-1,1]) box(root,[0.12,h,side],[-w/2-0.06,h/2,z*(opening+side)/2],sidePaint);
+            box(root,[0.12,bottom,opening],[-w/2-0.06,bottom/2,0],sidePaint);
+            box(root,[0.12,h-top,opening],[-w/2-0.06,(h+top)/2,0],sidePaint);
+            const frame=material([54,57,54],0.3);frame.metalness=0.6;
+            for(const z of [-opening/2,0,opening/2]) box(root,[0.09,2.04,0.035],[-w/2+0.01,1.5,z],frame);
+            for(const y of [bottom,top]) box(root,[0.09,0.035,opening],[-w/2+0.01,y,0],frame);
+            box(root,[0.22,0.035,opening+0.1],[-w/2+0.04,bottom-0.02,0],trim,0.006);
+          } else box(root,[0.12,h,d],[-w/2-0.06,h/2,0],resources.surface(asset,d,h));
+          box(root,[w,0.10,0.035],[0,0.05,-d/2+0.02],trim);
+          box(root,[0.035,0.10,d],[-w/2+0.02,0.05,0],trim);
+          // Solo visibles desde dentro; contexto, sin medición o partida adicional.
+          box(enclosure,[0.12,h,d],[w/2+0.06,h/2,0],resources.surface(asset,d,h));
+          box(enclosure,[w,h,0.12],[0,h/2,d/2+0.06],paint);
+          box(enclosure,[w,0.08,d],[0,h+0.04,0],material([236,232,221]));
         } else {
-          for(const object of spatial.objects.filter(o=>o.slot_id===slot.id)) {const group=new THREE.Group();group.position.set(...object.position_m);root.add(group);furnishing(group,asset);}
+          for(const object of spatial.objects.filter(o=>o.slot_id===slot.id)) {const group=new THREE.Group();group.position.set(...object.position_m);root.add(group);furnishing(group,asset,resources);}
         }
       }
       currentSelection=key;
     }
     const root=roots.get(selectedSlot);
-    if(root) {highlight=new THREE.BoxHelper(root,new THREE.Color(getComputedStyle(container).getPropertyValue("--pl-blue").trim()));world.add(highlight);}
+    if(root && spatial.slots.find(s=>s.id===selectedSlot)?.category==="furnishing") {highlight=new THREE.BoxHelper(root,new THREE.Color(getComputedStyle(container).getPropertyValue("--pl-blue").trim()));world.add(highlight);}
     render();
   }
   const existing=new THREE.Group();world.add(existing);
   for(const object of spatial.objects.filter(o=>o.kind==="existing_column")) box(existing,[0.3,h,0.3],[object.position_m[0],h/2,object.position_m[2]],material([195,196,191]));
   function view(mode:SceneView) {
-    if(mode==="inside") {camera.position.set(w*0.18,Math.min(1.65,h-0.25),d*0.38);controls.target.set(0,Math.min(1.4,h/2),-d*0.35);}
+    enclosure.visible=mode==="inside";
+    if(mode==="inside") {camera.position.set(w*0.30,Math.min(1.55,h-0.25),d*0.40);controls.target.set(-w*0.05,Math.min(1.25,h/2),-d*0.35);}
     else if(mode==="focus" && roots.has(selectedSlot)) {
       const bounds=new THREE.Box3().setFromObject(roots.get(selectedSlot)!);const center=bounds.getCenter(new THREE.Vector3());
       const category=spatial.slots.find(s=>s.id===selectedSlot)?.category;
@@ -133,6 +142,6 @@ export function createSpaceViewer(container:HTMLElement,spatial:SpatialScene,ass
   return {update,view,command,dispose(){
     disposed=true;observer.disconnect();themeObserver.disconnect();controls.removeEventListener("change",render);controls.dispose();
     canvas.removeEventListener("pointerdown",down);canvas.removeEventListener("pointerup",up);canvas.removeEventListener("webglcontextlost",lost);
-    disposeTree(world);light.shadow.dispose();renderer.dispose();renderer.forceContextLoss();canvas.remove();
+    disposeTree(world);resources.dispose();light.shadow.dispose();renderer.dispose();renderer.forceContextLoss();canvas.remove();
   }};
 }
