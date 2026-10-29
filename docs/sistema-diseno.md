@@ -211,6 +211,12 @@ La **hoja de pedido** (`/imprimir/pedido/<proyecto>?p=<proveedor>`) usa la misma
 
 **Presentación por presupuesto** (botón «Presentación» en la vista de impresión): logo del cliente (portada y junto a sus datos), imagen de portada propia que sustituye a la de la empresa, título de portada y carta de presentación en la primera página. El documento numera capítulos (01, 02…) y partidas (01.03) y, con más de un capítulo, abre con un resumen por capítulos con barras proporcionales en el color principal.
 
+### Edición del catálogo · 29 octubre 2026
+
+Los artículos se editan y se dan de baja desde la propia lista: cada fila es un botón que abre un `Modal` «Editar · CÓDIGO» con los mismos campos que el alta (categoría, código, descripción, unidad, precio sin IVA, IVA); «Dar de baja» confirma en el propio pie del diálogo. Comandos `article.update` (solo los campos enviados, sin repetir referencia) y `article.delete` en `domain.ts` y en la migración `202610290001_article_update.sql` (área de Codex, mismo patrón que `task_update`). Los precios ya copiados a un presupuesto no cambian.
+
+Las categorías existen a través de sus artículos, así que el campo «Categoría» es un `Select` con las existentes y la opción «Nueva categoría…», que cambia a un campo de texto; el botón «Nueva categoría» de la cabecera abre el alta directamente en ese modo, con una línea que explica que la categoría nace con su primer artículo.
+
 ### Importación del catálogo
 
 «Importar CSV» en Catálogo abre un cajón ancho en tres pasos: pegar o subir el CSV (separador detectado, cabecera reconocida), revisar el mapeo de columnas con el selector propio y la tabla de filas con su estado (entra / ya existe / error con motivo), e importar en lote con barra de progreso. Nada se guarda hasta el último paso y las filas con problemas nunca se importan a medias. «Exportar CSV» devuelve el catálogo en el mismo formato (punto y coma, coma decimal, UTF-8 con BOM) para editarlo en Excel y volver a importarlo. Lógica en `src/lib/importar-catalogo.ts`.

@@ -31,6 +31,8 @@ export const commandSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("budget.issue"), version_id: z.uuid(), expected_revision: z.number().int().min(0) }),
   z.object({ type: z.literal("budget.approve"), version_id: z.uuid(), reference: text }),
   z.object({ type: z.literal("article.create"), code: text, name: text, chapter: z.string().trim().min(1).max(120), unit: z.enum(["m²", "ml", "ud", "h", "global"]), unit_price: z.number().int().min(0).max(100000000), vat_rate: z.number().min(0).max(30).multipleOf(0.01) }),
+  z.object({ type: z.literal("article.update"), id: z.uuid(), code: text.optional(), name: text.optional(), chapter: z.string().trim().min(1).max(120).optional(), unit: z.enum(["m²", "ml", "ud", "h", "global"]).optional(), unit_price: z.number().int().min(0).max(100000000).optional(), vat_rate: z.number().min(0).max(30).multipleOf(0.01).optional() }),
+  z.object({ type: z.literal("article.delete"), id: z.uuid() }),
   z.object({ type: z.literal("task.create"), project_id: z.uuid(), title: text, trade: text, assignee: z.string().max(120), due_date: z.iso.date(), weight: z.number().int().min(1).max(100) }),
   z.object({ type: z.literal("task.toggle"), id: z.uuid(), status: z.enum(["pending", "done"]) }),
   z.object({ type: z.literal("task.update"), id: z.uuid(), title: text.optional(), trade: text.optional(), assignee: z.string().max(120).optional(), due_date: z.iso.date().optional(), weight: z.number().int().min(1).max(100).optional() }),
@@ -146,6 +148,17 @@ export function applyCommand(previous: Workspace, input: Command, actor: Actor, 
       if (state.articles.some(a => a.code.toLowerCase() === command.code.toLowerCase())) throw new Error("Ya existe un artículo con esa referencia.");
       const { type: _, ...fields } = command; void _;
       state.articles.push({ id: uuid(), organization_id: org, ...fields }); activity = `Artículo creado: ${command.name}`; break;
+    }
+    case "article.update": {
+      const a = state.articles.find(a => a.id === command.id); if (!a) throw new Error("Artículo no encontrado.");
+      if (command.code && state.articles.some(x => x.id !== a.id && x.code.toLowerCase() === command.code!.toLowerCase())) throw new Error("Ya existe un artículo con esa referencia.");
+      const { type: _, id: __, ...cambios } = command; void _; void __;
+      Object.assign(a, Object.fromEntries(Object.entries(cambios).filter(([, v]) => v !== undefined)));
+      activity = `Artículo actualizado: ${a.name}`; break;
+    }
+    case "article.delete": {
+      const a = state.articles.find(a => a.id === command.id); if (!a) throw new Error("Artículo no encontrado.");
+      state.articles = state.articles.filter(x => x.id !== command.id); activity = `Artículo eliminado: ${a.name}`; break;
     }
     case "task.create": {
       const { type: _, ...fields } = command; void _;

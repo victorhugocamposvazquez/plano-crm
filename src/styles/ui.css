@@ -3018,6 +3018,11 @@ p {
 .import-progress { height: 8px; border-radius: 4px; background: var(--pl-raised); overflow: hidden; }
 .import-progress i { display: block; height: 100%; background: var(--pl-success); transition: width 0.2s; }
 .catalog-tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+/* Fila de artículo tocable: abre la edición. */
+button.row-item { width: 100%; border: 0; border-bottom: var(--pl-hairline) solid var(--pl-line); background: transparent; color: inherit; font: inherit; text-align: left; cursor: pointer; padding: 0; }
+button.row-item:hover { background: var(--pl-soft); }
+button.row-item .row-item-go { color: var(--pl-faint); }
+.catalog-danger { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-right: auto; }
 
 /* ---------- Revisión de usabilidad ---------- */
 
