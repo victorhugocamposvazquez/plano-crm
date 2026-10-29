@@ -1,3 +1,4 @@
+import { budgetHistory } from "./budget-history";
 import { totals, type Budget, type BudgetVersion, type Document, type Project, type Workspace } from "./domain";
 
 /**
@@ -26,8 +27,7 @@ export function filasPresupuesto(data: Workspace): FilaPresupuesto[] {
     const project = data.projects.find(p => p.id === budget.project_id);
     const versions = data.versions.filter(v => v.budget_id === budget.id).sort((a, b) => b.number - a.number);
     if (!project || !versions.length) continue;
-    const approved = budget.approved_version_id ? versions.find(v => v.id === budget.approved_version_id) : undefined;
-    const working = versions.find(v => v.status === "draft" || v.status === "issued");
+    const { approved, working } = budgetHistory(budget, versions);
     const approvedBase = approved ? totals(approved.items).base : 0;
     const workingBase = working ? totals(working.items).base : 0;
     const estado: FilaPresupuesto["estado"] = approved && working ? "changes" : approved ? "approved" : working?.status === "issued" ? "issued" : working && working.items.length ? "draft" : "empty";

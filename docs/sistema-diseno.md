@@ -274,3 +274,9 @@ La coincidencia de tamaño de papel se presenta como ayuda, sin declarar escala 
 ### Lectura directa de PDF · 28 octubre 2026
 
 En «Tus planos», la acción «Añadir y leer un plano (PDF)» informa del progreso y guarda el original en Documentos. Los avisos se despliegan bajo cada plano como «Lectura parcial · revisar»; un archivo leído no se presenta como presupuesto validado. Se pueden releer planos adjuntos y las opciones JSON de soporte quedan cerradas inicialmente. Se reutilizan componentes y tokens existentes, con la misma estructura en Workspace y Grafito.
+
+### Usabilidad por tareas · 29 octubre 2026
+
+Primera entrega de simplificación autorizada por Hugo: ficha con Resumen / Presupuesto / Obra / Documentos / Compras; presupuesto con selector de versión y vistas Partidas / Versiones / Comparar cambios. Capítulos, condiciones y opciones avanzadas desplegables evitan mostrarlo todo a la vez. Comparación antes/después por campo y condiciones, con etiquetas además del color. La edición de versiones históricas no se confunde con el borrador actual.
+
+Ajuste de tokens: `--pl-text-xs` 12 px, `--pl-text-sm` 13 px, `--pl-text-md` 14 px; `--pl-button-height-desktop` y `--pl-icon-button` 44 px. Se conservan paleta y temas. Pestañas con flechas/Inicio/Fin; selectores nativos para elegir versiones. CSS propio en `src/styles/project-workspace.css`. Criterios, alcance y próximos módulos en `docs/usabilidad/README.md`.

@@ -20,3 +20,14 @@ export function useQueryState<T extends string>(key: string, fallback: T): [T, (
   }, [params, router, pathname, key, fallback]);
   return [value, set];
 }
+
+/** Seleccionar versión, vista y pareja de comparación es una única navegación: no se pisan parámetros entre sí. */
+export function useQueryPatch() {
+  const pathname=usePathname();
+  return useCallback((patch:Record<string,string|null|undefined>)=>{
+    const search=new URLSearchParams(window.location.search);
+    for(const [key,value] of Object.entries(patch))if(value)search.set(key,value);else search.delete(key);
+    // Estas vistas leen el mismo espacio ya cargado. La API nativa integrada por Next actualiza useSearchParams sin pedir otra página al servidor.
+    window.history.replaceState(null,"",search.size?`${pathname}?${search}`:pathname);
+  },[pathname]);
+}

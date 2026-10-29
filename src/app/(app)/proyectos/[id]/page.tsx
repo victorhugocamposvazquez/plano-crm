@@ -1,12 +1,12 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
-import { useParams } from "next/navigation";
-import { MessageSquare, Plus } from "lucide-react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
+import { useParams, useSearchParams } from "next/navigation";
+import { MessageSquare, Plus, ArrowRight } from "lucide-react";
 import { Drawer } from "@/components/ui/drawer";
 import { BackLink } from "@/components/ui/back-link";
 import { TaskRow } from "@/components/project/task-row";
 import { TaskDialog } from "@/components/project/task-dialog";
-import { useQueryState } from "@/lib/use-query-state";
+import { useQueryPatch } from "@/lib/use-query-state";
 import { useWorkspace } from "@/components/workspace-provider";
 import { Tabs } from "@/components/ui/tabs";
 import { Button, LinkButton } from "@/components/ui/button";
@@ -16,269 +16,125 @@ import { DocumentsPanel } from "@/components/project/documents-panel";
 import { ChatPanel } from "@/components/project/chat-panel";
 import { PurchasesPanel } from "@/components/project/purchases-panel";
 import { BudgetEditor } from "@/components/project/budget-editor";
-import { BudgetActions } from "@/components/project/budget-actions";
+import { BudgetWorkspace } from "@/components/project/budget-workspace";
 import { ProjectMenu } from "@/components/project/project-menu";
 import { NextStep } from "@/components/project/next-step";
 import { AddToBudget } from "@/components/plan/add-to-budget";
-import { BudgetDoors } from "@/components/plan/budget-doors";
 import { cargarBorrador } from "@/lib/plano-flujo";
+import { budgetHistory } from "@/lib/budget-history";
 import { siguientePaso, type TipoAccion } from "@/lib/siguiente-paso";
-import { projectProgress, money, totals, dateLabel, compareVersions, kindNames, lineTotal, can, type Budget, type BudgetVersion, type ItemChange, type Task, type Workspace } from "@/lib/domain";
+import { projectProgress, money, totals, dateLabel, kindNames, can, type Task, type Command } from "@/lib/domain";
+import "@/styles/project-workspace.css";
 
-type Section = "budget" | "documents" | "purchases";
-
-/** Revisión aprobada de un presupuesto, si la hay. */
-function approvedOf(data: Workspace, budget: Budget | undefined) {
-  return budget?.approved_version_id ? data.versions.find(v => v.id === budget.approved_version_id) : undefined;
-}
-
-/** Importe firmado en base (sin IVA): las comparaciones usan siempre el mismo criterio que `compareVersions`. */
-const signed = (cents: number) => `${cents < 0 ? "−" : "+"}${money(Math.abs(cents))}`;
-
+type Section = "overview" | "budget" | "work" | "documents" | "purchases";
+const sections:Section[]=["overview","budget","work","documents","purchases"];
+const subscribe=()=>()=>{},clientSnapshot=()=>true,serverSnapshot=()=>false;
 export default function ObraPage() {
-  const { id } = useParams<{ id: string }>();
-  const { data, loading } = useWorkspace();
-  const [section, setSection] = useQueryState<Section>("s", "budget");
-  const [budgetParam, setBudgetParam] = useQueryState<string>("p", "");
-  const budgetId = budgetParam || null;
-  const setBudgetId = (id: string | null) => setBudgetParam(id ?? "");
-  const [abierta, setAbierta] = useState<Task | null>(null);
-  const [chatParam, setChatParam] = useQueryState<string>("chat", "");
-  const [editParam, setEditParam] = useQueryState<string>("editar", "");
-  const [pendingEdit, setPendingEdit] = useState(false);
-  const [solicitud, setSolicitud] = useState<"tarea" | "certificacion" | "estado" | null>(null);
-  const chatAbierto = chatParam === "1";
-  const [pendingTask, setPendingTask] = useState<string | null>(null);
-  const { actor, busy, send, notify } = useWorkspace();
-  const canToggle = can(actor.role, "task.toggle");
-  async function toggleTask(task: Task) {
-    if (!canToggle || busy || pendingTask) return;
-    setPendingTask(task.id);
-    try { await send({ type: "task.toggle", id: task.id, status: task.status === "done" ? "pending" : "done" }); }
-    catch (e) { notify(e instanceof Error ? e.message : "No se ha podido actualizar la tarea."); }
-    finally { setPendingTask(null); }
-  }
+  const hydrated=useSyncExternalStore(subscribe,clientSnapshot,serverSnapshot);
+  const {id}=useParams<{id:string}>(),params=useSearchParams(),navigate=useQueryPatch();
+  const {data,loading,actor,busy,send,notify}=useWorkspace();
+  const requested=params.get("s") as Section|null;
+  const section:Section=requested && sections.includes(requested)?requested:params.get("editar")==="1"?"budget":"overview";
+  const selectSection=(s:Section)=>navigate({s:s==="overview"?null:s,editar:null});
+  const budgetId=params.get("p"),chatAbierto=params.get("chat")==="1";
+  const [abierta,setAbierta]=useState<Task|null>(null),[pendingTask,setPendingTask]=useState<string|null>(null);
+  const [solicitud,setSolicitud]=useState<"tarea"|"certificacion"|"estado"|null>(null);
+  const [creatingBudget,setCreatingBudget]=useState(false),[borradorPlano,setBorradorPlano]=useState(false);
+  const project=data.projects.find(p=>p.id===id),canBudget=can(actor.role,"budget.create"),canToggle=can(actor.role,"task.toggle");
+  const budgets=useMemo(()=>data.budgets.filter(b=>b.project_id===id).sort((a,b)=>a.created_at.localeCompare(b.created_at)),[data.budgets,id]);
+  const budget=budgets.find(b=>b.id===budgetId) ?? budgets[0];
+  const history=budget?budgetHistory(budget,data.versions):null;
+  const approved=history?.approved,working=history?.working,current=history?.current;
+  const editable=working?.status==="draft"?working:undefined;
+  const editando=params.get("editar")==="1" && Boolean(editable) && can(actor.role,"budget.save");
+  useEffect(()=>{setBorradorPlano(Boolean(cargarBorrador(id)));},[id]);
+  const editBudget=()=>{if(editable)navigate({s:"budget",v:editable.id,vista:"items",editar:"1"});};
 
-  const project = data.projects.find(p => p.id === id);
-  const canBudget = can(actor.role, "budget.create");
-  const [creatingBudget, setCreatingBudget] = useState(false);
-  const [borradorPlano, setBorradorPlano] = useState(false);
-  useEffect(() => { setBorradorPlano(Boolean(cargarBorrador(id))); }, [id]);
-  /** Abre el primer presupuesto de un proyecto dado de alta en oficina; queda en borrador y seleccionado. */
   async function crearPresupuesto() {
-    if (!project || busy || creatingBudget) return;
+    if(!project || busy || creatingBudget)return;
     setCreatingBudget(true);
     try {
-      const ws = await send({ type: "budget.create", project_id: project.id, title: "Presupuesto de reforma" });
-      const nuevo = ws.budgets.filter(b => b.project_id === project.id).sort((a, b) => b.created_at.localeCompare(a.created_at))[0];
-      if (project.status === "lead") await send({ type: "project.status", id: project.id, status: "estimating" });
-      if (nuevo) setBudgetId(nuevo.id);
-      setPendingEdit(true);
+      const ws=await send({type:"budget.create",project_id:project.id,title:"Presupuesto de reforma"});
+      const nuevo=ws.budgets.filter(b=>b.project_id===project.id).sort((a,b)=>b.created_at.localeCompare(a.created_at))[0];
+      if(project.status==="lead")await send({type:"project.status",id:project.id,status:"estimating"});
+      if(nuevo)navigate({s:"budget",p:nuevo.id,v:null,vista:"items",editar:"1"});
       notify("Presupuesto abierto en borrador.");
-    } catch (e) { notify(e instanceof Error ? e.message : "No se ha podido abrir el presupuesto."); }
-    finally { setCreatingBudget(false); }
+    }catch(error){notify(error instanceof Error?error.message:"No se ha podido abrir el presupuesto.");}
+    finally{setCreatingBudget(false);}
   }
-  const budgets = useMemo(() => data.budgets.filter(b => b.project_id === id).sort((a, b) => a.created_at.localeCompare(b.created_at)), [data.budgets, id]);
-  useEffect(() => { if (budgetId && budgets.length && !budgets.some(b => b.id === budgetId)) setBudgetId(null); }, [budgets, budgetId]); // eslint-disable-line react-hooks/exhaustive-deps
-  // Tras abrir el primer presupuesto, el editor se abre con la guía en cuanto la URL apunta a él.
-  useEffect(() => { if (pendingEdit && budgetParam) { setEditParam("1"); setPendingEdit(false); } }, [pendingEdit, budgetParam, setEditParam]);
-  const budget = budgets.find(b => b.id === budgetId) ?? budgets[0];
-  const versions = useMemo(() => data.versions.filter(v => v.budget_id === budget?.id).sort((a, b) => b.number - a.number), [data.versions, budget?.id]);
-  const approved = approvedOf(data, budget);
-  const working = versions.find(v => v.status === "draft" || v.status === "issued");
-  const changes: ItemChange[] = approved && working ? compareVersions(approved, working) : [];
-  const deltaBase = changes.reduce((sum, c) => sum + c.delta, 0);
-  const shown: BudgetVersion | undefined = working ?? approved ?? versions[0];
-  const canSave = can(actor.role, "budget.save");
-  const editable = working && working.status === "draft" ? working : undefined;
-  const editando = editParam === "1" && Boolean(editable) && canSave;
-  // «Estimar en visita» tiene sentido mientras nadie ha puesto una sola partida en el proyecto.
-  const sinPartidas = data.versions.filter(v => budgets.some(b => b.id === v.budget_id)).every(v => v.items.length === 0);
-  const paso = project ? siguientePaso(data, project) : null;
-  async function cambiarFase(status: "planning" | "active" | "completed", aviso: string) {
-    if (!project || busy) return;
-    try { await send({ type: "project.status", id: project.id, status }); notify(aviso); }
-    catch (e) { notify(e instanceof Error ? e.message : "No se ha podido cambiar la fase."); }
+  async function toggleTask(task:Task) {
+    if(!canToggle || busy || pendingTask)return;
+    setPendingTask(task.id);
+    try{await send({type:"task.toggle",id:task.id,status:task.status==="done"?"pending":"done"});}
+    catch(error){notify(error instanceof Error?error.message:"No se ha podido actualizar la tarea.");}
+    finally{setPendingTask(null);}
   }
-  function accionPaso(tipo: TipoAccion) {
-    if (tipo === "presupuesto") { void crearPresupuesto(); return; }
-    if (tipo === "editar") { setSection("budget"); setEditParam("1"); return; }
-    if (tipo === "cerrar" || tipo === "aprobar") { setSection("budget"); setTimeout(() => document.getElementById("acciones-presupuesto")?.scrollIntoView({ behavior: "smooth", block: "center" }), 50); return; }
-    if (tipo === "planificar") { void cambiarFase("planning", "Proyecto en planificación"); return; }
-    if (tipo === "iniciar-obra") { void cambiarFase("active", "Proyecto en obra"); return; }
-    if (tipo === "finalizar") { void cambiarFase("completed", "Proyecto finalizado"); return; }
-    if (tipo === "tareas") { setSolicitud("tarea"); return; }
-    if (tipo === "certificar") { setSolicitud("certificacion"); return; }
-    if (tipo === "tarea" && paso?.tarea) { setAbierta(paso.tarea); }
+  async function cambiarFase(status:"planning"|"active"|"completed",aviso:string) {
+    if(!project || busy)return;
+    try{await send({type:"project.status",id:project.id,status});notify(aviso);}
+    catch(error){notify(error instanceof Error?error.message:"No se ha podido cambiar la fase.");}
   }
+  const paso=project?siguientePaso(data,project):null;
+  const commandFor:Partial<Record<TipoAccion,Command["type"]>>={presupuesto:"budget.create",editar:"budget.save",cerrar:"budget.issue",aprobar:"budget.approve",planificar:"project.status","iniciar-obra":"project.status",finalizar:"project.status",tareas:"task.create",certificar:"certification.create"};
+  const puedePaso=paso?(!commandFor[paso.accion] || can(actor.role,commandFor[paso.accion]!)):false;
+  function accionPaso(tipo:TipoAccion) {
+    if(!puedePaso)return;
+    if(tipo==="presupuesto"){void crearPresupuesto();return;}
+    if(tipo==="editar" || tipo==="cerrar" || tipo==="aprobar"){
+      const target=budgets.find(b=>b.id===paso?.budget_id) ?? budget;
+      const h=target?budgetHistory(target,data.versions):null;
+      navigate({s:"budget",p:target?.id,v:h?.current?.id,vista:"items",editar:tipo==="editar" && h?.working?.status==="draft"?"1":null});return;
+    }
+    if(tipo==="planificar"){void cambiarFase("planning","Proyecto en planificación");return;}
+    if(tipo==="iniciar-obra"){void cambiarFase("active","Proyecto en obra");return;}
+    if(tipo==="finalizar"){void cambiarFase("completed","Proyecto finalizado");return;}
+    if(tipo==="tareas"){setSolicitud("tarea");return;}
+    if(tipo==="certificar"){setSolicitud("certificacion");return;}
+    if(tipo==="tarea" && paso?.tarea)setAbierta(paso.tarea);
+  }
+  const tasks=data.tasks.filter(t=>t.project_id===id).sort((a,b)=>a.due_date.localeCompare(b.due_date));
+  const pendingTasks=tasks.filter(t=>t.status==="pending"),doneTasks=tasks.filter(t=>t.status==="done");
+  const documents=data.documents.filter(d=>d.project_id===id),messages=data.messages.filter(m=>m.project_id===id),purchases=data.purchases.filter(p=>p.project_id===id);
+  const activities=data.activities.filter(a=>a.project_id===id);
+  const approvedProjectBase=budgets.reduce((sum,b)=>{const v=budgetHistory(b,data.versions).approved;return sum+(v?totals(v.items).base:0);},0);
+  const certificationsDraft=data.certifications.filter(c=>c.project_id===id).reduce((sum,c)=>sum+c.amount,0);
+  if(!hydrated || loading)return <p className="muted">Cargando el proyecto…</p>;
+  if(!project)return <div className="empty"><strong>Proyecto no encontrado</strong><LinkButton href="/proyectos" variant="ghost">Volver a proyectos</LinkButton></div>;
+  const progress=projectProgress(data,project.id),meterTone=progressTone({overdue:pendingTasks.filter(t=>t.due_date<localDate()).length,done:project.status==="completed" || progress>=100});
+  const add=<AddToBudget planoHref={`/proyectos/${project.id}/plano${budget?`?p=${budget.id}`:""}`} visitaHref={`/proyectos/nueva?proyecto=${project.id}`} haPresupuesto={budgets.length>0} borradorPlano={borradorPlano} onManual={()=>{if(!budget)void crearPresupuesto();else if(editable)editBudget();else{navigate({s:"budget",vista:"items",v:current?.id});}}}/>;
+  const taskRows=(rows:Task[])=>rows.map(task=><TaskRow key={task.id} task={task} canToggle={canToggle} pending={pendingTask===task.id} showDate compact onToggle={toggleTask} onOpen={setAbierta}/>);
 
-  // El total de la obra suma la base aprobada de todos sus ámbitos (apartamento, piso, terraza…).
-  const approvedProjectBase = budgets.reduce((sum, b) => { const v = approvedOf(data, b); return sum + (v ? totals(v.items).base : 0); }, 0);
-  const approvedScopes = budgets.filter(b => approvedOf(data, b)).length;
-  // Las certificaciones de hoy son borradores con importe base: todavía no están validadas ni facturadas.
-  const certificationsDraft = data.certifications.filter(c => c.project_id === id).reduce((sum, c) => sum + c.amount, 0);
+  return <div className="page project-workspace">
+    <header className="project-heading">
+      <div className="eyebrow"><BackLink fallback="/proyectos">Proyectos</BackLink><span>· {project.code}</span></div>
+      <div className="page-head"><div><h1 className="h1">{project.name}</h1><p className="subtitle">{[project.client_name,project.location].filter(Boolean).join(" · ")}</p></div><div className="head-actions"><Button variant="secondary" className="chat-launcher" onClick={()=>navigate({chat:"1"})} aria-haspopup="dialog" aria-expanded={chatAbierto}><MessageSquare size={17} aria-hidden="true"/>Chat</Button><ProjectMenu project={project} approvedVersion={approved} puedeEstimar={canBudget} onChat={()=>navigate({chat:"1"})} solicitud={solicitud} onAtendida={()=>setSolicitud(null)}/></div></div>
+    </header>
+    <Tabs label="Secciones del proyecto" value={section} onChange={selectSection} options={[{id:"overview",label:"Resumen"},{id:"budget",label:"Presupuesto"},{id:"work",label:"Obra"},{id:"documents",label:"Documentos"},{id:"purchases",label:"Compras"}]}/>
 
-  const documents = data.documents.filter(d => d.project_id === id);
-  const messages = data.messages.filter(m => m.project_id === id);
-  const purchases = data.purchases.filter(p => p.project_id === id);
-  const tasks = data.tasks.filter(t => t.project_id === id);
-
-  if (loading) return <p className="muted">Cargando el proyecto…</p>;
-  if (!project) return <div className="empty"><strong>Proyecto no encontrado</strong><LinkButton href="/proyectos" variant="ghost">Volver a proyectos</LinkButton></div>;
-
-  const progress = projectProgress(data, project.id);
-  const overdueTasks = tasks.filter(t => t.status === "pending" && t.due_date < localDate()).length;
-  const meterTone = progressTone({ overdue: overdueTasks, done: project.status === "completed" || progress >= 100 });
-  const changeFor = (itemId: string) => changes.find(c => c.id === itemId);
-
-  return (
-    <div className="page">
-      <div>
-        <div className="eyebrow">
-          <BackLink fallback="/proyectos">Proyectos</BackLink>
-          <span>· {project.code} · {kindNames[project.kind]}</span>
-        </div>
-        <div className="page-head">
-          <h1 className="h2" style={{ fontSize: "var(--pl-text-h1)" }}>{project.name}</h1>
-          <div className="head-actions">
-            {canBudget && <BudgetDoors planoHref={`/proyectos/${project.id}/plano${budget ? `?p=${budget.id}` : ""}`} fotosHref={`/proyectos/nueva?proyecto=${project.id}`} onManual={() => { setSection("budget"); if (budgets.length === 0) void crearPresupuesto(); else if (editable) setEditParam("1"); else setTimeout(() => document.getElementById("acciones-presupuesto")?.scrollIntoView({ behavior: "smooth", block: "center" }), 50); }} />}
-            <Button variant="secondary" className="chat-launcher" onClick={() => setChatParam("1")} aria-haspopup="dialog" aria-expanded={chatAbierto}><MessageSquare size={17} strokeWidth={1.6} aria-hidden="true" />Chat<span className="pl-mono">{messages.length}</span></Button>
-            <ProjectMenu project={project} approvedVersion={approved} puedeEstimar={canBudget} onChat={() => setChatParam("1")} solicitud={solicitud} onAtendida={() => setSolicitud(null)} />
-          </div>
-        </div>
-        <p className="subtitle">{[project.client_name, project.location, `desde ${dateLabel(project.created_at)}`].filter(Boolean).join(" · ")}</p>
+    {section==="overview" && <section className="project-overview" aria-label="Resumen del proyecto">
+      {paso && <NextStep paso={paso} busy={busy} allowed={puedePaso} compact onAccion={accionPaso}/>}
+      <div className="project-overview-grid">
+        <section className="workspace-card"><header><h2>Cómo va la obra</h2><ProjectStatus status={project.status}/></header><div className="project-progress"><strong className="pl-mono">{progress}%</strong><Meter value={progress} label={`Avance de ${project.name}`} tone={meterTone}/></div><p className="muted">{doneTasks.length} de {tasks.length} tareas completadas</p><Button variant="ghost" onClick={()=>selectSection("work")}>Ver tareas y avance<ArrowRight size={16} aria-hidden="true"/></Button></section>
+        <section className="workspace-card"><header><h2>Presupuesto</h2>{budget && <span className="muted text-sm">{budgets.length>1?`${budgets.length} presupuestos`:budget.title}</span>}</header>
+          {current?<><p>{budget?.title} · V{current.number} {current.status==="draft"?"en preparación":current.status==="issued"?"pendiente de aprobación":"aprobada"}</p><strong className="overview-budget-total pl-mono">{money(totals(current.items).total)}<small className="muted">con IVA</small></strong>{approved && working && <p className="muted text-sm">La V{approved.number} sigue aprobada para obra.</p>}<Button variant="secondary" onClick={()=>selectSection("budget")}>Ver presupuesto y versiones<ArrowRight size={16} aria-hidden="true"/></Button></>:<><p className="muted">Todavía no hay un presupuesto.</p><Button variant="secondary" onClick={()=>selectSection("budget")}>Ver opciones para presupuestar</Button></>}
+        </section>
       </div>
+      {pendingTasks.length>0 && <section className="workspace-card"><header><h2>Próximas tareas</h2><span className="muted text-sm">{pendingTasks.length} pendientes</span></header><div>{taskRows(pendingTasks.slice(0,3))}</div>{pendingTasks.length>3 && <Button variant="ghost" onClick={()=>selectSection("work")}>Ver las {pendingTasks.length} pendientes</Button>}</section>}
+      {activities.length>0 && <details className="budget-notes"><summary>Actividad reciente del proyecto</summary>{activities.slice(0,5).map(a=><div className="row-doc" key={a.id}><span>{a.text}<small>{a.actor_name} · {dateLabel(a.created_at)}</small></span></div>)}</details>}
+    </section>}
 
-      <div className="detail">
-        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-          {paso && <NextStep paso={paso} busy={busy} onAccion={accionPaso} />}
-          <div className="panel">
-            <div className="panel-body">
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10 }}>
-                <ProjectStatus status={project.status} />
-                <span className="pl-mono text-sm progress-value" data-tone={meterTone}>{progress}%</span>
-              </div>
-              <div style={{ marginTop: 9 }}><Meter value={progress} label={`Avance de ${project.name}`} tone={meterTone} /></div>
-              <p className="muted text-xs" style={{ marginTop: 8 }}>{tasks.filter(t => t.status === "done").length} de {tasks.length} tareas completadas · avance ponderado por tarea</p>
-            </div>
-            <div className="kpis">
-              <div className="kpi"><small>Aprobado · sin IVA{approvedScopes > 1 ? ` · ${approvedScopes} ámbitos` : ""}</small><strong>{approvedScopes ? money(approvedProjectBase) : "—"}</strong></div>
-              <div className="kpi"><small>Certificaciones en preparación</small><strong>{certificationsDraft ? money(certificationsDraft) : "—"}</strong></div>
-              <div className="kpi"><small>En revisión · sin IVA</small><strong>{working ? money(totals(working.items).base) : "—"}</strong></div>
-            </div>
-          </div>
+    {section==="budget" && <section className="project-budget-section" aria-label="Presupuesto del proyecto">
+      {budgets.length>1 && <label className="field"><span>Presupuesto del proyecto</span><select className="workspace-select" value={budget?.id} onChange={e=>navigate({p:e.target.value,v:null,desde:null,hasta:null,editar:null})}>{budgets.map(b=><option value={b.id} key={b.id}>{b.title}</option>)}</select></label>}
+      {!budget && <div className="empty"><strong>Abre el primer presupuesto</strong><span className="muted">Elige cómo aportar los trabajos: catálogo, planos o fotos de la visita.</span>{canBudget && <Button variant="primary" disabled={busy || creatingBudget} onClick={crearPresupuesto}><Plus size={17} aria-hidden="true"/>{creatingBudget?"Abriendo…":"Nuevo presupuesto"}</Button>}</div>}
+      {!budget && canBudget && add}
+      {budget && <BudgetWorkspace key={budget.id} budget={budget} versions={data.versions} onNavigate={patch=>navigate({s:"budget",...patch})} onEdit={editBudget} canEdit={canBudget} adding={add}/>}
+    </section>}
 
-          <Tabs label="Secciones de la obra" value={section} onChange={setSection} options={[
-            { id: "budget", label: budgets.length > 1 ? "Presupuestos" : "Presupuesto", count: versions.length },
-            { id: "documents", label: "Documentos", count: documents.length },
-            { id: "purchases", label: "Compras", count: purchases.length }
-          ]} />
-
-          {section === "budget" && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-              {budgets.length === 0 && (
-                <div className="empty">
-                  <strong>Este proyecto aún no tiene presupuesto</strong>
-                  <span className="muted text-sm">{canBudget ? "Ábrelo aquí con los precios del catálogo; también puede salir de una estimación en la visita." : "Lo abrirá oficina con los precios del catálogo o desde una estimación en la visita."}</span>
-                  {canBudget && <Button variant="primary" className="btn-new" disabled={busy || creatingBudget} onClick={crearPresupuesto}><Plus size={17} strokeWidth={1.8} aria-hidden="true" />{creatingBudget ? "Abriendo…" : "Nuevo presupuesto"}</Button>}
-                </div>
-              )}
-
-              {budgets.length > 1 && (
-                <div className="segments" role="tablist" aria-label="Ámbito del presupuesto">
-                  {budgets.map(b => {
-                    const v = approvedOf(data, b);
-                    return (
-                      <button key={b.id} type="button" role="tab" className="segment" aria-selected={b.id === budget?.id} onClick={() => setBudgetId(b.id)}>
-                        <span>{b.title}</span>
-                        <small className="pl-mono">{v ? money(totals(v.items).base) : "sin aprobar"}</small>
-                      </button>
-                    );
-                  })}
-                </div>
-              )}
-
-              {versions.length > 0 && (
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {approved && <span className="chip-version" data-kind="approved"><span>V{approved.number} · aprobada para obra · {dateLabel(approved.approved_at ?? approved.updated_at)}</span><span className="pl-mono">{money(totals(approved.items).base)} <small className="muted">sin IVA</small></span></span>}
-                  {working && <span className="chip-version" data-kind="draft"><span>V{working.number} · {working.status === "draft" ? (approved ? "cambios en preparación" : "borrador") : "revisión cerrada"} · {working.created_by_name}, {dateLabel(working.updated_at)}</span><span className="pl-mono">{approved ? signed(deltaBase) : money(totals(working.items).base)} <small className="muted">sin IVA</small></span></span>}
-                  {!approved && !working && shown && <span className="chip-version" data-kind="draft"><span>V{shown.number} · {shown.change_reason}</span><span className="pl-mono">{money(totals(shown.items).base)} <small className="muted">sin IVA</small></span></span>}
-                </div>
-              )}
-
-              {shown && (
-                <div>
-                  <div className="section-label"><span>Partidas de la V{shown.number}{approved && working ? " · cambios respecto a la aprobada" : ""}</span><span className="pl-mono">{shown.items.length}</span></div>
-                  {shown.items.length === 0 && editable && canSave && shown.id === editable.id && <div className="empty" style={{ padding: "22px 16px" }}><strong>La V{shown.number} está vacía</strong><span className="muted text-sm">Añade partidas del catálogo con la guía por capítulos, o estímalas en la visita.</span><Button variant="primary" className="btn-new" onClick={() => setEditParam("1")}><Plus size={17} strokeWidth={1.8} aria-hidden="true" />Añadir partidas</Button></div>}
-                  <div style={{ borderTop: "var(--pl-hairline) solid var(--pl-line)" }}>
-                    {shown.items.map(item => {
-                      const change = changeFor(item.id);
-                      const note = !change ? (approved && working ? "Sin cambios" : item.chapter)
-                        : change.kind === "added" ? `Añadida en V${shown.number}`
-                        : `Cambiado · ${change.fields.map(f => f === "quantity" ? `${change.before?.quantity} → ${change.after?.quantity} ${item.unit}` : f === "unit_price" ? `${money(change.before?.unit_price ?? 0)} → ${money(change.after?.unit_price ?? 0)}` : f === "adjustment_percent" ? `ajuste ${change.after?.adjustment_percent}%` : f === "description" ? "descripción" : f === "inclusion" ? "inclusión" : f).join(" · ")}`;
-                      return (
-                        <div key={item.id} className="row-item">
-                          <span><strong>{item.description}</strong><small className={change ? "warning" : ""}>{note}{item.inclusion !== "included" ? ` · ${item.inclusion === "optional" ? "Alternativa, no suma" : "Excluida, no suma"}` : ""}</small></span>
-                          <span className="pl-mono muted text-xs">{item.quantity} {item.unit}</span>
-                          <span className="pl-mono" style={item.inclusion !== "included" ? { color: "var(--pl-muted)" } : undefined}>{money(lineTotal(item))}{change && change.delta !== 0 ? <small className="warning" style={{ display: "block", textAlign: "right" }}>{signed(change.delta)}</small> : null}</span>
-                        </div>
-                      );
-                    })}
-                    {changes.filter(c => c.kind === "removed").map(change => (
-                      <div key={change.id} className="row-item">
-                        <span><strong className="removed" style={{ textDecoration: "line-through" }}>{change.before?.description}</strong><small className="warning">Eliminada en V{working?.number}</small></span>
-                        <span className="pl-mono muted text-xs">{change.before?.quantity} {change.before?.unit}</span>
-                        <span className="pl-mono muted">{signed(change.delta)}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="totals">
-                    <span><small>Base</small><strong className="pl-mono">{money(totals(shown.items).base)}</strong></span>
-                    <span><small>IVA</small><strong className="pl-mono">{money(totals(shown.items).tax)}</strong></span>
-                    <span><small>Total</small><strong className="pl-mono">{money(totals(shown.items).total)}</strong></span>
-                    {approved && working && <span><small>Diferencia con la aprobada</small><strong className="pl-mono">{signed(deltaBase)} <span className="muted" style={{ fontWeight: 400 }}>base · {signed(totals(working.items).total - totals(approved.items).total)} total</span></strong></span>}
-                  </div>
-                  {(shown.notes || (approved && approved.notes && approved.id !== shown.id)) && (
-                    <div className="panel" style={{ marginTop: 12 }}>
-                      {shown.notes && <div className="panel-body"><small className="muted text-xs">Notas y condiciones · V{shown.number}</small><p className="text-sm" style={{ marginTop: 4 }}>{shown.notes}</p></div>}
-                      {approved && approved.notes && approved.id !== shown.id && <div className="panel-body" style={{ borderTop: "var(--pl-hairline) solid var(--pl-line)" }}><small className="muted text-xs">Notas y condiciones · V{approved.number} aprobada</small><p className="text-sm muted" style={{ marginTop: 4 }}>{approved.notes}</p></div>}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              {canBudget && <AddToBudget planoHref={`/proyectos/${project.id}/plano${budget ? `?p=${budget.id}` : ""}`} visitaHref={`/proyectos/nueva?proyecto=${project.id}`} haPresupuesto={budgets.length > 0} borradorPlano={borradorPlano} onManual={() => { if (budgets.length === 0) void crearPresupuesto(); else if (editable) setEditParam("1"); else document.getElementById("acciones-presupuesto")?.scrollIntoView({ behavior: "smooth", block: "center" }); }} />}
-
-              {budget && <div id="acciones-presupuesto"><BudgetActions budget={budget} approved={approved} working={working} shown={shown} onEdit={() => setEditParam("1")} /></div>}
-            </div>
-          )}
-
-          {section === "documents" && <DocumentsPanel project={project} documents={documents} />}
-
-          {section === "purchases" && <PurchasesPanel projectId={project.id} purchases={purchases} />}
-        </div>
-
-        <aside className="zone" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-          <div>
-            <div className="section-label" style={{ marginTop: 0 }}><span>Tareas</span><span className="pl-mono">{tasks.filter(t => t.status === "pending").length} pendientes</span></div>
-            <div className="panel">
-              {tasks.length === 0 && <div className="panel-body muted text-sm">Sin tareas planificadas.</div>}
-              {tasks.map(task => <div key={task.id} style={{ padding: "0 14px" }}><TaskRow task={task} canToggle={canToggle} pending={pendingTask === task.id} showDate compact onToggle={toggleTask} onOpen={setAbierta} /></div>)}
-            </div>
-          </div>
-          <div>
-            <div className="section-label" style={{ marginTop: 0 }}><span>Actividad</span></div>
-            {data.activities.filter(a => a.project_id === id).slice(0, 5).map(activity => (
-              <div key={activity.id} className="row-doc"><span>{activity.text}<small>{activity.actor_name} · {dateLabel(activity.created_at)}</small></span></div>
-            ))}
-          </div>
-        </aside>
-      </div>
-      <TaskDialog task={abierta ? data.tasks.find(t => t.id === abierta.id) ?? null : null} onClose={() => setAbierta(null)} />
-      {editable && <BudgetEditor open={editando} onClose={() => setEditParam("")} project={project} version={editable} guiaInicial={editable.items.length === 0} />}
-      <Drawer open={chatAbierto} onClose={() => setChatParam("")} title={project.name} subtitle={`Chat del proyecto · ${project.code} · lo ve todo el equipo con acceso`}>
-        <ChatPanel projectId={project.id} messages={messages} />
-      </Drawer>
-    </div>
-  );
+    {section==="work" && <section className="project-work-section" aria-label="Tareas y avance"><div className="workspace-section-heading"><div><h2>Tareas y avance</h2><p className="muted">{pendingTasks.length} pendientes · {progress}% completado</p></div>{can(actor.role,"task.create") && <Button variant="primary" onClick={()=>setSolicitud("tarea")}><Plus size={16} aria-hidden="true"/>Nueva tarea</Button>}</div><Meter value={progress} label="Avance ponderado por tarea" tone={meterTone}/>{tasks.length===0 && <p className="workspace-callout">Todavía no hay tareas planificadas.</p>}<div>{taskRows(pendingTasks)}</div>{doneTasks.length>0 && <details className="budget-notes"><summary>Completadas ({doneTasks.length})</summary>{taskRows(doneTasks)}</details>}<details className="budget-notes"><summary>Importes y certificaciones del proyecto</summary><dl className="workspace-facts"><div><dt>Aprobado en todos los presupuestos · sin IVA</dt><dd className="pl-mono">{money(approvedProjectBase)}</dd></div><div><dt>Certificaciones en preparación · sin IVA</dt><dd className="pl-mono">{money(certificationsDraft)}</dd></div></dl>{can(actor.role,"certification.create") && approved && <Button variant="secondary" onClick={()=>setSolicitud("certificacion")}>Preparar certificación</Button>}<p className="muted text-sm">Las certificaciones actuales son borradores; no son facturas emitidas.</p></details></section>}
+    {section==="documents" && <DocumentsPanel project={project} documents={documents}/>}
+    {section==="purchases" && <PurchasesPanel projectId={project.id} purchases={purchases}/>}
+    <TaskDialog task={abierta?data.tasks.find(t=>t.id===abierta.id) ?? null:null} onClose={()=>setAbierta(null)}/>
+    {editable && <BudgetEditor open={editando} onClose={()=>navigate({editar:null})} project={project} version={editable} guiaInicial={editable.items.length===0}/>}
+    <Drawer open={chatAbierto} onClose={()=>navigate({chat:null})} title={project.name} subtitle={`Chat del proyecto · ${project.code}`}><ChatPanel projectId={project.id} messages={messages}/></Drawer>
+  </div>;
 }

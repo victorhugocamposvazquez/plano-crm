@@ -3510,3 +3510,7 @@ a.flow-back, a.flow-back:hover { text-decoration: none; }
 .plan-scale-row { align-items: flex-start; flex-wrap: wrap; cursor: default; }
 .plan-scale-row > span { flex: 1; min-width: 0; }
 .plan-scale-row .legend-row { min-height: var(--pl-touch); white-space: normal; }
+
+/* Información secundaria de Hoy: se consulta cuando hace falta. */
+.home-disclosure > summary { min-height: var(--pl-touch); padding: var(--pl-space-3) 0; cursor: pointer; font-size: var(--pl-text-ui); font-weight: var(--pl-weight-medium); }
+.home-disclosure > div { margin-top: var(--pl-space-3); }

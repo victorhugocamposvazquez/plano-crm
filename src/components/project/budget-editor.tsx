@@ -25,14 +25,15 @@ export function BudgetEditor({ open, onClose, project, version, guiaInicial }: {
   const [items, setItems] = useState<BudgetItem[]>(version.items);
   const [notes, setNotes] = useState(version.notes);
   const [saving, setSaving] = useState(false);
-  const [guia, setGuia] = useState(guiaInicial);
+  const [guia, setGuia] = useState(false);
+  const [openChapters, setOpenChapters] = useState<Set<string>>(() => new Set());
   const [query, setQuery] = useState("");
   const [capitulo, setCapitulo] = useState("");
   const [confirmClose, setConfirmClose] = useState(false);
   const catalogo = useRef<HTMLDivElement>(null);
 
   // Al abrir, o si la revisión cambia por debajo (otro guardado), se parte de lo que hay en el dominio.
-  useEffect(() => { if (open) { setItems(version.items); setNotes(version.notes); setGuia(guiaInicial); setConfirmClose(false); } }, [open, version.id, version.draft_revision]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (open) { setItems(version.items); setNotes(version.notes); setGuia(false); setOpenChapters(new Set()); setConfirmClose(false); } }, [open, version.id, version.draft_revision]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const dirty = JSON.stringify(items) !== JSON.stringify(version.items) || notes !== version.notes;
   const errores = useMemo(() => validarPartidas(items), [items]);
@@ -43,13 +44,13 @@ export function BudgetEditor({ open, onClose, project, version, guiaInicial }: {
   const encontrados = useMemo(() => buscarArticulos(data.articles, query).filter(a => !capitulo || a.chapter === capitulo).slice(0, 40), [data.articles, query, capitulo]);
   const total = resumen(items);
 
-  const update = (id: string, patch: Partial<BudgetItem>) => setItems(prev => actualizarPartida(prev, id, patch));
+  const update = (id: string, patch: Partial<BudgetItem>) => { if (patch.chapter) setOpenChapters(prev => new Set(prev).add(patch.chapter!)); setItems(prev => actualizarPartida(prev, id, patch)); };
   function addArticulo(articleId: string) {
     const article = data.articles.find(a => a.id === articleId);
     if (!article) return;
-    setItems(prev => [...prev, partidaDesdeArticulo(article)]);
+    const item = partidaDesdeArticulo(article); setItems(prev => [...prev, item]); setOpenChapters(prev => new Set(prev).add(item.chapter));
   }
-  function addLibre() { setItems(prev => [...prev, partidaLibre(capitulo || "Varios")]); }
+  function addLibre() { const item = partidaLibre(capitulo || "Varios"); setItems(prev => [...prev, item]); setOpenChapters(prev => new Set(prev).add(item.chapter)); }
   function irA(chapter: string) { setCapitulo(chapter); setQuery(""); catalogo.current?.scrollIntoView({ behavior: "smooth", block: "start" }); }
 
   function intentarCerrar() { if (dirty) setConfirmClose(true); else onClose(); }
@@ -87,7 +88,7 @@ export function BudgetEditor({ open, onClose, project, version, guiaInicial }: {
   );
 
   return (
-    <Drawer open={open} onClose={intentarCerrar} size="wide" title={`Partidas · V${version.number}`} subtitle={`${project.name} · ${total.incluidas} incluidas${total.alternativas ? ` · ${total.alternativas} alternativas` : ""} · revisión ${version.draft_revision}`} footer={footer}>
+    <Drawer open={open} onClose={intentarCerrar} size="wide" title={`Partidas · V${version.number}`} subtitle={`${project.name} · ${total.incluidas} incluidas${total.alternativas ? ` · ${total.alternativas} alternativas` : ""}`} footer={footer}>
       <div className="editor">
         {guia ? (
           <section className="guide zone">
@@ -114,8 +115,8 @@ export function BudgetEditor({ open, onClose, project, version, guiaInicial }: {
           <div className="section-label" style={{ marginTop: 0 }}><span>Partidas</span><span className="pl-mono">{items.length}</span></div>
           {items.length === 0 && <div className="empty" style={{ padding: "22px 16px" }}><strong>Todavía no hay partidas</strong><span className="muted text-sm">Añádelas del catálogo más abajo o escribe una libre. El precio del catálogo se copia al añadir; luego puedes ajustarlo aquí.</span></div>}
           {[...grupos.entries()].map(([chapter, list]) => (
-            <div key={chapter} className="editor-chapter">
-              <div className="editor-chapter-head"><span>{chapter}</span><span className="pl-mono">{money(totalCapitulo(list))}</span></div>
+            <details key={chapter} className="editor-chapter editor-chapter-fold" open={openChapters.has(chapter)} onToggle={e => { const opened = e.currentTarget.open; setOpenChapters(prev => { if (prev.has(chapter) === opened) return prev; const next = new Set(prev); if (opened) next.add(chapter); else next.delete(chapter); return next; }); }}>
+              <summary className="editor-chapter-head"><span>{chapter} · {list.length} partidas</span><span className="pl-mono">{money(totalCapitulo(list))}</span></summary>
               {list.map(item => {
                 const error = errorDe(item.id);
                 return (
@@ -123,27 +124,31 @@ export function BudgetEditor({ open, onClose, project, version, guiaInicial }: {
                     <div className="editor-item-head">
                       <input type="text" className="editor-desc" value={item.description} onChange={e => update(item.id, { description: e.target.value })} placeholder="Descripción de la partida" aria-label="Descripción" aria-invalid={error ? true : undefined} maxLength={2000} />
                       <div className="editor-item-tools">
-                        <button type="button" className="search-clear" aria-label="Subir partida" onClick={() => setItems(prev => moverPartida(prev, item.id, -1))}><ChevronUp size={14} strokeWidth={1.8} aria-hidden="true" /></button>
-                        <button type="button" className="search-clear" aria-label="Bajar partida" onClick={() => setItems(prev => moverPartida(prev, item.id, 1))}><ChevronDown size={14} strokeWidth={1.8} aria-hidden="true" /></button>
+
+
                         <button type="button" className="search-clear" aria-label={`Quitar ${item.description || "partida"}`} onClick={() => setItems(prev => quitarPartida(prev, item.id))}><Trash2 size={14} strokeWidth={1.8} aria-hidden="true" /></button>
                       </div>
                     </div>
-                    <div className="editor-grid">
+                    <div className="editor-grid editor-grid-primary">
                       <label className="field"><span>Cantidad</span><span className="unit-input"><input type="number" inputMode="decimal" min={0} step={item.unit === "ud" ? 1 : 0.1} value={item.quantity} onChange={e => update(item.id, { quantity: Number(e.target.value) || 0 })} aria-label="Cantidad" /><span>{item.unit}</span></span></label>
-                      <div className="field"><span>Unidad</span><Select size="sm" label="Unidad" value={item.unit} onChange={u => update(item.id, { unit: u })} options={unidadOptions} /></div>
                       <label className="field"><span>Precio sin IVA</span><span className="unit-input"><input type="number" inputMode="decimal" min={0} step={0.01} value={item.unit_price / 100} onChange={e => update(item.id, { unit_price: Math.round((Number(e.target.value) || 0) * 100) })} aria-label="Precio unitario en euros" /><span>€</span></span></label>
-                      <label className="field"><span>Ajuste</span><span className="unit-input"><input type="number" inputMode="numeric" min={-50} max={100} step={1} value={item.adjustment_percent} onChange={e => update(item.id, { adjustment_percent: Number(e.target.value) || 0 })} aria-label="Ajuste en porcentaje" /><span>%</span></span></label>
-                      <div className="field"><span>Inclusión</span><Select size="sm" label="Inclusión" value={item.inclusion} onChange={v => update(item.id, { inclusion: v })} options={inclusionOptions} /></div>
-                      <div className="field editor-amount"><span>Importe</span><strong className="pl-mono">{money(lineTotal(item))}</strong></div>
+                      <div className="field editor-amount"><span>Importe sin IVA</span><strong className="pl-mono">{money(lineTotal(item))}</strong>{item.adjustment_percent !== 0 && <small className="muted">Ajuste {item.adjustment_percent}% aplicado</small>}{item.inclusion !== "included" && <small className="muted">{item.inclusion === "optional" ? "Alternativa" : "Excluida"} · no suma</small>}</div>
                     </div>
-                    <div className="editor-item-foot">
-                      <input type="text" className="editor-chapter-input" list="capitulos-editor" value={item.chapter} onChange={e => update(item.id, { chapter: e.target.value })} aria-label="Capítulo" maxLength={120} />
-                      {error && <span className="text-xs" style={{ color: "var(--pl-danger)" }}>{error}</span>}
-                    </div>
+                    <details className="editor-advanced">
+                      <summary>Ajustes y opciones</summary>
+                      <div className="editor-grid">
+                        <div className="field"><span>Unidad</span><Select size="sm" label="Unidad" value={item.unit} onChange={u => update(item.id, { unit: u })} options={unidadOptions} /></div>
+                        <label className="field"><span>Ajuste de precio</span><span className="unit-input"><input type="number" inputMode="numeric" min={-50} max={100} step={1} value={item.adjustment_percent} onChange={e => update(item.id, { adjustment_percent: Number(e.target.value) || 0 })} aria-label="Ajuste en porcentaje" /><span>%</span></span></label>
+                        <div className="field"><span>Inclusión</span><Select size="sm" label="Inclusión" value={item.inclusion} onChange={v => update(item.id, { inclusion: v })} options={inclusionOptions} /></div>
+                      </div>
+                      <label className="field"><span>Capítulo</span><input type="text" list="capitulos-editor" defaultValue={item.chapter} onBlur={e => update(item.id, { chapter: e.target.value.trim() || "Varios" })} aria-label="Capítulo" maxLength={120} /></label>
+                      <div className="editor-item-tools"><Button variant="ghost" aria-label="Subir partida" onClick={() => setItems(prev => moverPartida(prev, item.id, -1))}><ChevronUp size={14} aria-hidden="true"/>Subir</Button><Button variant="ghost" aria-label="Bajar partida" onClick={() => setItems(prev => moverPartida(prev, item.id, 1))}><ChevronDown size={14} aria-hidden="true"/>Bajar</Button></div>
+                    </details>
+                    {error && <p className="text-xs danger">{error}</p>}
                   </article>
                 );
               })}
-            </div>
+            </details>
           ))}
           <datalist id="capitulos-editor">{[...new Set([...chapters, ...pasos.map(p => p.chapter)])].map(c => <option key={c} value={c} />)}</datalist>
         </section>

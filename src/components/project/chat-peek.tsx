@@ -1,4 +1,5 @@
 "use client";
+import { budgetHistory } from "@/lib/budget-history";
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, ExternalLink, FileText } from "lucide-react";
@@ -77,7 +78,7 @@ export function ChatPeek({ vista, projectId, onChange, onClose }: { vista: Vista
   const atrasadas = tasks.filter(t => t.status === "pending" && t.due_date < localDate()).length;
   const meterTone = progressTone({ overdue: atrasadas, done: project.status === "completed" || progress >= 100 });
   const aprobada = versiones.find(x => x.b.approved_version_id === x.v.id);
-  const enCurso = versiones.find(x => x.v.status === "draft" || x.v.status === "issued");
+  const enCurso = versiones.find(x => budgetHistory(x.b, data.versions).working?.id === x.v.id);
   const delCliente = data.projects.filter(p => p.client_name === project.client_name);
 
   return (
