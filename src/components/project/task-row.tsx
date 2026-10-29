@@ -15,7 +15,7 @@ export function TaskRow({ task, projectName, onToggle, onOpen, canToggle, pendin
       <input type="checkbox" checked={task.status === "done"} disabled={!canToggle || pending} onChange={() => onToggle(task)} aria-label={`${task.status === "done" ? "Reabrir" : "Completar"} ${task.title}`} />
       <button type="button" className="task-open-btn" onClick={() => onOpen(task)} aria-haspopup="dialog">
         <span className="task-title">{task.title}</span>
-        <span className="task-meta">{projectName ? `${projectName} · ` : ""}{task.trade}{task.assignee ? ` · ${task.assignee}` : " · sin asignar"}{showDate ? ` · ${dateLabel(task.due_date)}` : ""}{compact ? "" : ` · peso ${task.weight}%`}</span>
+        <span className="task-meta">{projectName && <span className="chip-mini">{projectName}</span>}{task.trade}{task.assignee ? ` · ${task.assignee}` : " · sin asignar"}{showDate ? ` · ${dateLabel(task.due_date)}` : ""}{compact ? "" : ` · peso ${task.weight}%`}</span>
       </button>
     </div>
   );
