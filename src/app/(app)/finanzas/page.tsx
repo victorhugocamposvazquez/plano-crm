@@ -18,7 +18,7 @@ export default function FinanzasPage() {
       <div>
         <div className="eyebrow"><Wallet size={13} strokeWidth={1.8} aria-hidden="true" /><span>{data.organization_name || "Espacio de trabajo"}</span></div>
         <h1 className="h1">Finanzas.</h1>
-        <p className="subtitle">{loading ? "Cargando…" : `${money(f.aprobadoEnCurso)} aprobados en obras en marcha · ${porcentaje} % certificado · importes en base sin IVA`}</p>
+        <p className="subtitle">{loading ? "Cargando…" : `${money(f.aprobadoEnCurso)} aprobados en obras en marcha · ${porcentaje} % certificado · importes sin IVA`}</p>
       </div>
 
       <div className="summary summary-4">
@@ -45,7 +45,7 @@ export default function FinanzasPage() {
         </div>
       )}
 
-      <p className="muted text-xs">IVA de lo aprobado en marcha: {money(f.ivaAprobado)}. Facturas emitidas, cobros, pagos a proveedores y márgenes por obra llegarán cuando el dominio incorpore facturación; las certificaciones de hoy son borradores sin validar.</p>
+      <p className="muted text-xs">IVA de lo aprobado en marcha: {money(f.ivaAprobado)}.</p>
     </div>
   );
 }

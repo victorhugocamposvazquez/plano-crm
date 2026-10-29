@@ -289,7 +289,7 @@ export default function NuevaVisitaPage() {
             <div className="panel-head"><span>ESTIMACIÓN ORIENTATIVA</span><span className="pl-mono">{items.length} partidas</span></div>
             <div className="panel-body">
               <div className="range"><small>Entre</small><strong className="pl-mono">{money(rango.minTotal)}</strong><small>y</small><strong className="pl-mono">{money(rango.maxTotal)}</strong><small>con IVA</small></div>
-              <div className="totals" style={{ marginTop: 10 }}><span><small>Base</small><strong className="pl-mono">{money(rango.base)}</strong></span><span><small>Total con IVA</small><strong className="pl-mono">{money(rango.total)}</strong></span>
+              <div className="totals" style={{ marginTop: 10 }}><span><small>Sin IVA</small><strong className="pl-mono">{money(rango.base)}</strong></span><span><small>Total con IVA</small><strong className="pl-mono">{money(rango.total)}</strong></span>
                 <div className="field" style={{ gap: 2, minWidth: 120 }}><span>Horquilla</span><Select size="sm" label="Horquilla de la estimación" value={String(margen)} onChange={v => setMargen(Number(v))} options={[{ value: "0.1", label: "±10 %" }, { value: "0.15", label: "±15 %" }, { value: "0.25", label: "±25 %" }]} /></div>
               </div>
             </div>

@@ -36,8 +36,6 @@ export default function ComprasPage() {
           <PurchasesPanel projectId={project.id} purchases={items} showAdd={false} />
         </section>
       ))}
-
-      <p className="muted text-xs">Fechas de pedido y de recepción prevista, albaranes y avisos de compra llegarán cuando el dominio los incorpore.</p>
     </div>
   );
 }

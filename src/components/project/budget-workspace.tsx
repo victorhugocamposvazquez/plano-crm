@@ -18,8 +18,8 @@ type Estado="approved"|"draft"|"issued"|"old";
 /** Estado corto de cada versión para la fila de versiones: una palabra, y el color solo acompaña. */
 function estadoVersion(v:BudgetVersion,history:ReturnType<typeof budgetHistory>):{estado:Estado;label:string} {
   if(v.id===history.approved?.id)return {estado:"approved",label:"aprobada"};
-  if(v.id===history.working?.id)return v.status==="draft"?{estado:"draft",label:"borrador"}:{estado:"issued",label:"cerrada"};
-  return {estado:"old",label:v.status==="superseded" || v.status==="approved"?"anterior":v.status==="issued"?"histórica":"borrador anterior"};
+  if(v.id===history.working?.id)return v.status==="draft"?{estado:"draft",label:"borrador"}:{estado:"issued",label:"terminada"};
+  return {estado:"old",label:v.status==="superseded" || v.status==="approved"?"anterior":v.status==="issued"?"terminada antes":"borrador anterior"};
 }
 
 /** Capítulos que el usuario ha plegado en este presupuesto; nacen abiertos y la app recuerda cuáles cerró. */
@@ -56,7 +56,7 @@ export function BudgetWorkspace({budget,versions,onNavigate,onEdit,canEdit,addin
     {view==="items" && <div className="budget-view" data-view="items" role="region" aria-label={`Partidas de V${shown.number}`}>
       <div className="version-row" role="group" aria-label="Versiones del presupuesto">
         {ascendente.map(v=>{const {estado,label}=estadoVersion(v,history),actual=v.id===current?.id;
-          const fecha=estado==="approved" && v.approved_at?`aprobada el ${dateLabel(v.approved_at)}`:estado==="draft"?`editada el ${dateLabel(v.updated_at)}`:estado==="issued"?`cerrada el ${dateLabel(v.updated_at)}`:dateLabel(v.updated_at);
+          const fecha=estado==="approved" && v.approved_at?`aprobada el ${dateLabel(v.approved_at)}`:estado==="draft"?`editada el ${dateLabel(v.updated_at)}`:estado==="issued"?`terminada el ${dateLabel(v.updated_at)}`:dateLabel(v.updated_at);
           return <button key={v.id} type="button" className="version-pill" data-state={estado} data-actual={actual||undefined} aria-pressed={v.id===shown.id} onClick={()=>showVersion(v)}>
           {actual?<span className="pulse-dot" aria-hidden="true"/>:<span className="version-mark" data-state={estado} aria-hidden="true">{estado==="approved" && <Check size={10} strokeWidth={3}/>}</span>}
           <span className="version-text"><span>V{v.number}<small>· {label}</small></span><small className="version-date">{actual && <em className="version-actual">Actual</em>}{fecha}</small></span>
@@ -66,7 +66,7 @@ export function BudgetWorkspace({budget,versions,onNavigate,onEdit,canEdit,addin
       <header className="budget-total-head">
         <span className="eyebrow budget-total-eyebrow">V{shown.number} · {budget.title}</span>
         <strong className="budget-total-figure"><span className="pl-mono">{money(t.total)}</span><small>con IVA</small></strong>
-        <span className="budget-total-base">Base {money(t.base)} · IVA {money(t.tax)}{deltaAprobada!==null && approved && working && <> · <button type="button" className="link-button" onClick={()=>compare(approved,working)}><span className="pl-mono">{signed(deltaAprobada)}</span> frente a V{approved.number}</button></>}</span>
+        <span className="budget-total-base">Sin IVA {money(t.base)} · IVA {money(t.tax)}{deltaAprobada!==null && approved && working && <> · <button type="button" className="link-button" onClick={()=>compare(approved,working)}><span className="pl-mono">{signed(deltaAprobada)}</span> frente a V{approved.number}</button></>}</span>
         <span className="budget-total-meta">{versionLabel(shown,history)} · editada el {dateLabel(shown.updated_at)} por {shown.created_by_name}</span>
         <div className="budget-total-tools">
           {referencia && <Button variant="icon" aria-label={`Comparar V${referencia.number} con V${shown.number}`} title="Qué cambió" onClick={()=>compare(referencia,shown)}><GitCompareArrows size={18} strokeWidth={1.6} aria-hidden="true"/></Button>}
@@ -80,7 +80,7 @@ export function BudgetWorkspace({budget,versions,onNavigate,onEdit,canEdit,addin
       {shown.items.length===0 ? <div className="empty"><strong>Esta versión aún no tiene partidas</strong><span className="muted">Añade trabajos desde el catálogo, un plano o las fotos de la visita.</span>{canEdit && currentView && shown.status==="draft" && <Button variant="primary" onClick={onEdit}>Añadir partidas</Button>}</div> : <div className="budget-chapters">
         {[...chapters].map(([chapter,items])=><details className="budget-chapter" key={chapter} open={!cerrados.includes(chapter)} onToggle={e=>toggle(chapter,e.currentTarget.open)}>
           <summary><span><strong>{chapter}</strong><small className="muted">{items.length} partida{items.length===1?"":"s"}{items.some(i=>i.inclusion!=="included")?` · ${items.filter(i=>i.inclusion!=="included").length} no suma`:""}</small></span><strong className="pl-mono">{money(totalCapitulo(items))}</strong></summary>
-          <ul>{items.map(item=><li key={item.id} className="budget-reading-item" data-inclusion={item.inclusion}><div><strong>{item.description}</strong><small className="muted">{number(item.quantity)} {item.unit} × {money(item.unit_price)}{item.adjustment_percent?` · ajuste ${number(item.adjustment_percent)} %`:""}{item.inclusion!=="included"?` · ${item.inclusion==="optional"?"alternativa":"excluida"}, no suma`:""}</small></div><span className="pl-mono">{money(lineTotal(item))}</span></li>)}</ul>
+          <ul>{items.map(item=><li key={item.id} className="budget-reading-item" data-inclusion={item.inclusion}><div><strong>{item.description}</strong><small className="muted">{number(item.quantity)} {item.unit} × {money(item.unit_price)}{item.adjustment_percent?` · ${item.adjustment_percent>0?"recargo":"descuento"} ${number(Math.abs(item.adjustment_percent))} %`:""}{item.inclusion!=="included"?` · ${item.inclusion==="optional"?"alternativa":"excluida"}, no suma`:""}</small></div><span className="pl-mono">{money(lineTotal(item))}</span></li>)}</ul>
         </details>)}
       </div>}
       {canEdit && currentView && <button type="button" className="budget-add-row" onClick={()=>setAnadiendo(true)} aria-haspopup="dialog"><Plus size={17} strokeWidth={1.8} aria-hidden="true"/>Añadir trabajos a la V{shown.number}<small>catálogo · plano · fotos</small></button>}
@@ -122,7 +122,7 @@ function fieldValue(item:BudgetItem|undefined,field:keyof BudgetItem) {
   if(field==="unit_price")return money(item.unit_price);
   if(field==="quantity")return `${number(item.quantity)} ${item.unit}`;
   if(field==="adjustment_percent" || field==="vat_rate")return `${number(item[field])} %`;
-  if(field==="inclusion")return {included:"Incluida",optional:"Alternativa, no suma",excluded:"Excluida, no suma"}[item.inclusion];
+  if(field==="inclusion")return {included:"Entra en el precio",optional:"Alternativa, no suma",excluded:"No entra en el precio"}[item.inclusion];
   return String(item[field]);
 }
 function TextChange({before,after}:{before:string;after:string}) {
@@ -142,7 +142,7 @@ export function BudgetComparison({before,after}:{before:BudgetVersion;after:Budg
   return <div className="budget-comparison">
     <div className="cmp-summary">
       <div className="cmp-summary-line"><span className="pl-mono cmp-before">{money(comparison.previous.total)}</span><ArrowRight size={15} strokeWidth={1.6} aria-hidden="true"/><strong className="pl-mono">{money(comparison.next.total)}</strong><span className="pl-mono cmp-delta" data-tone={tono(delta.total)}>{signed(delta.total)}</span></div>
-      <span className="muted text-xs">V{before.number} → V{after.number} · con IVA · base {signed(delta.base)} · IVA {signed(delta.tax)}</span>
+      <span className="muted text-xs">V{before.number} → V{after.number} · con IVA · sin IVA {signed(delta.base)} · IVA {signed(delta.tax)}</span>
       {comparison.hasChanges && <div className="cmp-tags"><span className="cmp-tag" data-kind={comparison.counts.added?"added":undefined}>{comparison.counts.added} añadida{comparison.counts.added===1?"":"s"}</span><span className="cmp-tag">{comparison.counts.changed} modificada{comparison.counts.changed===1?"":"s"}</span><span className="cmp-tag" data-kind={comparison.counts.removed?"removed":undefined}>{comparison.counts.removed} eliminada{comparison.counts.removed===1?"":"s"}</span>{comparison.notesChanged && <span className="cmp-tag">Condiciones</span>}</div>}
     </div>
     {!comparison.hasChanges && <p className="workspace-callout">No hay cambios en partidas ni condiciones entre V{before.number} y V{after.number}.</p>}
@@ -160,5 +160,5 @@ export function BudgetComparison({before,after}:{before:BudgetVersion;after:Budg
 }
 
 function ItemChangeSummary({item,label}:{item:BudgetItem;label:string}) {
-  return <div className="cmp-row"><span className="cmp-k">{label}</span><span className="cmp-v cmp-v-plain">{fieldValue(item,"quantity")} × {fieldValue(item,"unit_price")}{item.adjustment_percent!==0?` · ajuste ${number(item.adjustment_percent)} %`:""} · IVA {number(item.vat_rate)} % · Importe sin IVA: {money(lineTotal(item))} · {fieldValue(item,"inclusion")}</span></div>;
+  return <div className="cmp-row"><span className="cmp-k">{label}</span><span className="cmp-v cmp-v-plain">{fieldValue(item,"quantity")} × {fieldValue(item,"unit_price")}{item.adjustment_percent!==0?` · ${item.adjustment_percent>0?"recargo":"descuento"} ${number(Math.abs(item.adjustment_percent))} %`:""} · IVA {number(item.vat_rate)} % · Importe sin IVA: {money(lineTotal(item))} · {fieldValue(item,"inclusion")}</span></div>;
 }

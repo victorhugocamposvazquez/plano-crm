@@ -52,7 +52,7 @@ export default function LoginPage() {
         {!configured ? (
           <div className="empty">
             <strong>Este entorno usa datos de demostración</strong>
-            <span className="muted text-sm">No hay cuentas: los cambios se guardan solo en este navegador. Para trabajar con datos reales hay que configurar Supabase (ver <code>docs/despliegue.md</code>).</span>
+            <span className="muted text-sm">No hay cuentas: lo que cambies se guarda solo en este navegador.</span>
             <Link href="/proyectos" className="btn btn-primary">Ir a los proyectos</Link>
           </div>
         ) : (

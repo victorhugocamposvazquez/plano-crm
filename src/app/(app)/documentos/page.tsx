@@ -59,7 +59,7 @@ export default function DocumentosPage() {
         </section>
       ))}
 
-      <p className="muted text-xs">Estado de validación por documento y vista previa en línea llegarán con el dominio; hoy cada archivo se abre en una pestaña nueva.</p>
+      <p className="muted text-xs">Cada archivo se abre en una pestaña nueva.</p>
     </div>
   );
 }

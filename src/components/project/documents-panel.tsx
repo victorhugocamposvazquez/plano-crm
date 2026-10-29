@@ -56,7 +56,6 @@ export function DocumentsPanel({ project, documents }: { project: Project; docum
             </div>
           ))}
         </div>
-        <p className="muted text-xs" style={{ marginTop: 8 }}>Un archivo adjuntado no es documentación aprobada: la validación por perfil llegará con los permisos definitivos.</p>
       </div>
 
       {allowed && (
@@ -69,7 +68,7 @@ export function DocumentsPanel({ project, documents }: { project: Project; docum
             <Upload {...iconProps} />{uploading ? `Subiendo ${uploading}…` : "Adjuntar"}
             <input type="file" accept={acceptedTypes} multiple disabled={busy || Boolean(uploading)} onChange={onFiles} style={{ position: "absolute", width: 1, height: 1, opacity: 0 }} />
           </label>
-          <span className="muted text-xs" style={{ flexBasis: "100%" }}>PDF, JPG, PNG, WebP o MP4 · hasta 50 MB por archivo. Los DWG llegarán con la importación de planos.</span>
+          <span className="muted text-xs" style={{ flexBasis: "100%" }}>PDF, JPG, PNG, WebP o MP4 · hasta 50 MB por archivo.</span>
         </div>
       )}
 

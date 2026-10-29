@@ -128,7 +128,7 @@ export function ImportDialog({ open, onClose }: { open: boolean; onClose: () => 
             </table>
             {resultado.length > 80 && <p className="muted text-xs" style={{ padding: "8px 0" }}>Se muestran las 80 primeras de {resultado.length}; se importarán todas las que entran.</p>}
           </div>
-          <p className="muted text-xs">Los artículos ya existentes no se tocan: editar precios llegará con el comando de actualización del dominio.</p>
+          <p className="muted text-xs">Los artículos que ya existen no se tocan; sus precios se editan desde el catálogo, tocando el artículo.</p>
         </div>
       )}
 

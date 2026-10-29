@@ -50,7 +50,7 @@ export type Command = z.infer<typeof commandSchema>;
 export const roleNames: Record<Role, string> = { admin: "Administración", office: "Oficina", manager: "Jefe de obra", site: "Equipo de obra", viewer: "Consulta" };
 export const projectStatus = { lead: "Primera visita", estimating: "Presupuestando", planning: "Planificación", active: "En obra", completed: "Finalizado" };
 export const kindNames = { integral: "Reforma integral", partial: "Reforma parcial", carpentry: "Carpintería" };
-export const versionStatus = { draft: "Borrador", issued: "Revisión cerrada", approved: "Aprobada para obra", superseded: "Aprobación anterior" };
+export const versionStatus = { draft: "Borrador", issued: "Terminada · pendiente de aprobar", approved: "Aprobada para obra", superseded: "Aprobación anterior" };
 export const purchaseStatus = { planned: "Por pedir", ordered: "Pedido", received: "Recibido", delivered: "En obra" };
 export const money = (cents: number) => new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(cents / 100);
 export const dateLabel = (value: string) => new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short" }).format(new Date(value.length === 10 ? `${value}T12:00:00` : value));
@@ -75,7 +75,7 @@ export function projectProgress(state: Workspace, id: string) {
 }
 export type ItemChange = { id: string; kind: "added" | "removed" | "changed"; before?: BudgetItem; after?: BudgetItem; fields: string[]; delta: number };
 const trackedFields: (keyof BudgetItem)[] = ["chapter", "description", "quantity", "unit", "unit_price", "adjustment_percent", "vat_rate", "inclusion"];
-export const fieldNames: Record<string, string> = { chapter: "Capítulo", description: "Descripción / material", quantity: "Cantidad", unit: "Unidad", unit_price: "Precio unitario", adjustment_percent: "Ajuste", vat_rate: "IVA", inclusion: "Inclusión" };
+export const fieldNames: Record<string, string> = { chapter: "Capítulo", description: "Descripción / material", quantity: "Cantidad", unit: "Unidad", unit_price: "Precio unitario", adjustment_percent: "Recargo o descuento", vat_rate: "IVA", inclusion: "Entra en el precio" };
 export function compareVersions(before: BudgetVersion, after: BudgetVersion): ItemChange[] {
   const old = new Map(before.items.map(i => [i.id, i])); const current = new Map(after.items.map(i => [i.id, i]));
   return [...new Set([...old.keys(), ...current.keys()])].flatMap(id => {

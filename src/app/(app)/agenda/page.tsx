@@ -108,9 +108,9 @@ export default function AgendaPage() {
           <div className="line-grid">
             <div className="field"><span>Oficio</span><Select label="Oficio" value={form.trade} onChange={v => setForm({ ...form, trade: v })} options={listaOficios.map(o => ({ value: o, label: o }))} placeholder="Elegir oficio…" /></div>
             <label className="field"><span>Responsable</span><input list="personas" type="text" value={form.assignee} onChange={e => setForm({ ...form, assignee: e.target.value })} placeholder="Nombre o equipo" maxLength={120} /><datalist id="personas">{listaPersonas.map(p => <option key={p} value={p} />)}</datalist></label>
-            <label className="field"><span>Peso en el avance</span><span className="unit-input"><input type="number" inputMode="numeric" min={1} max={100} value={form.weight} onChange={e => setForm({ ...form, weight: e.target.value })} /><span>%</span></span></label>
+            <label className="field"><span>Cuánto cuenta en el avance</span><span className="unit-input"><input type="number" inputMode="numeric" min={1} max={100} value={form.weight} onChange={e => setForm({ ...form, weight: e.target.value })} /><span>%</span></span></label>
           </div>
-          <div className="form-actions"><span className="muted text-xs" style={{ alignSelf: "center" }}>El peso reparte el avance del proyecto entre sus tareas.</span><Button type="submit" variant="primary" disabled={pending === "new" || busy || !form.title.trim() || !form.trade.trim() || !form.project_id}>{pending === "new" ? "Guardando…" : "Planificar"}</Button></div>
+          <div className="form-actions"><span className="muted text-xs" style={{ alignSelf: "center" }}>Reparte el avance del proyecto entre sus tareas; 10 es lo normal.</span><Button type="submit" variant="primary" disabled={pending === "new" || busy || !form.title.trim() || !form.trade.trim() || !form.project_id}>{pending === "new" ? "Guardando…" : "Planificar"}</Button></div>
         </form>
       )}
 
