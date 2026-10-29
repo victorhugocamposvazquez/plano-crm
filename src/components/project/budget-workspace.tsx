@@ -55,8 +55,11 @@ export function BudgetWorkspace({budget,versions,onNavigate,onEdit,canEdit,addin
   return <section className="budget-workspace" aria-label={`Presupuesto ${budget.title}`}>
     {view==="items" && <div className="budget-view" data-view="items" role="region" aria-label={`Partidas de V${shown.number}`}>
       <div className="version-row" role="group" aria-label="Versiones del presupuesto">
-        {ascendente.map(v=>{const {estado,label}=estadoVersion(v,history),actual=v.id===current?.id;return <button key={v.id} type="button" className="version-pill" data-state={estado} data-actual={actual||undefined} aria-pressed={v.id===shown.id} onClick={()=>showVersion(v)} title={actual?"Versión actual":undefined}>
-          {actual?<span className="pulse-dot" aria-hidden="true"/>:<span className="version-mark" data-state={estado} aria-hidden="true">{estado==="approved" && <Check size={10} strokeWidth={3}/>}</span>}V{v.number}<small>· {label}</small>
+        {ascendente.map(v=>{const {estado,label}=estadoVersion(v,history),actual=v.id===current?.id;
+          const fecha=estado==="approved" && v.approved_at?`aprobada el ${dateLabel(v.approved_at)}`:estado==="draft"?`editada el ${dateLabel(v.updated_at)}`:estado==="issued"?`cerrada el ${dateLabel(v.updated_at)}`:dateLabel(v.updated_at);
+          return <button key={v.id} type="button" className="version-pill" data-state={estado} data-actual={actual||undefined} aria-pressed={v.id===shown.id} onClick={()=>showVersion(v)}>
+          {actual?<span className="pulse-dot" aria-hidden="true"/>:<span className="version-mark" data-state={estado} aria-hidden="true">{estado==="approved" && <Check size={10} strokeWidth={3}/>}</span>}
+          <span className="version-text"><span>V{v.number}<small>· {label}</small>{actual && <em className="version-actual">Actual</em>}</span><small className="version-date">{fecha}</small></span>
         </button>;})}
       </div>
 
@@ -124,23 +127,38 @@ function fieldValue(item:BudgetItem|undefined,field:keyof BudgetItem) {
 }
 function TextChange({before,after}:{before:string;after:string}) {
   const diff=changedText(before,after);
-  return <div className="comparison-text-pair"><div><small>Antes</small><p>{before?<>{diff.prefix}<del>{diff.before}</del>{diff.suffix}</>:"Sin texto"}</p></div><div><small>Después</small><p>{after?<>{diff.prefix}<mark>{diff.after}</mark>{diff.suffix}</>:"Sin texto"}</p></div></div>;
+  return <div className="cmp-row cmp-row-text"><span className="cmp-k">Texto</span><span className="cmp-v"><del>{before?<>{diff.prefix}{diff.before}{diff.suffix}</>:"Sin texto"}</del><ins>{after?<>{diff.prefix}{diff.after}{diff.suffix}</>:"Sin texto"}</ins></span></div>;
 }
+const textFields:(keyof BudgetItem)[]=["description","chapter"];
+/**
+ * Comparador por filas: resumen de totales arriba y, por capítulo, una fila por cambio
+ * («campo · antes → después»). Lo añadido y lo eliminado se marcan con texto, no solo con color.
+ */
 export function BudgetComparison({before,after}:{before:BudgetVersion;after:BudgetVersion}) {
   const comparison=compareBudgetHistory(before,after),{changes,delta}=comparison;
+  const porCapitulo=new Map<string,typeof changes>();
+  for(const change of changes){const chapter=(change.after ?? change.before)!.chapter;porCapitulo.set(chapter,[...(porCapitulo.get(chapter) ?? []),change]);}
+  const tono=(value:number)=>value>0?"up":value<0?"down":undefined;
   return <div className="budget-comparison">
-    <div className="comparison-summary"><div><small>V{before.number} · antes</small><strong className="pl-mono">{money(comparison.previous.total)}</strong></div><div><small>V{after.number} · después</small><strong className="pl-mono">{money(comparison.next.total)}</strong></div><div><small>Diferencia con IVA</small><strong className="pl-mono">{signed(delta.total)}</strong></div></div>
-    <p className="muted text-sm">Diferencia sin IVA: {signed(delta.base)} · diferencia de IVA: {signed(delta.tax)}. Solo se muestran los cambios.</p>
+    <div className="cmp-summary">
+      <div className="cmp-summary-line"><span className="pl-mono cmp-before">{money(comparison.previous.total)}</span><ArrowRight size={15} strokeWidth={1.6} aria-hidden="true"/><strong className="pl-mono">{money(comparison.next.total)}</strong><span className="pl-mono cmp-delta" data-tone={tono(delta.total)}>{signed(delta.total)}</span></div>
+      <span className="muted text-xs">V{before.number} → V{after.number} · con IVA · base {signed(delta.base)} · IVA {signed(delta.tax)}</span>
+      {comparison.hasChanges && <div className="cmp-tags"><span className="cmp-tag" data-kind={comparison.counts.added?"added":undefined}>{comparison.counts.added} añadida{comparison.counts.added===1?"":"s"}</span><span className="cmp-tag">{comparison.counts.changed} modificada{comparison.counts.changed===1?"":"s"}</span><span className="cmp-tag" data-kind={comparison.counts.removed?"removed":undefined}>{comparison.counts.removed} eliminada{comparison.counts.removed===1?"":"s"}</span>{comparison.notesChanged && <span className="cmp-tag">Condiciones</span>}</div>}
+    </div>
     {!comparison.hasChanges && <p className="workspace-callout">No hay cambios en partidas ni condiciones entre V{before.number} y V{after.number}.</p>}
-    {comparison.hasChanges && <p className="comparison-counts">{comparison.counts.added} añadidas · {comparison.counts.changed} modificadas · {comparison.counts.removed} eliminadas{comparison.notesChanged?" · condiciones actualizadas":""}</p>}
-    {changes.map(change=><article className="comparison-change" key={change.id}>
-      <header><div><span className="eyebrow" data-kind={change.kind}>{change.kind==="added"?"Partida añadida":change.kind==="removed"?"Partida eliminada":"Partida modificada"}</span><h3>{(change.after ?? change.before)?.description}</h3></div><span className="pl-mono">{change.delta?signed(change.delta):"Sin cambio de base"}</span></header>
-      {change.kind==="changed"?<dl className="comparison-fields">{change.fields.map(field=><div key={field}><dt>{fieldNames[field] ?? field}</dt><dd><span><small>Antes</small><del>{fieldValue(change.before,field as keyof BudgetItem)}</del></span><span><small>Después</small><mark>{fieldValue(change.after,field as keyof BudgetItem)}</mark></span></dd></div>)}</dl>:<ItemChangeSummary item={(change.after ?? change.before)!} label={change.kind==="added"?"Después":"Antes"}/>}
-    </article>)}
-    {comparison.notesChanged && <article className="comparison-change"><header><h3>Notas y condiciones modificadas</h3></header><TextChange before={before.notes} after={after.notes}/></article>}
+    {[...porCapitulo.entries()].map(([chapter,list])=><section className="cmp-chapter" key={chapter} aria-label={chapter}>
+      <h3 className="cmp-chapter-head">{chapter}</h3>
+      {list.map(change=>{const item=(change.after ?? change.before)!;return <article className="cmp-item" key={change.id} data-kind={change.kind}>
+        <header className="cmp-item-head">{change.kind!=="changed" && <span className="cmp-tag" data-kind={change.kind}>{change.kind==="added"?"Añadida":"Eliminada"}</span>}<span className="cmp-item-title">{item.description}</span><span className="pl-mono cmp-delta" data-tone={tono(change.delta)}>{change.delta?signed(change.delta):item.inclusion==="included"?"Sin cambio de base":money(lineTotal(item))}</span></header>
+        {change.kind==="changed"
+          ? change.fields.map(field=>{const f=field as keyof BudgetItem;const texto=textFields.includes(f);return <div className="cmp-row" key={field} data-text={texto||undefined}><span className="cmp-k">{fieldNames[field] ?? field}</span><span className="cmp-v"><del>{fieldValue(change.before,f)}</del>{!texto && <ArrowRight size={13} strokeWidth={1.8} aria-hidden="true"/>}<ins>{fieldValue(change.after,f)}</ins></span></div>;})
+          : <ItemChangeSummary item={item} label={change.kind==="added"?"Después":"Antes"}/>}
+      </article>;})}
+    </section>)}
+    {comparison.notesChanged && <section className="cmp-chapter" aria-label="Condiciones"><h3 className="cmp-chapter-head">Condiciones</h3><article className="cmp-item"><header className="cmp-item-head"><span className="cmp-item-title">Notas para el cliente</span></header><TextChange before={before.notes} after={after.notes}/></article></section>}
   </div>;
 }
 
 function ItemChangeSummary({item,label}:{item:BudgetItem;label:string}) {
-  return <p>{label}: {fieldValue(item,"quantity")} × {fieldValue(item,"unit_price")}{item.adjustment_percent!==0?` · ajuste ${number(item.adjustment_percent)} %`:""} · IVA {number(item.vat_rate)} % · Importe sin IVA: {money(lineTotal(item))} · {fieldValue(item,"inclusion")}</p>;
+  return <div className="cmp-row"><span className="cmp-k">{label}</span><span className="cmp-v cmp-v-plain">{fieldValue(item,"quantity")} × {fieldValue(item,"unit_price")}{item.adjustment_percent!==0?` · ajuste ${number(item.adjustment_percent)} %`:""} · IVA {number(item.vat_rate)} % · Importe sin IVA: {money(lineTotal(item))} · {fieldValue(item,"inclusion")}</span></div>;
 }

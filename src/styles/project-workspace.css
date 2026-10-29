@@ -92,8 +92,14 @@ button.overview-card:hover { border-color: var(--pl-strong-line); }
 .version-pill[data-state="approved"] small { color: var(--pl-success); }
 .version-pill[data-state="draft"] small { color: var(--pl-warning); }
 .version-pill[data-state="issued"] small { color: var(--pl-info); }
-.version-pill .pulse-dot { margin: 0 4px 0 2px; }
-.version-pill[data-actual] small { color: var(--pl-success); }
+/* La actual: pulso azul (en curso) y la palabra «Actual»; el verde queda solo para «aprobada». Debajo, la fecha. */
+.version-pill { min-height: 48px; padding: 0 var(--pl-space-3); align-items: center; }
+.version-pill .pulse-dot { margin: 0 4px 0 2px; background: var(--pl-info); }
+.version-pill .pulse-dot::after { border-color: var(--pl-info); }
+.version-text { display: flex; flex-direction: column; gap: 1px; line-height: 1.2; }
+.version-text > span { display: inline-flex; align-items: center; gap: 4px; }
+.version-actual { margin-left: 4px; padding: 1px 6px; border-radius: var(--pl-radius-full); background: var(--pl-info-bg); color: var(--pl-info); font-style: normal; font-size: 10px; font-weight: var(--pl-weight-semibold); letter-spacing: 0.06em; text-transform: uppercase; }
+.version-date { font-size: var(--pl-text-xs); font-weight: var(--pl-weight-regular); color: var(--pl-muted); }
 .version-mark { width: 16px; height: 16px; border-radius: var(--pl-radius-full); display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; background: var(--pl-raised); }
 .version-mark[data-state="approved"] { background: var(--pl-success-bg); color: var(--pl-success); }
 .version-mark[data-state="draft"] { width: 8px; height: 8px; margin: 0 4px; background: var(--pl-warning); }
@@ -158,24 +164,38 @@ button.overview-card:hover { border-color: var(--pl-strong-line); }
 .history-diff-summary { padding: var(--pl-space-3); background: var(--pl-soft); font-size: var(--pl-text-sm); border-radius: var(--pl-radius-tab); }
 .budget-history-card footer { display: flex; flex-wrap: wrap; gap: var(--pl-space-2); }
 .budget-comparison-pickers, .comparison-text-pair { display: grid; gap: var(--pl-space-4); }
-.comparison-summary { display: grid; gap: var(--pl-space-4); padding: var(--pl-space-5); background: var(--pl-soft); border-radius: var(--pl-radius-panel); }
-.comparison-summary > div { display: flex; justify-content: space-between; flex-wrap: wrap; gap: var(--pl-space-3); }
-.comparison-summary small { color: var(--pl-muted); font-size: var(--pl-text-sm); }
-.comparison-counts { font-size: var(--pl-text-ui); }
-.comparison-change { display: grid; gap: var(--pl-space-4); border: var(--pl-hairline) solid var(--pl-line); border-radius: var(--pl-radius-panel); padding: var(--pl-space-5); }
-.comparison-change > header { display: flex; justify-content: space-between; flex-wrap: wrap; gap: var(--pl-space-3); }
-.comparison-change h3 { margin-top: var(--pl-space-2); overflow-wrap: anywhere; }
-.comparison-change > header > span { color: var(--pl-muted); font-size: var(--pl-text-sm); }
-.comparison-change .eyebrow[data-kind="added"] { color: var(--pl-success); }
-.comparison-change .eyebrow[data-kind="removed"] { color: var(--pl-danger); }
-.comparison-fields { margin: 0; display: grid; gap: var(--pl-space-4); }
-.comparison-fields dt { font-size: var(--pl-text-sm); color: var(--pl-muted); margin-bottom: var(--pl-space-2); }
-.comparison-fields dd { margin: 0; display: grid; gap: var(--pl-space-3); }
-.comparison-fields dd > span { display: grid; gap: var(--pl-space-1); overflow-wrap: anywhere; }
-.comparison-fields small, .comparison-text-pair small { font-size: var(--pl-text-sm); color: var(--pl-muted); }
-.budget-comparison del { color: var(--pl-danger); background: var(--pl-danger-bg); text-decoration-thickness: var(--pl-hairline); }
-.budget-comparison mark { color: var(--pl-ink); background: var(--pl-success-bg); text-decoration: underline; text-underline-offset: var(--pl-space-1); }
-.comparison-text-pair p { white-space: pre-wrap; margin-top: var(--pl-space-2); overflow-wrap: anywhere; }
+/* Comparador por filas: resumen arriba y una fila por cambio, agrupadas por capítulo. */
+.cmp-summary { display: grid; gap: var(--pl-space-2); padding: var(--pl-space-4); background: var(--pl-soft); border-radius: var(--pl-radius-panel); }
+.cmp-summary-line { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--pl-space-2); }
+.cmp-summary-line svg { align-self: center; color: var(--pl-faint); }
+.cmp-summary-line > strong { font-size: var(--pl-text-h2); font-weight: var(--pl-weight-medium); letter-spacing: -0.02em; }
+.cmp-before { font-size: var(--pl-text-ui); color: var(--pl-muted); }
+.cmp-summary-line .cmp-delta { margin-left: auto; font-size: var(--pl-text-md); }
+.cmp-delta { white-space: nowrap; }
+.cmp-delta[data-tone="up"] { color: var(--pl-warning); }
+.cmp-delta[data-tone="down"] { color: var(--pl-success); }
+.cmp-tags { display: flex; flex-wrap: wrap; gap: var(--pl-space-1); margin-top: 2px; }
+.cmp-tag { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: var(--pl-radius-full); background: var(--pl-raised); color: var(--pl-ink); font-size: 11px; font-weight: var(--pl-weight-semibold); letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap; }
+.cmp-tag[data-kind="added"] { background: var(--pl-success-bg); color: var(--pl-success); }
+.cmp-tag[data-kind="removed"] { background: var(--pl-danger-bg); color: var(--pl-danger); }
+.cmp-chapter { display: grid; }
+.cmp-chapter-head { margin: 0; min-height: 36px; display: flex; align-items: center; font-size: var(--pl-text-xs); letter-spacing: 0.06em; text-transform: uppercase; color: var(--pl-muted); font-weight: var(--pl-weight-medium); border-bottom: var(--pl-hairline) solid var(--pl-line); }
+.cmp-item { display: grid; gap: var(--pl-space-1); padding: var(--pl-space-3) 0; border-bottom: var(--pl-hairline) solid var(--pl-line); }
+.cmp-item-head { display: flex; align-items: baseline; gap: var(--pl-space-2); flex-wrap: wrap; }
+.cmp-item-head .cmp-tag { align-self: center; }
+.cmp-item-title { font-size: var(--pl-text-md); font-weight: var(--pl-weight-semibold); letter-spacing: var(--pl-tracking-ui); min-width: 0; overflow-wrap: anywhere; }
+.cmp-item-head .cmp-delta { margin-left: auto; font-size: var(--pl-text-sm); font-weight: var(--pl-weight-medium); }
+.cmp-item[data-kind="removed"] .cmp-item-title { color: var(--pl-muted); }
+.cmp-row { display: flex; align-items: center; gap: var(--pl-space-2); min-height: 24px; font-size: var(--pl-text-sm); }
+.cmp-row[data-text], .cmp-row-text { align-items: flex-start; }
+.cmp-k { flex: 0 0 84px; color: var(--pl-muted); }
+.cmp-v { display: flex; align-items: center; flex-wrap: wrap; gap: var(--pl-space-2); min-width: 0; }
+.cmp-v svg { color: var(--pl-faint); flex: 0 0 auto; }
+.cmp-row[data-text] .cmp-v, .cmp-row-text .cmp-v { flex-direction: column; align-items: flex-start; gap: 2px; line-height: 1.35; }
+.cmp-v del { color: var(--pl-muted); text-decoration: line-through; text-decoration-color: var(--pl-faint); overflow-wrap: anywhere; }
+.cmp-v ins { text-decoration: none; font-weight: var(--pl-weight-medium); overflow-wrap: anywhere; }
+.cmp-v-plain { color: var(--pl-muted); line-height: 1.4; }
+.cmp-row-text del, .cmp-row-text ins { white-space: pre-wrap; }
 .workspace-facts { display: grid; gap: var(--pl-space-4); }
 .workspace-facts > div { display: flex; justify-content: space-between; flex-wrap: wrap; gap: var(--pl-space-3); }
 .workspace-facts dd { margin: 0; }
