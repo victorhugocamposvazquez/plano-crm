@@ -217,6 +217,15 @@ Los artículos se editan y se dan de baja desde la propia lista: cada fila es un
 
 Las categorías existen a través de sus artículos, así que el campo «Categoría» es un `Select` con las existentes y la opción «Nueva categoría…», que cambia a un campo de texto; el botón «Nueva categoría» de la cabecera abre el alta directamente en ese modo, con una línea que explica que la categoría nace con su primer artículo.
 
+### Para gente que no usa apps · segunda pasada, 29 octubre 2026
+
+Tres reglas que salen del tablero «Segunda pasada» del lienzo «Usabilidad Plano»:
+
+- **Habla como la obra.** Nada de «revisión», «inclusión», «ajuste», «base» ni «peso»: «Terminar la V2 para enviarla», «¿Entra en el precio?», «Recargo o descuento», «Sin IVA», «Cuánto cuenta en el avance». Si una palabra necesita explicación, va en una línea debajo, no en un tooltip. Las notas de hoja de ruta («llegará con el dominio») no se enseñan en la interfaz: van a `docs/PREGUNTAS.md`.
+- **Enseña al hacer.** Un vacío dice qué es en una frase y ofrece el primer paso (`.empty` con botón, o `.empty-line` con un enlace en línea): «Sin tareas este día · Planificar una tarea para este día», «El catálogo está vacío · Añadir el primer artículo». Las secciones vacías del chat dicen qué aparecerá ahí.
+- **Perdona los errores.** `notify(mensaje, { label: "Deshacer", run })` añade un botón al aviso durante siete segundos para lo reversible: completar o reabrir una tarea, moverla de día, quitar los filtros de la agenda. Lo irreversible (dar de baja, terminar una versión, eliminar) confirma con el nombre de lo que se va a tocar.
+- **Navegación por perfil** (`src/lib/navegacion.ts`, `veSeccion`): el equipo de obra ve Hoy, Proyectos, Agenda y Más (con Compras y Documentos); jefe de obra y consulta ven todo menos la configuración de la empresa; oficina y administración, todo. Los permisos reales siguen en `can()`; esto solo ordena el menú y la pantalla «Más».
+
 ### Importación del catálogo
 
 «Importar CSV» en Catálogo abre un cajón ancho en tres pasos: pegar o subir el CSV (separador detectado, cabecera reconocida), revisar el mapeo de columnas con el selector propio y la tabla de filas con su estado (entra / ya existe / error con motivo), e importar en lote con barra de progreso. Nada se guarda hasta el último paso y las filas con problemas nunca se importan a medias. «Exportar CSV» devuelve el catálogo en el mismo formato (punto y coma, coma decimal, UTF-8 con BOM) para editarlo en Excel y volver a importarlo. Lógica en `src/lib/importar-catalogo.ts`.

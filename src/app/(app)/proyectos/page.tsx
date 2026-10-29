@@ -5,7 +5,7 @@ import { Building2, Plus, ArrowUpRight, FileText, Search, X } from "lucide-react
 import { useWorkspace } from "@/components/workspace-provider";
 import { Tabs } from "@/components/ui/tabs";
 import { ProjectStatus, Meter } from "@/components/ui/status";
-import { projectProgress, projectStatus, kindNames, money, totals, dateLabel, type Project, type Workspace } from "@/lib/domain";
+import { projectProgress, projectStatus, kindNames, money, totals, dateLabel, can, type Project, type Workspace } from "@/lib/domain";
 import { searchProjects } from "@/lib/search";
 import { useQueryState } from "@/lib/use-query-state";
 import { NewProjectDialog } from "@/components/project/new-project-dialog";
@@ -25,7 +25,7 @@ function approvedAmount(data: Workspace, projectId: string) {
 }
 
 export default function ObrasPage() {
-  const { data, loading, error } = useWorkspace();
+  const { data, loading, error, actor } = useWorkspace();
   const [filter, setFilter] = useQueryState<Filter>("f", "all");
   const [queryParam, setQueryParam] = useQueryState<string>("q", "");
   // «?nuevo=1» abre el alta sobre la lista: recargar o volver atrás conserva el contexto.
@@ -99,7 +99,8 @@ export default function ObrasPage() {
         {!loading && projects.length === 0 && (
           <div className="empty" style={{ marginTop: 16 }}>
             <strong>{query ? `Nada coincide con «${query}»` : "No hay proyectos en este filtro"}</strong>
-            <span className="muted text-sm">{query ? "Prueba con parte de la calle, el apellido del cliente o un material del presupuesto." : "Da de alta un proyecto desde «Nuevo proyecto» o estima en la visita."}</span>
+            <span className="muted text-sm">{query ? "Prueba con parte de la calle, el apellido del cliente o un material del presupuesto." : "Un proyecto es una obra: con su cliente, su presupuesto y sus tareas."}</span>
+            {!query && can(actor.role, "project.create") && <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><button type="button" className="btn btn-primary" onClick={() => setNuevo("1")}>Nuevo proyecto</button><Link href="/proyectos/nueva" className="btn btn-secondary">Estimar en la visita</Link></div>}
           </div>
         )}
       </div>

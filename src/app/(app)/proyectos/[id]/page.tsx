@@ -70,7 +70,7 @@ export default function ObraPage() {
   async function toggleTask(task:Task) {
     if(!canToggle || busy || pendingTask)return;
     setPendingTask(task.id);
-    try{await send({type:"task.toggle",id:task.id,status:task.status==="done"?"pending":"done"});}
+    try{await send({type:"task.toggle",id:task.id,status:task.status==="done"?"pending":"done"});notify(task.status==="done"?`Reabierta: ${task.title}`:`Completada: ${task.title}`,{label:"Deshacer",run:()=>send({type:"task.toggle",id:task.id,status:task.status})});}
     catch(error){notify(error instanceof Error?error.message:"No se ha podido actualizar la tarea.");}
     finally{setPendingTask(null);}
   }

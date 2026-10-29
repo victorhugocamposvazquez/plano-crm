@@ -28,7 +28,7 @@ export default function FinanzasPage() {
         <div><strong>{money(f.enRevision)}</strong><small>en revisión, sin aprobar</small></div>
       </div>
 
-      {!loading && f.filas.length === 0 && <div className="empty"><strong>Todavía no hay importes</strong><span className="muted text-sm">Aparecen al aprobar o poner en revisión el primer presupuesto.</span></div>}
+      {!loading && f.filas.length === 0 && <div className="empty"><strong>Todavía no hay importes</strong><span className="muted text-sm">Aparecen en cuanto un presupuesto se termina o se aprueba.</span><Link href="/presupuestos" className="btn btn-secondary">Ver los presupuestos</Link></div>}
 
       {f.filas.length > 0 && (
         <div className="fin-table" role="table" aria-label="Importes por proyecto">

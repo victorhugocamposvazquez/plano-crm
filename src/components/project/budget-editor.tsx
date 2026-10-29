@@ -118,7 +118,7 @@ export function BudgetEditor({ open, onClose, project, version, guiaInicial }: {
 
         <section>
           <div className="section-label" style={{ marginTop: 0 }}><span>Partidas</span><span className="pl-mono">{items.length}</span></div>
-          {items.length === 0 && <div className="empty" style={{ padding: "22px 16px" }}><strong>Todavía no hay partidas</strong><span className="muted text-sm">Añádelas del catálogo más abajo o escribe una libre. El precio del catálogo se copia al añadir; luego puedes ajustarlo aquí.</span></div>}
+          {items.length === 0 && <div className="empty" style={{ padding: "22px 16px" }}><strong>Todavía no hay partidas</strong><span className="muted text-sm">El precio del catálogo se copia al añadir; luego puedes cambiarlo aquí.</span><div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><Button variant="primary" onClick={() => irA(pasos[0]?.chapter ?? "")}>Añadir la primera partida</Button><Button variant="secondary" onClick={addLibre}>Escribir una libre</Button></div></div>}
           {[...grupos.entries()].map(([chapter, list]) => (
             <details key={chapter} className="editor-chapter editor-chapter-fold" open={openChapters.has(chapter)} onToggle={e => { const opened = e.currentTarget.open; setOpenChapters(prev => { if (prev.has(chapter) === opened) return prev; const next = new Set(prev); if (opened) next.add(chapter); else next.delete(chapter); return next; }); }}>
               <summary className="editor-chapter-head"><span>{chapter} · {list.length} {list.length === 1 ? "partida" : "partidas"}</span><span className="pl-mono">{money(totalCapitulo(list))}</span></summary>

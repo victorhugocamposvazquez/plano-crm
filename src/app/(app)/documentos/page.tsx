@@ -40,7 +40,7 @@ export default function DocumentosPage() {
         {categoryOrder.map(c => <button key={c} type="button" className="chip" aria-pressed={categoria === c} onClick={() => setCategoria(categoria === c ? "" : c)}>{categoryNames[c]} <span className="pl-mono muted">{conteo(c)}</span></button>)}
       </div>
 
-      {!loading && grupos.length === 0 && <div className="empty"><strong>{categoria ? `Sin ${categoryNames[categoria].toLowerCase()}` : "Todavía no hay documentos"}</strong><span className="muted text-sm">Se suben desde la pestaña Documentos de cada proyecto o como fotos de la visita.</span></div>}
+      {!loading && grupos.length === 0 && <div className="empty"><strong>{categoria ? `Sin ${categoryNames[categoria].toLowerCase()}` : "Todavía no hay documentos"}</strong><span className="muted text-sm">Los planos, contratos y fotos se adjuntan en cada proyecto, en su pestaña Documentos.</span><Link href="/proyectos" className="btn btn-secondary">Ir a los proyectos</Link></div>}
 
       {grupos.map(({ project, items }) => (
         <section key={project.id}>

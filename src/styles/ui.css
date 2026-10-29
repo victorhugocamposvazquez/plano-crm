@@ -87,7 +87,7 @@ p {
   inset: auto 0 0 0;
   z-index: 10;
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(0, 1fr));
   /* El fondo llega al borde físico; el safe-area solo aparta los iconos del home indicator. */
   padding: 4px 4px env(safe-area-inset-bottom, 0px);
   background: var(--pl-bg);
@@ -1346,6 +1346,9 @@ p {
 
 .notice {
   position: fixed;
+  width: max-content;
+  max-width: calc(100vw - 32px);
+  box-sizing: border-box;
   left: 50%;
   bottom: calc(var(--pl-nav-bar) + env(safe-area-inset-bottom, 0px) + 12px);
   transform: translateX(-50%);
@@ -1361,6 +1364,10 @@ p {
   font-size: var(--pl-text-md);
 }
 
+.empty-line { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.empty-line .link-button, .empty-line .link-inline { font-size: var(--pl-text-sm); font-weight: var(--pl-weight-medium); }
+.notice > span { flex: 1 1 auto; min-width: 0; }
+.notice-action { flex: 0 0 auto; margin-left: 4px; padding: 6px 10px; border: 0; border-radius: var(--pl-radius-tab); background: var(--pl-ink); color: var(--pl-bg); font: inherit; font-size: var(--pl-text-sm); font-weight: var(--pl-weight-medium); cursor: pointer; }
 .notice::before {
   content: "";
   width: 8px;

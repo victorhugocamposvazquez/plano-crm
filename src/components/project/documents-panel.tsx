@@ -72,7 +72,7 @@ export function DocumentsPanel({ project, documents }: { project: Project; docum
         </div>
       )}
 
-      {documents.length === 0 && <div className="empty"><strong>Aún no hay documentos</strong><span className="muted text-sm">Planos, contratos y fotos de antes, durante y después se adjuntan aquí y los ve todo el equipo del proyecto.</span></div>}
+      {documents.length === 0 && <div className="empty"><strong>Aún no hay documentos</strong><span className="muted text-sm">Elige arriba qué es (plano, contrato, fotos de antes…) y toca Adjuntar. Lo ve todo el equipo del proyecto.</span></div>}
 
       {[...groups.entries()].map(([cat, list]) => (
         <div key={cat}>

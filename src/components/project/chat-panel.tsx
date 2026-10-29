@@ -221,8 +221,8 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
   const gruposVisibles = coincidencias ? grupos.map(g => ({ ...g, items: g.items.filter(m => coincidencias.has(m.id)) })).filter(g => g.items.length) : grupos;
   let lastDay = "";
 
-  const Seccion = ({ titulo, icono, children, vacio }: { titulo: string; icono: ReactNode; children: ReactNode; vacio?: boolean }) => (
-    <section className="info-section"><h3>{icono}{titulo}</h3>{vacio ? <p className="muted text-sm">Nada todavía.</p> : children}</section>
+  const Seccion = ({ titulo, icono, children, vacio, vacioTexto }: { titulo: string; icono: ReactNode; children: ReactNode; vacio?: boolean; vacioTexto?: string }) => (
+    <section className="info-section"><h3>{icono}{titulo}</h3>{vacio ? <p className="muted text-sm">{vacioTexto ?? "Nada todavía."}</p> : children}</section>
   );
 
   return (
@@ -256,7 +256,7 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
 
       {vista === "info" ? (
         <div className="chat-info">
-          <Seccion titulo="Participantes" icono={<Users size={14} strokeWidth={1.8} aria-hidden="true" />} vacio={!gente.length}>
+          <Seccion titulo="Participantes" icono={<Users size={14} strokeWidth={1.8} aria-hidden="true" />} vacio={!gente.length} vacioTexto="Nadie ha escrito todavía.">
             <ul className="info-people">{gente.map(p => <li key={p.name}><span className="msg-avatar" data-tone={tonoAutor(p.name)} aria-hidden="true">{iniciales(p.name)}</span><span style={{ minWidth: 0, flex: 1 }}><strong>{p.name}</strong><small className="muted">{p.mensajes} mensaje{p.mensajes === 1 ? "" : "s"} · último {dateLabel(p.ultimo)}</small></span></li>)}</ul>
           </Seccion>
           <Seccion titulo={`Fotos${compartidos.fotos.length ? ` · ${compartidos.fotos.length}` : ""}`} icono={<ImageIcon size={14} strokeWidth={1.8} aria-hidden="true" />} vacio={!compartidos.fotos.length}>

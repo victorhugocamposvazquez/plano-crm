@@ -64,7 +64,7 @@ export default function AgendaPage() {
   async function toggle(task: Task) {
     if (!canToggle || busy || pending) return;
     setPending(task.id);
-    try { await send({ type: "task.toggle", id: task.id, status: task.status === "done" ? "pending" : "done" }); }
+    try { await send({ type: "task.toggle", id: task.id, status: task.status === "done" ? "pending" : "done" }); notify(task.status === "done" ? `Reabierta: ${task.title}` : `Completada: ${task.title}`, { label: "Deshacer", run: () => send({ type: "task.toggle", id: task.id, status: task.status }) }); }
     catch (e) { notify(e instanceof Error ? e.message : "No se ha podido actualizar la tarea."); }
     finally { setPending(null); }
   }
@@ -81,9 +81,9 @@ export default function AgendaPage() {
     finally { setPending(null); }
   }
 
-  const Lista = ({ tareas, vacio, conFecha = false }: { tareas: TareaAgenda[]; vacio: string; conFecha?: boolean }) => (
+  const Lista = ({ tareas, vacio, conFecha = false, accion }: { tareas: TareaAgenda[]; vacio: string; conFecha?: boolean; accion?: React.ReactNode }) => (
     tareas.length === 0
-      ? <p className="muted text-sm" style={{ padding: "8px 0" }}>{vacio}</p>
+      ? <p className="muted text-sm empty-line" style={{ padding: "8px 0" }}>{vacio}{accion}</p>
       : <div>{tareas.map(t => <TaskRow key={t.id} task={t} projectName={t.project.name} canToggle={canToggle} pending={pending === t.id} showDate={conFecha} compact onToggle={toggle} onOpen={setAbierta} />)}</div>
   );
 
@@ -139,7 +139,7 @@ export default function AgendaPage() {
       <div className="filters filters-wide">
         <Select size="sm" label="Filtrar por oficio" value={filtros.oficio} onChange={v => setFiltros({ ...filtros, oficio: v })} options={[{ value: "", label: "Todos los oficios" }, ...listaOficios.map(o => ({ value: o, label: o }))]} />
         <Select size="sm" label="Filtrar por persona" value={filtros.persona} onChange={v => setFiltros({ ...filtros, persona: v })} options={[{ value: "", label: "Todas las personas" }, ...listaPersonas.map(p => ({ value: p, label: p }))]} />
-        {(filtros.oficio || filtros.persona) && <Button variant="ghost" onClick={() => setFiltros({ oficio: "", persona: "" })}>Quitar filtros</Button>}
+        {(filtros.oficio || filtros.persona) && <Button variant="ghost" onClick={() => { const antes = { ...filtros }; setFiltros({ oficio: "", persona: "" }); notify("Filtros quitados", { label: "Deshacer", run: () => setFiltros(antes) }); }}>Quitar filtros</Button>}
       </div>
 
       <div className="detail">
@@ -175,7 +175,7 @@ export default function AgendaPage() {
           )}
 
           <div className="section-label" style={{ marginTop: 16 }}><span className={diaVisible === hoy ? "warning" : undefined}>{etiquetaDia(diaVisible, true)}{diaVisible === hoy ? " · hoy" : ""}</span><span className="pl-mono">{tareasDelDia.length}</span></div>
-          <Lista tareas={tareasDelDia} vacio="Sin tareas este día." />
+          <Lista tareas={tareasDelDia} vacio="Sin tareas este día." accion={canCreate ? <button type="button" className="link-button" onClick={() => { setAdding(true); setForm(f => ({ ...f, due_date: diaVisible, project_id: f.project_id || data.projects.find(p => p.status === "active")?.id || data.projects[0]?.id || "" })); window.scrollTo({ top: 0, behavior: "smooth" }); }}>Planificar una tarea para este día</button> : undefined} />
           {otrosDias.map(d => <div key={d}><div className="section-label"><span className={d === hoy ? "warning" : undefined}>{etiquetaDia(d, true)}{d === hoy ? " · hoy" : ""}</span><span className="pl-mono">{(porDias.get(d) ?? []).length}</span></div><Lista tareas={porDias.get(d) ?? []} vacio="" /></div>)}
         </section>
 
