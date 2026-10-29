@@ -90,6 +90,12 @@ export type ProductChange = {
 /** Se registran cambios existentes en git, sin inferir si están fusionados o desplegados. */
 export const productChanges: ProductChange[] = [
   {
+    id: "supervision-sistema", date: "2026-10-29", title: "Documentar el producto y su evolución en una zona privada",
+    impact: "Capacidades, límites, fuentes y cambios consultables con autorización de supervisión en servidor.",
+    limitation: "Pendiente de configurar cuentas; la corrección supervisada es un procedimiento, sin ejecución automática.",
+    commit: "99bc6da", pullRequest: 43,
+  },
+  {
     id: "usabilidad", date: "2026-10-29", title: "Simplificar la ficha y aclarar versiones y cambios",
     impact: "Resumen por tareas, selector libre, historial y comparación de partidas y condiciones con antes y después.",
     limitation: "Primera entrega verificada; falta integración y prueba de comprensión con usuarios nuevos.",

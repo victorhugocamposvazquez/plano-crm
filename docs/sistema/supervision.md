@@ -12,6 +12,8 @@ Definir `PLANO_SUPERADMIN_USER_IDS` **solo en el servidor** con UUID de usuarios
 
 Configurar la allowlist en un entorno requiere una decisión del responsable del despliegue. Esta entrega no modifica variables de Vercel, usuarios, organizaciones ni bases de datos de producción.
 
+Para preparar una cuenta, buscar su UUID por el correo indicado en Auth mediante una consulta administrativa de solo lectura. Confirmar la cuenta y su membresía en el proyecto correcto antes de autorizar el UUID. Si no existe, dejar el acceso deshabilitado: indicar un correo no crea una cuenta ni envía una invitación. Los correos, UUID y valores de configuración reales no se guardan en este registro ni en commits.
+
 ## Estado y fuentes
 
 `src/lib/sistema/registro.ts` declara las capacidades con estado `available`, `partial` o `pending`, lo que ya existe, lo que falta y enlaces a archivos del repositorio. En Vercel las fuentes apuntan al SHA del propio despliegue; sin un SHA válido apuntan a la rama `codex/supervision-sistema`, con un aviso de que los enlaces locales se podrán abrir cuando esa rama se publique. No dependen de `main`, que puede no contener las entregas #40/#41 o el rediseño. Actualizar el registro y las fuentes cuando cambie el alcance. La interfaz reserva la información técnica a los detalles desplegables y distingue análisis de imágenes pendiente de los contratos ya disponibles.
