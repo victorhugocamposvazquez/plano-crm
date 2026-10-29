@@ -1,10 +1,10 @@
 "use client";
 import Link from "next/link";
-import type { ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
-import { ArrowRight, FileText } from "lucide-react";
-import { Tabs } from "@/components/ui/tabs";
+import { ArrowLeft, ArrowRight, FileText, Check, GitCompareArrows, History, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Modal } from "@/components/ui/modal";
 import { BudgetActions } from "./budget-actions";
 import { budgetHistory, compareBudgetHistory, versionLabel, changedText } from "@/lib/budget-history";
 import { partidasPorCapitulo, totalCapitulo } from "@/lib/presupuesto";
@@ -14,11 +14,29 @@ type Patch=(patch:Record<string,string|null|undefined>)=>void;
 const signed=(value:number)=>value===0?money(0):`${value<0?"−":"+"}${money(Math.abs(value))}`;
 const number=(value:number)=>new Intl.NumberFormat("es-ES",{maximumFractionDigits:3}).format(value);
 type View="items"|"versions"|"changes";
+type Estado="approved"|"draft"|"issued"|"old";
+/** Estado corto de cada versión para la fila de versiones: una palabra, y el color solo acompaña. */
+function estadoVersion(v:BudgetVersion,history:ReturnType<typeof budgetHistory>):{estado:Estado;label:string} {
+  if(v.id===history.approved?.id)return {estado:"approved",label:"aprobada"};
+  if(v.id===history.working?.id)return v.status==="draft"?{estado:"draft",label:"borrador"}:{estado:"issued",label:"cerrada"};
+  return {estado:"old",label:v.status==="superseded" || v.status==="approved"?"anterior":v.status==="issued"?"histórica":"borrador anterior"};
+}
+
+/** Capítulos que el usuario ha plegado en este presupuesto; nacen abiertos y la app recuerda cuáles cerró. */
+function useCapitulosCerrados(budgetId:string) {
+  const key=`plano.capitulos-cerrados.${budgetId}`;
+  const [cerrados,setCerrados]=useState<string[]>([]);
+  useEffect(()=>{try{const raw=localStorage.getItem(key);setCerrados(raw?JSON.parse(raw) as string[]:[]);}catch{setCerrados([]);}},[key]);
+  const toggle=(chapter:string,open:boolean)=>setCerrados(prev=>{const next=open?prev.filter(c=>c!==chapter):prev.includes(chapter)?prev:[...prev,chapter];try{localStorage.setItem(key,JSON.stringify(next));}catch{}return next;});
+  return {cerrados,toggle};
+}
 
 export function BudgetWorkspace({budget,versions,onNavigate,onEdit,canEdit,adding}:{budget:Budget;versions:BudgetVersion[];onNavigate:Patch;onEdit:()=>void;canEdit:boolean;adding:ReactNode}) {
   const params=useSearchParams(),history=budgetHistory(budget,versions),{approved,working,current}=history;
   const shown=history.versions.find(v=>v.id===params.get("v")) ?? current;
   const view:View=params.get("vista")==="versions"?"versions":params.get("vista")==="changes"?"changes":"items";
+  const {cerrados,toggle}=useCapitulosCerrados(budget.id);
+  const [anadiendo,setAnadiendo]=useState(false);
   if(!shown)return <p className="muted">Este presupuesto todavía no tiene versiones.</p>;
   const t=totals(shown.items),previous=history.versions.find(v=>v.number<shown.number);
   const defaultTarget=previous?shown:current ?? shown;
@@ -29,45 +47,46 @@ export function BudgetWorkspace({budget,versions,onNavigate,onEdit,canEdit,addin
   const showVersion=(v:BudgetVersion)=>onNavigate({v:v.id,vista:"items",desde:null,hasta:null});
   const compare=(before:BudgetVersion,after:BudgetVersion)=>onNavigate({vista:"changes",v:after.id,desde:before.id,hasta:after.id});
   const chapters=partidasPorCapitulo(shown.items);
+  const ascendente=[...history.versions].reverse();
+  const referencia=shown.id===working?.id && approved?approved:previous;
+  const deltaAprobada=currentView && approved && working?totals(working.items).total-totals(approved.items).total:null;
+  const volver=<button type="button" className="btn btn-ghost budget-view-back" onClick={()=>showVersion(shown)}><ArrowLeft size={16} aria-hidden="true"/>Partidas de V{shown.number}</button>;
 
   return <section className="budget-workspace" aria-label={`Presupuesto ${budget.title}`}>
-    <div className="budget-version-picker">
-      <label className="field"><span>Versión que estás viendo</span><select className="workspace-select" value={shown.id} onChange={e=>{const v=history.versions.find(v=>v.id===e.target.value);if(v)showVersion(v);}}>
-        {history.versions.map(v=><option key={v.id} value={v.id}>V{v.number} · {versionLabel(v,history)}</option>)}
-      </select></label>
-      {current && (shown.id===current.id
-        ? <p className="current-badge" data-tone="current"><span className="pulse-dot" aria-hidden="true"/><strong>Actual</strong> · V{current.number} {current.id===approved?.id?"aprobada para obra":current.status==="draft"?"en borrador":"pendiente de aprobación"}</p>
-        : <p className="current-badge" data-tone="old"><span>Versión anterior · la actual es la <strong>V{current.number}</strong></span><button type="button" className="link-button" onClick={()=>showVersion(current)}>Ir a la actual</button></p>)}
-      {approved && <p className="version-authority"><span className="status-dot" aria-hidden="true"/>Para ejecutar la obra: <strong>V{approved.number} aprobada</strong>{working?` · V${working.number} en preparación`:""}</p>}
-      {!approved && <p className="muted text-sm">Todavía no hay una versión aprobada para ejecutar la obra.</p>}
-    </div>
+    {view==="items" && <div className="budget-view" data-view="items" role="region" aria-label={`Partidas de V${shown.number}`}>
+      <div className="version-row" role="group" aria-label="Versiones del presupuesto">
+        {ascendente.map(v=>{const {estado,label}=estadoVersion(v,history);return <button key={v.id} type="button" className="version-pill" data-state={estado} aria-pressed={v.id===shown.id} onClick={()=>showVersion(v)}>
+          <span className="version-mark" data-state={estado} aria-hidden="true">{estado==="approved" && <Check size={10} strokeWidth={3}/>}</span>V{v.number}<small>· {label}</small>
+        </button>;})}
+      </div>
 
-    <Tabs label="Vistas del presupuesto" value={view} onChange={vista=>onNavigate({vista})} options={[
-      {id:"items",label:"Partidas"},{id:"versions",label:"Versiones",count:history.versions.length},{id:"changes",label:"Comparar cambios"}
-    ]}/>
-
-    {view==="items" && <div className="budget-view" role="tabpanel" aria-label={`Partidas de V${shown.number}`}>
-      <header className="budget-reading-head">
-        <div><span className="eyebrow">{versionLabel(shown,history)}</span><h2>V{shown.number} · {budget.title}</h2><p className="muted text-sm">Última edición {dateLabel(shown.updated_at)} · creada por {shown.created_by_name}</p></div>
-        <div className="budget-reading-total"><small>Total con IVA</small><strong className="pl-mono">{money(t.total)}</strong><span className="muted">Base {money(t.base)} · IVA {money(t.tax)}</span></div>
+      <header className="budget-total-head">
+        <span className="eyebrow budget-total-eyebrow">V{shown.number} · {budget.title}</span>
+        <strong className="budget-total-figure"><span className="pl-mono">{money(t.total)}</span><small>con IVA</small></strong>
+        <span className="budget-total-base">Base {money(t.base)} · IVA {money(t.tax)}{deltaAprobada!==null && approved && working && <> · <button type="button" className="link-button" onClick={()=>compare(approved,working)}><span className="pl-mono">{signed(deltaAprobada)}</span> frente a V{approved.number}</button></>}</span>
+        <span className="budget-total-meta">{versionLabel(shown,history)} · editada el {dateLabel(shown.updated_at)} por {shown.created_by_name}</span>
+        <div className="budget-total-tools">
+          {referencia && <Button variant="icon" aria-label={`Comparar V${referencia.number} con V${shown.number}`} title="Qué cambió" onClick={()=>compare(referencia,shown)}><GitCompareArrows size={18} strokeWidth={1.6} aria-hidden="true"/></Button>}
+          <Button variant="icon" aria-label="Historial de versiones" title="Historial de versiones" onClick={()=>onNavigate({vista:"versions"})}><History size={18} strokeWidth={1.6} aria-hidden="true"/></Button>
+          {currentView && (shown.items.length>0 || shown.status!=="draft") && <BudgetActions budget={budget} approved={approved} working={working} shown={shown} onEdit={onEdit} onRevisionCreated={showVersion}/>}
+          {!currentView && shown.items.length>0 && <Link prefetch={false} href={`/imprimir/presupuesto/${shown.id}`} target="_blank" rel="noopener" className="btn btn-icon" aria-label={`PDF de la V${shown.number}`} title={`PDF de la V${shown.number}`}><FileText size={18} strokeWidth={1.6} aria-hidden="true"/></Link>}
+        </div>
       </header>
-      {!currentView && <div className="workspace-callout"><p>{shown.id===approved?.id?`Esta es la versión aprobada. Hay una V${current?.number} posterior en preparación.`:`Estás consultando una versión anterior. La versión actual es la V${current?.number}.`}</p><Button variant="secondary" onClick={()=>current && showVersion(current)}>Ver V{current?.number} actual<ArrowRight size={16} aria-hidden="true"/></Button></div>}
-      {currentView && approved && working && <p className="version-delta">V{working.number} frente a V{approved.number} aprobada: <strong className="pl-mono">{signed(totals(working.items).total-totals(approved.items).total)}</strong> con IVA. <button className="workspace-text-button" type="button" onClick={()=>compare(approved,working)}>Ver qué cambió</button></p>}
-      {currentView && <div id="acciones-presupuesto">{(shown.items.length>0 || shown.status!=="draft") && <BudgetActions budget={budget} approved={approved} working={working} shown={shown} onEdit={onEdit} onRevisionCreated={showVersion}/>}</div>}
-      {!currentView && shown.items.length>0 && <Link prefetch={false} href={`/imprimir/presupuesto/${shown.id}`} target="_blank" rel="noopener" className="btn btn-secondary"><FileText size={16} aria-hidden="true"/>PDF de V{shown.number}</Link>}
+      {!currentView && <div className="workspace-callout"><p>{shown.id===approved?.id?`Esta es la versión aprobada. Hay una V${current?.number} posterior en preparación.`:`Estás consultando una versión anterior. La actual es la V${current?.number}.`}</p><Button variant="secondary" onClick={()=>current && showVersion(current)}>Ver V{current?.number}<ArrowRight size={16} aria-hidden="true"/></Button></div>}
 
       {shown.items.length===0 ? <div className="empty"><strong>Esta versión aún no tiene partidas</strong><span className="muted">Añade trabajos desde el catálogo, un plano o las fotos de la visita.</span>{canEdit && currentView && shown.status==="draft" && <Button variant="primary" onClick={onEdit}>Añadir partidas</Button>}</div> : <div className="budget-chapters">
-        <p className="muted text-sm">Abre un capítulo para ver sus partidas.</p>
-        {[...chapters].map(([chapter,items])=><details className="budget-chapter" key={chapter}>
-          <summary><span><strong>{chapter}</strong><small className="muted">{items.length} partida{items.length===1?"":"s"}</small></span><strong className="pl-mono">{money(totalCapitulo(items))}</strong></summary>
-          <ul>{items.map(item=><li key={item.id} className="budget-reading-item"><div><strong>{item.description}</strong><small className="muted">{number(item.quantity)} {item.unit} × {money(item.unit_price)}{item.adjustment_percent?` · ajuste ${number(item.adjustment_percent)} %`:""}{item.inclusion!=="included"?` · ${item.inclusion==="optional"?"Alternativa":"Excluida"}, no suma`:""}</small></div><span className="pl-mono">{money(lineTotal(item))}</span></li>)}</ul>
+        {[...chapters].map(([chapter,items])=><details className="budget-chapter" key={chapter} open={!cerrados.includes(chapter)} onToggle={e=>toggle(chapter,e.currentTarget.open)}>
+          <summary><span><strong>{chapter}</strong><small className="muted">{items.length} partida{items.length===1?"":"s"}{items.some(i=>i.inclusion!=="included")?` · ${items.filter(i=>i.inclusion!=="included").length} no suma`:""}</small></span><strong className="pl-mono">{money(totalCapitulo(items))}</strong></summary>
+          <ul>{items.map(item=><li key={item.id} className="budget-reading-item" data-inclusion={item.inclusion}><div><strong>{item.description}</strong><small className="muted">{number(item.quantity)} {item.unit} × {money(item.unit_price)}{item.adjustment_percent?` · ajuste ${number(item.adjustment_percent)} %`:""}{item.inclusion!=="included"?` · ${item.inclusion==="optional"?"alternativa":"excluida"}, no suma`:""}</small></div><span className="pl-mono">{money(lineTotal(item))}</span></li>)}</ul>
         </details>)}
       </div>}
+      {canEdit && currentView && <button type="button" className="budget-add-row" onClick={()=>setAnadiendo(true)} aria-haspopup="dialog"><Plus size={17} strokeWidth={1.8} aria-hidden="true"/>Añadir trabajos a la V{shown.number}<small>catálogo · plano · fotos</small></button>}
       {shown.notes && <details className="budget-notes"><summary>Notas y condiciones de V{shown.number}</summary><p>{shown.notes}</p></details>}
-      {canEdit && currentView && <details className="budget-add-details"><summary>Añadir trabajos desde planos, fotos o catálogo</summary>{adding}</details>}
+      {canEdit && currentView && <Modal open={anadiendo} onClose={()=>setAnadiendo(false)} title={`Añadir trabajos a la V${shown.number}`}>{adding}</Modal>}
     </div>}
 
-    {view==="versions" && <section className="budget-view" role="tabpanel" aria-label="Historial de versiones">
+    {view==="versions" && <section className="budget-view" role="region" aria-label="Historial de versiones">
+      <div className="budget-view-head">{volver}</div>
       <div><h2>Versiones del presupuesto</h2><p className="muted">Consulta cualquier versión o descubre qué cambió respecto a la anterior.</p></div>
       <ol className="budget-history-list">{history.versions.map(v=>{
         const prev=history.versions.find(p=>p.number<v.number),diff=prev?compareBudgetHistory(prev,v):null;
@@ -84,7 +103,8 @@ export function BudgetWorkspace({budget,versions,onNavigate,onEdit,canEdit,addin
       <p className="muted text-sm">Cada tarjeta es una versión guardada del presupuesto. Las ediciones dentro de un mismo borrador no tienen todavía un historial individual.</p>
     </section>}
 
-    {view==="changes" && <section className="budget-view" role="tabpanel" aria-label="Comparar versiones del presupuesto">
+    {view==="changes" && <section className="budget-view" role="region" aria-label="Comparar versiones del presupuesto">
+      <div className="budget-view-head">{volver}</div>
       <div><h2>Qué cambió entre versiones</h2><p className="muted">Elige las dos versiones. Se comparan las partidas y las condiciones guardadas.</p></div>
       {history.versions.length<2?<p className="workspace-callout">Necesitas al menos dos versiones para comparar cambios.</p>:<>
         <div className="budget-comparison-pickers">{([{key:"desde",label:"Desde",value:from},{key:"hasta",label:"Hasta",value:to}] as const).map(p=><label className="field" key={p.key}><span>{p.label}</span><select className="workspace-select" value={p.value?.id ?? ""} onChange={e=>onNavigate({desde:p.key==="desde"?e.target.value:from?.id,hasta:p.key==="hasta"?e.target.value:to?.id})}>{history.versions.map(v=><option key={v.id} value={v.id}>V{v.number} · {versionLabel(v,history)}</option>)}</select></label>)}</div>

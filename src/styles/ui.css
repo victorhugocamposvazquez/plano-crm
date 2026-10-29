@@ -3395,6 +3395,11 @@ p {
 .opt-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .opt-text strong { font-size: var(--pl-text-sm); font-weight: var(--pl-weight-medium); }
 .opt-text small { font-size: var(--pl-text-xs); color: var(--pl-muted); line-height: 1.4; }
+.opt-ico[data-tone="ink"] { background: var(--pl-ink); color: var(--pl-bg); }
+.opt-row:disabled { color: var(--pl-faint); cursor: default; }
+.opt-row:disabled:hover { border-color: var(--pl-line); background: var(--pl-surface); }
+.opt-row:disabled .opt-ico { background: var(--pl-soft); color: var(--pl-faint); }
+.opt-row:disabled .opt-text small { color: var(--pl-faint); }
 
 .flow { display: flex; flex-direction: column; gap: 16px; max-width: 1180px; }
 .flow-head { display: flex; align-items: center; gap: 12px; }

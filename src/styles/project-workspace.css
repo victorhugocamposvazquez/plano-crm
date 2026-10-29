@@ -1,50 +1,149 @@
 .project-workspace { --workspace-gap: var(--pl-space-6); }
-.project-workspace .project-heading .page-head { align-items: flex-start; }
-.project-workspace .project-heading .subtitle { margin-top: var(--pl-space-2); }
+
+/* ---------- Cabecera de la ficha ----------
+ * Escritorio: «← Proyectos», título con código y cliente, chip de fase y acciones a la derecha.
+ * Móvil (< 768): una sola línea de 44 px — flecha · nombre y código · fase · chat · «···» — para que el
+ * primer dato quede a menos de 180 px del borde superior. Las tres vías de presupuestar viven en la hoja «···». */
+.project-head { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; grid-template-areas: "back back back" "text phase actions"; align-items: start; row-gap: var(--pl-space-3); column-gap: var(--pl-space-3); }
+.project-head .back-link { grid-area: back; font-size: var(--pl-text-xs); }
+.project-head-text { grid-area: text; min-width: 0; }
+.project-head-text .subtitle { margin-top: var(--pl-space-2); }
+.project-phase { grid-area: phase; align-self: center; border: 0; font: inherit; font-size: var(--pl-text-xs); font-weight: var(--pl-weight-medium); min-height: 28px; cursor: pointer; }
+.project-phase:disabled { cursor: default; }
+.project-head .head-actions { grid-area: actions; align-self: center; }
+.project-actions-wide { display: inline-flex; }
+.project-actions-compact { display: none; }
 .project-workspace .tabs { overflow-x: auto; flex-wrap: nowrap; gap: var(--pl-space-5); }
 .project-workspace .tab { min-height: var(--pl-touch); flex-shrink: 0; white-space: nowrap; }
+
+@media (max-width: 767px) {
+  .project-head { grid-template-columns: auto minmax(0, 1fr) auto auto; grid-template-areas: "back text phase actions"; align-items: center; column-gap: var(--pl-space-1); row-gap: 0; margin: calc(-1 * var(--pl-space-2)) calc(-1 * var(--pl-space-3)) 0; }
+  .project-head .back-link { width: var(--pl-touch); height: var(--pl-touch); justify-content: center; color: var(--pl-ink); }
+  .project-head .back-link .back-link-arrow { width: var(--pl-icon); height: var(--pl-icon); }
+  .project-head .back-link-text { display: none; }
+  .project-head-text .h1 { font-size: var(--pl-text-base); font-weight: var(--pl-weight-semibold); letter-spacing: var(--pl-tracking-h3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .project-head-text .subtitle { margin-top: 1px; font-size: var(--pl-text-xs); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .project-phase { margin: 0 var(--pl-space-1); }
+  .project-head .head-actions { flex-wrap: nowrap; gap: 0; }
+  .project-head .head-actions .doors-compact { display: none; }
+  /* El chat va en la hoja «···» (primera fila): el nombre del proyecto necesita el sitio. */
+  .project-head .chat-launcher { display: none; }
+  .project-actions-wide { display: none; }
+  .project-actions-compact { display: inline-flex; }
+  .project-actions-compact .btn-icon { background: transparent; }
+  .project-workspace .tabs { margin: 0 calc(-1 * var(--pl-space-6)); padding: 0 var(--pl-space-6); gap: var(--pl-space-4); font-size: var(--pl-text-md); }
+}
+
+/* ---------- Hoja de acciones del proyecto (móvil) ---------- */
+.action-sheet { display: grid; gap: var(--pl-space-3); }
+.action-group { display: grid; gap: var(--pl-space-2); }
+.action-group .section-label { margin: var(--pl-space-2) 0 0; }
+
+/* ---------- Secciones ---------- */
 .project-overview, .project-budget-section, .project-work-section, .budget-workspace, .budget-view, .budget-comparison { display: grid; gap: var(--workspace-gap, var(--pl-space-6)); min-width: 0; }
-.project-overview-grid { display: grid; gap: var(--pl-space-4); }
+.project-overview { gap: var(--pl-space-4); }
 .workspace-card { padding: var(--pl-space-5); border: var(--pl-hairline) solid var(--pl-line); border-radius: var(--pl-radius-panel); display: grid; gap: var(--pl-space-4); min-width: 0; }
 .workspace-card > header, .workspace-section-heading { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: var(--pl-space-3); }
 .project-workspace h2 { font-size: var(--pl-text-h3); font-weight: var(--pl-weight-semibold); letter-spacing: var(--pl-tracking-h3); margin: 0; }
 .project-workspace h3 { font-size: var(--pl-text-ui); font-weight: var(--pl-weight-semibold); margin: 0; }
 .workspace-card p, .budget-view p, .project-work-section p { margin: 0; }
 .workspace-card .btn { justify-self: start; }
-.project-progress { display: grid; gap: var(--pl-space-3); }
-.project-progress > strong { font-size: var(--pl-text-h2); }
-.overview-budget-total { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--pl-space-2); font-size: var(--pl-text-h2); }
-.overview-budget-total small { font: var(--pl-text-sm) var(--pl-font-sans); }
+
+/* Resumen: dos tarjetas compactas (obra · presupuesto) que llevan a su pestaña; antes de la obra, la lista de lo que falta para presupuestar. */
+.project-overview-grid { display: grid; gap: var(--pl-space-3); grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.overview-card { padding: var(--pl-space-4); gap: var(--pl-space-2); align-content: start; text-align: left; font: inherit; color: var(--pl-ink); background: var(--pl-surface); }
+button.overview-card { cursor: pointer; }
+button.overview-card:hover { border-color: var(--pl-strong-line); }
+.overview-kicker { display: flex; justify-content: space-between; align-items: center; gap: var(--pl-space-2); font-size: var(--pl-text-xs); letter-spacing: 0.06em; text-transform: uppercase; color: var(--pl-muted); font-weight: var(--pl-weight-medium); }
+.overview-kicker .status, .overview-kicker .muted { text-transform: none; letter-spacing: normal; font-weight: var(--pl-weight-regular); }
+.overview-figure { display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--pl-space-2); font-size: var(--pl-text-h2); font-weight: var(--pl-weight-medium); letter-spacing: var(--pl-tracking-h2); }
+.overview-figure small { font: var(--pl-text-xs) var(--pl-font-sans); color: var(--pl-muted); }
+.overview-versions { display: flex; flex-wrap: wrap; gap: var(--pl-space-1); }
+.overview-versions .pill { font-size: var(--pl-text-xs); padding: 2px 8px; }
+.overview-empty { font-size: var(--pl-text-ui); color: var(--pl-muted); }
+.overview-checklist { list-style: none; margin: 0; padding: 0; display: grid; }
+.overview-checklist li { display: flex; align-items: flex-start; gap: var(--pl-space-3); padding: var(--pl-space-2) 0; border-top: var(--pl-hairline) solid var(--pl-line); font-size: var(--pl-text-sm); }
+.overview-checklist li > span:last-child { display: grid; gap: 1px; min-width: 0; }
+.overview-checklist small { font-size: var(--pl-text-xs); }
+.overview-check { flex: 0 0 auto; width: 20px; height: 20px; box-sizing: border-box; margin-top: 1px; border-radius: var(--pl-radius-full); border: var(--pl-hairline-active) solid var(--pl-strong-line); display: inline-flex; align-items: center; justify-content: center; }
+.overview-checklist li[data-done="true"] .overview-check { border-color: var(--pl-success-bg); background: var(--pl-success-bg); color: var(--pl-success); }
+.overview-kicker > :last-child { white-space: nowrap; flex-shrink: 0; }
+@media (max-width: 479px) {
+  .overview-figure { font-size: var(--pl-text-h3); }
+  .overview-card { padding: var(--pl-space-3); }
+  .budget-add-row small { display: none; }
+  /* La lista de requisitos necesita el ancho entero; el presupuesto vacío va debajo. */
+  .project-overview-grid:has(.overview-checklist) { grid-template-columns: minmax(0, 1fr); }
+}
+
 .workspace-select { width: 100%; min-width: 0; min-height: var(--pl-touch); padding: var(--pl-space-3); border: var(--pl-hairline) solid var(--pl-strong-line); border-radius: var(--pl-radius-control); background: var(--pl-bg); color: var(--pl-ink); font: inherit; }
-.budget-version-picker { display: grid; gap: var(--pl-space-3); }
-.version-authority { margin: 0; font-size: var(--pl-text-sm); display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--pl-space-1); }
-.version-authority .status-dot { width: var(--pl-dot); height: var(--pl-dot); background: var(--pl-success); border-radius: var(--pl-radius-full); align-self: center; }
-.budget-reading-head { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: var(--pl-space-5); }
-.budget-reading-head h2 { margin: var(--pl-space-2) 0; }
-.budget-reading-total { display: grid; gap: var(--pl-space-1); }
-.budget-reading-total > strong { font-size: var(--pl-text-h2); }
-.budget-reading-total > span { font-size: var(--pl-text-sm); }
-.budget-reading-total > small { color: var(--pl-muted); }
 .workspace-callout { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: var(--pl-space-3); padding: var(--pl-space-4); background: var(--pl-soft); border-radius: var(--pl-radius-panel); }
 .workspace-text-button { min-height: var(--pl-touch); padding: var(--pl-space-2); background: none; border: 0; color: var(--pl-blue); cursor: pointer; font: inherit; text-decoration: underline; text-underline-offset: var(--pl-space-1); }
-.version-delta { font-size: var(--pl-text-ui); }
-.budget-chapters { display: grid; gap: var(--pl-space-3); }
-.budget-chapter { border: var(--pl-hairline) solid var(--pl-line); border-radius: var(--pl-radius-panel); min-width: 0; }
-.budget-chapter > summary { display: flex; justify-content: space-between; align-items: center; gap: var(--pl-space-3); padding: var(--pl-space-4); min-height: var(--pl-touch); cursor: pointer; list-style: none; }
-.budget-chapter > summary::before { content: "+"; color: var(--pl-muted); }
-.budget-chapter[open] > summary::before { content: "−"; }
+
+/* ---------- Presupuesto: fila de versiones + total ----------
+ * La fila de versiones es a la vez estado y selector: cada versión dice en una palabra qué es (aprobada, borrador,
+ * cerrada, anterior) y el color solo acompaña. No hay segunda fila de pestañas: comparar e historial son dos iconos. */
+.budget-view[data-view="items"] { gap: var(--pl-space-4); }
+.version-row { display: flex; align-items: center; gap: var(--pl-space-2); overflow-x: auto; scrollbar-width: none; }
+.version-row::-webkit-scrollbar { display: none; }
+.version-pill { flex: 0 0 auto; display: inline-flex; align-items: center; gap: var(--pl-space-2); min-height: 40px; padding: 0 var(--pl-space-3); border: var(--pl-hairline) solid var(--pl-line); border-radius: var(--pl-radius-control); background: var(--pl-surface); color: var(--pl-ink); font: inherit; font-size: var(--pl-text-md); font-weight: var(--pl-weight-medium); cursor: pointer; white-space: nowrap; }
+.version-pill[aria-pressed="true"] { border: var(--pl-hairline-active) solid var(--pl-ink); background: var(--pl-soft); }
+.version-pill small { font-size: var(--pl-text-sm); font-weight: var(--pl-weight-regular); color: var(--pl-muted); }
+.version-pill[data-state="approved"] small { color: var(--pl-success); }
+.version-pill[data-state="draft"] small { color: var(--pl-warning); }
+.version-pill[data-state="issued"] small { color: var(--pl-info); }
+.version-mark { width: 16px; height: 16px; border-radius: var(--pl-radius-full); display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; background: var(--pl-raised); }
+.version-mark[data-state="approved"] { background: var(--pl-success-bg); color: var(--pl-success); }
+.version-mark[data-state="draft"] { width: 8px; height: 8px; margin: 0 4px; background: var(--pl-warning); }
+.version-mark[data-state="issued"] { width: 8px; height: 8px; margin: 0 4px; background: var(--pl-info); }
+.budget-total-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "eyebrow tools" "figure tools" "base tools" "meta tools"; column-gap: var(--pl-space-4); row-gap: 2px; align-items: start; }
+.budget-total-eyebrow { grid-area: eyebrow; margin: 0; align-self: center; display: block; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.budget-total-figure { grid-area: figure; display: flex; align-items: baseline; flex-wrap: wrap; gap: var(--pl-space-2); font-size: var(--pl-text-h1); font-weight: var(--pl-weight-medium); letter-spacing: -0.02em; line-height: 1.1; }
+.budget-total-figure small { font: var(--pl-text-sm) var(--pl-font-sans); color: var(--pl-muted); }
+.budget-total-base { grid-area: base; font-size: var(--pl-text-xs); color: var(--pl-muted); }
+.budget-total-meta { grid-area: meta; font-size: var(--pl-text-xs); color: var(--pl-muted); }
+.budget-total-head .link-button { font-size: inherit; text-decoration: underline; text-underline-offset: var(--pl-space-1); }
+.budget-total-tools { grid-area: tools; display: flex; align-items: center; gap: var(--pl-space-2); align-self: end; }
+.budget-total-tools .btn-icon { width: 40px; height: 40px; background: var(--pl-surface); border-color: var(--pl-line); }
+.budget-actions-bar { display: flex; gap: var(--pl-space-2); }
+.budget-actions-note { align-self: center; }
+.budget-view-head { display: flex; }
+.budget-view-back { padding: 0 var(--pl-space-2) 0 0; justify-self: start; }
+
+/* ---------- Capítulos: abiertos por defecto, filas densas, sin cajas ---------- */
+.budget-chapters { display: grid; border-top: var(--pl-hairline) solid var(--pl-line); }
+.budget-chapter { border-bottom: var(--pl-hairline) solid var(--pl-line); min-width: 0; }
+.budget-chapter > summary { display: flex; justify-content: space-between; align-items: center; gap: var(--pl-space-3); padding: var(--pl-space-3) 0; min-height: var(--pl-touch); cursor: pointer; list-style: none; box-sizing: border-box; }
+.budget-chapter > summary::-webkit-details-marker { display: none; }
+.budget-chapter > summary::before { content: ""; flex: 0 0 auto; width: 7px; height: 7px; margin: 0 var(--pl-space-2) 2px var(--pl-space-1); border-right: var(--pl-hairline-active) solid var(--pl-muted); border-bottom: var(--pl-hairline-active) solid var(--pl-muted); transform: rotate(-45deg); transition: transform 0.15s; }
+.budget-chapter[open] > summary::before { transform: rotate(45deg); margin-bottom: 4px; }
 .budget-chapter > summary > span { flex: 1; min-width: 0; }
 .budget-chapter > summary strong { font-size: var(--pl-text-ui); }
-.budget-chapter > summary small { display: block; margin-top: var(--pl-space-1); font-size: var(--pl-text-sm); }
-.budget-chapter ul { margin: 0; padding: 0 var(--pl-space-4); list-style: none; }
-.budget-reading-item { display: flex; justify-content: space-between; gap: var(--pl-space-4); padding: var(--pl-space-4) 0; border-top: var(--pl-hairline) solid var(--pl-line); font-size: var(--pl-text-ui); }
+.budget-chapter > summary small { margin-left: var(--pl-space-2); font-size: var(--pl-text-sm); }
+.budget-chapter ul { margin: 0; padding: 0 0 var(--pl-space-2); list-style: none; }
+.budget-reading-item { display: flex; justify-content: space-between; gap: var(--pl-space-4); padding: var(--pl-space-2) 0 var(--pl-space-2) var(--pl-space-6); border-top: var(--pl-hairline) solid var(--pl-line); font-size: var(--pl-text-md); }
+.budget-reading-item[data-inclusion="optional"], .budget-reading-item[data-inclusion="excluded"] { color: var(--pl-muted); }
 .budget-reading-item > div { min-width: 0; }
-.budget-reading-item strong { display: block; font-weight: var(--pl-weight-medium); overflow-wrap: anywhere; }
-.budget-reading-item small { display: block; margin-top: var(--pl-space-2); font-size: var(--pl-text-sm); }
+.budget-reading-item strong { display: block; font-weight: var(--pl-weight-regular); overflow-wrap: anywhere; }
+.budget-reading-item small { display: block; margin-top: 2px; font-size: var(--pl-text-xs); }
 .budget-reading-item > span { flex-shrink: 0; font-size: var(--pl-text-sm); }
+.budget-add-row { display: flex; align-items: center; gap: var(--pl-space-3); width: 100%; min-height: 52px; padding: 0; border: 0; border-bottom: var(--pl-hairline) solid var(--pl-line); background: none; color: var(--pl-blue); font: inherit; font-size: var(--pl-text-ui); font-weight: var(--pl-weight-medium); cursor: pointer; text-align: left; }
+.budget-add-row small { margin-left: auto; color: var(--pl-muted); font-size: var(--pl-text-xs); font-weight: var(--pl-weight-regular); }
 .budget-notes, .budget-add-details { border-top: var(--pl-hairline) solid var(--pl-line); }
 .budget-notes > summary, .budget-add-details > summary { min-height: var(--pl-touch); padding: var(--pl-space-4) 0; cursor: pointer; font-weight: var(--pl-weight-medium); }
 .budget-notes > p { white-space: pre-wrap; padding-bottom: var(--pl-space-4); }
+.budget-chapters + .budget-add-row, .budget-chapters + .budget-notes, .budget-add-row + .budget-notes { margin-top: calc(-1 * var(--pl-space-4)); border-top: 0; }
+
+@media (max-width: 767px) {
+  /* La acción principal del presupuesto queda fija sobre la barra de navegación. */
+  .budget-total-head { grid-template-areas: "eyebrow tools" "figure figure" "base base" "meta meta"; }
+  .budget-total-tools { align-self: start; }
+  .budget-actions-bar { position: fixed; left: 0; right: 0; bottom: calc(var(--pl-nav-bar) + env(safe-area-inset-bottom, 0px)); z-index: 9; padding: var(--pl-space-2) var(--pl-space-6) var(--pl-space-3); background: var(--pl-bg); border-top: var(--pl-hairline) solid var(--pl-line); }
+  .budget-actions-bar .btn { flex: 1; }
+  .budget-view[data-view="items"] { padding-bottom: 72px; }
+}
+
+/* ---------- Historial y comparador ---------- */
 .budget-history-list { list-style: none; padding: 0; margin: 0; display: grid; gap: var(--pl-space-4); }
 .budget-history-card { border: var(--pl-hairline) solid var(--pl-line); border-radius: var(--pl-radius-panel); padding: var(--pl-space-5); display: grid; gap: var(--pl-space-3); }
 .budget-history-card > header { display: flex; justify-content: space-between; gap: var(--pl-space-4); }
@@ -84,8 +183,7 @@
 .editor-grid-primary .editor-amount { grid-column: 1 / -1; }
 .editor .search-clear { min-width: var(--pl-touch); min-height: var(--pl-touch); }
 @media (min-width: 768px) {
-  .project-overview-grid, .budget-comparison-pickers, .comparison-text-pair { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .budget-comparison-pickers, .comparison-text-pair { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .comparison-fields dd { grid-template-columns: repeat(2,minmax(0,1fr)); }
-  .budget-reading-total { text-align: right; }
   .editor-grid-primary .editor-amount { grid-column: auto; }
 }
