@@ -21,7 +21,7 @@ const estados = Object.keys(projectStatus) as Project["status"][];
  * (nuevo presupuesto a mano / desde un plano / desde fotos · obra · proyecto), porque ahí la cabecera
  * solo tiene sitio para el nombre, la fase y dos iconos.
  */
-export function ProjectMenu({ project, approvedVersion, puedeEstimar, onChat, solicitud, onAtendida, planoHref, fotosHref, onManual }: { project: Project; approvedVersion?: BudgetVersion; puedeEstimar: boolean; onChat: () => void; solicitud?: Dialogo | null; onAtendida?: () => void; planoHref?: string; fotosHref?: string; onManual?: () => void }) {
+export function ProjectMenu({ project, approvedVersion, puedeEstimar, onChat, solicitud, onAtendida, planoHref, fotosHref, onManual, borrador }: { project: Project; approvedVersion?: BudgetVersion; puedeEstimar: boolean; onChat: () => void; solicitud?: Dialogo | null; onAtendida?: () => void; planoHref?: string; fotosHref?: string; onManual?: () => void; borrador?: BudgetVersion }) {
   const router = useRouter();
   const { data, actor, busy, send, notify } = useWorkspace();
   const [dialogo, setDialogo] = useState<Dialogo>("");
@@ -94,8 +94,8 @@ export function ProjectMenu({ project, approvedVersion, puedeEstimar, onChat, so
         <div className="action-sheet">
           <button type="button" className="opt-row" onClick={() => { setDialogo(""); onChat(); }}><span className="opt-ico"><MessageSquare size={18} strokeWidth={1.7} aria-hidden="true" /></span><span className="opt-text"><strong>Abrir el chat</strong><small>Conversación del equipo.</small></span><ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" className="muted" /></button>
           {puedeEstimar && <div className="action-group" role="group" aria-labelledby="acciones-presupuesto">
-            <span className="section-label" id="acciones-presupuesto"><span>Nuevo presupuesto</span></span>
-            <button type="button" className="opt-row" onClick={() => { setDialogo(""); onManual?.(); }}><span className="opt-ico" data-tone="ink"><Pencil size={18} strokeWidth={1.7} aria-hidden="true" /></span><span className="opt-text"><strong>A mano, con el catálogo</strong><small>Partidas del catálogo o libres, con la guía por capítulos.</small></span><ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" className="muted" /></button>
+            <span className="section-label" id="acciones-presupuesto"><span>{borrador ? `Añadir al presupuesto · V${borrador.number} en borrador` : approvedVersion ? "Nueva revisión del presupuesto" : "Nuevo presupuesto"}</span></span>
+            <button type="button" className="opt-row" onClick={() => { setDialogo(""); onManual?.(); }}><span className="opt-ico" data-tone="ink"><Pencil size={18} strokeWidth={1.7} aria-hidden="true" /></span><span className="opt-text"><strong>A mano, con el catálogo</strong><small>{borrador ? `Partidas del catálogo o libres en la V${borrador.number}.` : "Partidas del catálogo o libres, con la guía por capítulos."}</small></span><ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" className="muted" /></button>
             {planoHref && <button type="button" className="opt-row" onClick={() => ir(planoHref)}><span className="opt-ico" data-tone="blue"><LayoutTemplate size={18} strokeWidth={1.7} aria-hidden="true" /></span><span className="opt-text"><strong>Desde un plano</strong><small>Sube el PDF: Plano mide las paredes y propone partidas.</small></span><ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" className="muted" /></button>}
             {fotosHref && <button type="button" className="opt-row" onClick={() => ir(fotosHref)}><span className="opt-ico" data-tone="warning"><Camera size={18} strokeWidth={1.7} aria-hidden="true" /></span><span className="opt-text"><strong>Desde fotos</strong><small>Fotos de la obra, notas y una cifra orientativa.</small></span><ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" className="muted" /></button>}
           </div>}

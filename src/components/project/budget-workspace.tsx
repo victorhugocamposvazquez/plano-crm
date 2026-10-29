@@ -55,8 +55,8 @@ export function BudgetWorkspace({budget,versions,onNavigate,onEdit,canEdit,addin
   return <section className="budget-workspace" aria-label={`Presupuesto ${budget.title}`}>
     {view==="items" && <div className="budget-view" data-view="items" role="region" aria-label={`Partidas de V${shown.number}`}>
       <div className="version-row" role="group" aria-label="Versiones del presupuesto">
-        {ascendente.map(v=>{const {estado,label}=estadoVersion(v,history);return <button key={v.id} type="button" className="version-pill" data-state={estado} aria-pressed={v.id===shown.id} onClick={()=>showVersion(v)}>
-          <span className="version-mark" data-state={estado} aria-hidden="true">{estado==="approved" && <Check size={10} strokeWidth={3}/>}</span>V{v.number}<small>· {label}</small>
+        {ascendente.map(v=>{const {estado,label}=estadoVersion(v,history),actual=v.id===current?.id;return <button key={v.id} type="button" className="version-pill" data-state={estado} data-actual={actual||undefined} aria-pressed={v.id===shown.id} onClick={()=>showVersion(v)} title={actual?"Versión actual":undefined}>
+          {actual?<span className="pulse-dot" aria-hidden="true"/>:<span className="version-mark" data-state={estado} aria-hidden="true">{estado==="approved" && <Check size={10} strokeWidth={3}/>}</span>}V{v.number}<small>· {label}</small>
         </button>;})}
       </div>
 
@@ -68,7 +68,7 @@ export function BudgetWorkspace({budget,versions,onNavigate,onEdit,canEdit,addin
         <div className="budget-total-tools">
           {referencia && <Button variant="icon" aria-label={`Comparar V${referencia.number} con V${shown.number}`} title="Qué cambió" onClick={()=>compare(referencia,shown)}><GitCompareArrows size={18} strokeWidth={1.6} aria-hidden="true"/></Button>}
           <Button variant="icon" aria-label="Historial de versiones" title="Historial de versiones" onClick={()=>onNavigate({vista:"versions"})}><History size={18} strokeWidth={1.6} aria-hidden="true"/></Button>
-          {currentView && (shown.items.length>0 || shown.status!=="draft") && <BudgetActions budget={budget} approved={approved} working={working} shown={shown} onEdit={onEdit} onRevisionCreated={showVersion}/>}
+          {currentView && (shown.items.length>0 || shown.status!=="draft") && <BudgetActions budget={budget} approved={approved} working={working} shown={shown} onEdit={onEdit} onRevisionCreated={showVersion} onCompare={referencia?()=>compare(referencia,shown):undefined} compareLabel={referencia?`frente a V${referencia.number}`:undefined}/>}
           {!currentView && shown.items.length>0 && <Link prefetch={false} href={`/imprimir/presupuesto/${shown.id}`} target="_blank" rel="noopener" className="btn btn-icon" aria-label={`PDF de la V${shown.number}`} title={`PDF de la V${shown.number}`}><FileText size={18} strokeWidth={1.6} aria-hidden="true"/></Link>}
         </div>
       </header>
@@ -107,7 +107,7 @@ export function BudgetWorkspace({budget,versions,onNavigate,onEdit,canEdit,addin
       <div className="budget-view-head">{volver}</div>
       <div><h2>Qué cambió entre versiones</h2><p className="muted">Elige las dos versiones. Se comparan las partidas y las condiciones guardadas.</p></div>
       {history.versions.length<2?<p className="workspace-callout">Necesitas al menos dos versiones para comparar cambios.</p>:<>
-        <div className="budget-comparison-pickers">{([{key:"desde",label:"Desde",value:from},{key:"hasta",label:"Hasta",value:to}] as const).map(p=><label className="field" key={p.key}><span>{p.label}</span><select className="workspace-select" value={p.value?.id ?? ""} onChange={e=>onNavigate({desde:p.key==="desde"?e.target.value:from?.id,hasta:p.key==="hasta"?e.target.value:to?.id})}>{history.versions.map(v=><option key={v.id} value={v.id}>V{v.number} · {versionLabel(v,history)}</option>)}</select></label>)}</div>
+        <div className="budget-comparison-pickers">{([{key:"desde",label:"Desde",value:from},{key:"hasta",label:"Hasta",value:to}] as const).map(p=><label className="field" key={p.key}><span>{p.label}</span><select className="workspace-select" value={p.value?.id ?? ""} onChange={e=>onNavigate({desde:p.key==="desde"?e.target.value:from?.id,hasta:p.key==="hasta"?e.target.value:to?.id})}>{history.versions.map(v=><option key={v.id} value={v.id}>{v.id===current?.id?"Actual · ":""}V{v.number} · {versionLabel(v,history).replace(/ actual$/,"")}</option>)}</select></label>)}</div>
         {from && to && from.id!==to.id?<BudgetComparison before={from} after={to}/>:<p className="workspace-callout">Elige dos versiones distintas para ver sus diferencias.</p>}
       </>}
     </section>}
@@ -134,7 +134,7 @@ export function BudgetComparison({before,after}:{before:BudgetVersion;after:Budg
     {!comparison.hasChanges && <p className="workspace-callout">No hay cambios en partidas ni condiciones entre V{before.number} y V{after.number}.</p>}
     {comparison.hasChanges && <p className="comparison-counts">{comparison.counts.added} añadidas · {comparison.counts.changed} modificadas · {comparison.counts.removed} eliminadas{comparison.notesChanged?" · condiciones actualizadas":""}</p>}
     {changes.map(change=><article className="comparison-change" key={change.id}>
-      <header><div><span className="eyebrow">{change.kind==="added"?"Partida añadida":change.kind==="removed"?"Partida eliminada":"Partida modificada"}</span><h3>{(change.after ?? change.before)?.description}</h3></div><span className="pl-mono">{change.delta?signed(change.delta):"Sin cambio de base"}</span></header>
+      <header><div><span className="eyebrow" data-kind={change.kind}>{change.kind==="added"?"Partida añadida":change.kind==="removed"?"Partida eliminada":"Partida modificada"}</span><h3>{(change.after ?? change.before)?.description}</h3></div><span className="pl-mono">{change.delta?signed(change.delta):"Sin cambio de base"}</span></header>
       {change.kind==="changed"?<dl className="comparison-fields">{change.fields.map(field=><div key={field}><dt>{fieldNames[field] ?? field}</dt><dd><span><small>Antes</small><del>{fieldValue(change.before,field as keyof BudgetItem)}</del></span><span><small>Después</small><mark>{fieldValue(change.after,field as keyof BudgetItem)}</mark></span></dd></div>)}</dl>:<ItemChangeSummary item={(change.after ?? change.before)!} label={change.kind==="added"?"Después":"Antes"}/>}
     </article>)}
     {comparison.notesChanged && <article className="comparison-change"><header><h3>Notas y condiciones modificadas</h3></header><TextChange before={before.notes} after={after.notes}/></article>}
