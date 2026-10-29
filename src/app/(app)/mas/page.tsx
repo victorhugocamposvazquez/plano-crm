@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Menu, FileText, BookOpen, Users, Package, FolderOpen, Wallet, ChevronRight, UserRound, Palette, FolderDown, ShieldCheck } from "lucide-react";
+import { Menu, FileText, BookOpen, Package, FolderOpen, Wallet, ChevronRight, UserRound, Palette, FolderDown, ShieldCheck } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
 import { AccountDialog } from "@/components/account-dialog";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -10,7 +10,6 @@ import { roleNames } from "@/lib/domain";
 const entradas = [
   { href: "/presupuestos", label: "Presupuestos", hint: "Todos los presupuestos, por estado", icon: FileText },
   { href: "/catalogo", label: "Catálogo", hint: "Artículos y precios por categoría", icon: BookOpen },
-  { href: "/clientes", label: "Clientes", hint: "Quién tiene obra y por cuánto", icon: Users },
   { href: "/compras", label: "Compras", hint: "Materiales por pedir, pedidos y en obra", icon: Package },
   { href: "/documentos", label: "Documentos", hint: "Planos, contratos, fotos y vídeos", icon: FolderOpen },
   { href: "/finanzas", label: "Finanzas", hint: "Aprobado, certificado y pendiente", icon: Wallet },
@@ -18,7 +17,7 @@ const entradas = [
   { href: "/configuracion/importar", label: "Importar expedientes", hint: "Carga proyectos, presupuestos y documentos desde una carpeta", icon: FolderDown }
 ];
 
-/** En móvil es la puerta a las secciones que no caben en la barra inferior; en escritorio repite el menú lateral. */
+/** La puerta a las secciones que no están en la barra principal, igual en móvil y escritorio. */
 export default function MasPage() {
   const { actor, data, mode } = useWorkspace();
   const [account, setAccount] = useState(false);
