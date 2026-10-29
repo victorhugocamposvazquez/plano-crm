@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Menu, FileText, BookOpen, Package, FolderOpen, Wallet, ChevronRight, UserRound, Palette, FolderDown, ShieldCheck } from "lucide-react";
+import { Menu, FileText, BookOpen, Package, FolderOpen, Wallet, ChevronRight, UserRound, Palette, FolderDown, ShieldCheck, Sparkles } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
 import { AccountDialog } from "@/components/account-dialog";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -14,7 +14,8 @@ const entradas = [
   { href: "/documentos", label: "Documentos", hint: "Planos, contratos, fotos y vídeos", icon: FolderOpen },
   { href: "/finanzas", label: "Finanzas", hint: "Aprobado, certificado y pendiente", icon: Wallet },
   { href: "/configuracion/identidad", label: "Identidad de la empresa", hint: "Logo, colores, portada y datos legales de los documentos", icon: Palette },
-  { href: "/configuracion/importar", label: "Importar expedientes", hint: "Carga proyectos, presupuestos y documentos desde una carpeta", icon: FolderDown }
+  { href: "/configuracion/importar", label: "Importar expedientes", hint: "Carga proyectos, presupuestos y documentos desde una carpeta", icon: FolderDown },
+  { href: "/configuracion/ejemplos", label: "Proyectos de ejemplo", hint: "Cinco proyectos ficticios para ver Plano con contenido", icon: Sparkles }
 ];
 
 /** La puerta a las secciones que no están en la barra principal, igual en móvil y escritorio. */
