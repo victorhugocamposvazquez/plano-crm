@@ -18,10 +18,10 @@ const filters: { id: Filter; label: string; match: (p: Project) => boolean }[] =
   { id: "completed", label: "Finalizadas", match: p => p.status === "completed" }
 ];
 
-/** Base aprobada (sin IVA) sumando todos los presupuestos de la obra; null si ninguno está aprobado. */
+/** Aprobado con IVA sumando todos los presupuestos de la obra (la cifra que ve el cliente); null si ninguno está aprobado. */
 function approvedAmount(data: Workspace, projectId: string) {
   const approved = data.budgets.filter(b => b.project_id === projectId).map(b => data.versions.find(v => v.id === b.approved_version_id)).filter(v => v !== undefined);
-  return approved.length ? approved.reduce((sum, v) => sum + totals(v.items).base, 0) : null;
+  return approved.length ? approved.reduce((sum, v) => sum + totals(v.items).total, 0) : null;
 }
 
 export default function ObrasPage() {
@@ -50,7 +50,7 @@ export default function ObrasPage() {
           <button type="button" className="btn btn-primary btn-new" onClick={() => setNuevo("1")}><Plus size={17} strokeWidth={1.8} aria-hidden="true" />Nuevo proyecto</button>
         </div>
         <p className="subtitle">
-          {loading ? "Cargando el espacio de trabajo…" : `${data.projects.length} proyectos · ${activeCount} en obra · ${money(inProgressAmount)} aprobados en curso, sin IVA`}
+          {loading ? "Cargando el espacio de trabajo…" : `${data.projects.length} proyectos · ${activeCount} en obra · ${money(inProgressAmount)} aprobados en curso, con IVA`}
         </p>
       </div>
 
@@ -65,7 +65,7 @@ export default function ObrasPage() {
       <Tabs label="Filtrar proyectos" value={filter} onChange={setFilter} options={filters.map(f => ({ id: f.id, label: f.label, count: searchProjects(data, data.projects.filter(f.match), query).length }))} />
 
       <div>
-        <div className="row-head"><span>Proyecto</span><span>Cliente</span><span>Tipo</span><span>Avance</span><span style={{ textAlign: "right" }}>Aprobado · sin IVA</span><span>Fase</span></div>
+        <div className="row-head"><span>Proyecto</span><span>Cliente</span><span>Tipo</span><span>Avance</span><span style={{ textAlign: "right" }}>Aprobado · con IVA</span><span>Fase</span></div>
         {projects.map(project => {
           const progress = projectProgress(data, project.id);
           const amount = approvedAmount(data, project.id);

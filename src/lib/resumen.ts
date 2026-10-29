@@ -17,7 +17,7 @@ export const filtrosPresupuesto: { id: FiltroPresupuesto; label: string }[] = [
 
 export type FilaPresupuesto = {
   project: Project; budget: Budget; approved?: BudgetVersion; working?: BudgetVersion; latest: BudgetVersion;
-  approvedBase: number; workingBase: number; delta: number; updated_at: string;
+  approvedBase: number; workingBase: number; approvedTotal: number; workingTotal: number; deltaTotal: number; delta: number; updated_at: string;
   estado: "empty" | "draft" | "issued" | "approved" | "changes";
 };
 
@@ -30,8 +30,10 @@ export function filasPresupuesto(data: Workspace): FilaPresupuesto[] {
     const { approved, working } = budgetHistory(budget, versions);
     const approvedBase = approved ? totals(approved.items).base : 0;
     const workingBase = working ? totals(working.items).base : 0;
+    const approvedTotal = approved ? totals(approved.items).total : 0;
+    const workingTotal = working ? totals(working.items).total : 0;
     const estado: FilaPresupuesto["estado"] = approved && working ? "changes" : approved ? "approved" : working?.status === "issued" ? "issued" : working && working.items.length ? "draft" : "empty";
-    out.push({ project, budget, approved, working, latest: versions[0], approvedBase, workingBase, delta: approved && working ? workingBase - approvedBase : 0, updated_at: versions.map(v => v.updated_at).sort().at(-1) ?? budget.created_at, estado });
+    out.push({ project, budget, approved, working, latest: versions[0], approvedBase, workingBase, approvedTotal, workingTotal, delta: approved && working ? workingBase - approvedBase : 0, deltaTotal: approved && working ? workingTotal - approvedTotal : 0, updated_at: versions.map(v => v.updated_at).sort().at(-1) ?? budget.created_at, estado });
   }
   return out.sort((a, b) => b.updated_at.localeCompare(a.updated_at));
 }
@@ -49,7 +51,7 @@ export const estadoPresupuesto: Record<FilaPresupuesto["estado"], string> = {
 
 /* ---------- Clientes ---------- */
 
-export type Cliente = { id: string; name: string; projects: Project[]; activos: number; aprobado: number; enRevision: number; ubicaciones: string[]; ultimo: string };
+export type Cliente = { id: string; name: string; projects: Project[]; activos: number; aprobado: number; enRevision: number; aprobadoTotal: number; enRevisionTotal: number; ubicaciones: string[]; ultimo: string };
 
 /** Los clientes salen del nombre escrito en cada proyecto (sin entidad propia todavía): se agrupan sin acentos ni mayúsculas. */
 export function clientes(data: Workspace): Cliente[] {
@@ -57,10 +59,10 @@ export function clientes(data: Workspace): Cliente[] {
   const filas = filasPresupuesto(data);
   for (const p of data.projects) {
     const key = norm(p.client_name) || "sin-cliente";
-    const c = map.get(key) ?? { id: key, name: p.client_name || "Sin cliente", projects: [], activos: 0, aprobado: 0, enRevision: 0, ubicaciones: [], ultimo: p.created_at };
+    const c = map.get(key) ?? { id: key, name: p.client_name || "Sin cliente", projects: [], activos: 0, aprobado: 0, enRevision: 0, aprobadoTotal: 0, enRevisionTotal: 0, ubicaciones: [], ultimo: p.created_at };
     c.projects.push(p);
     if (p.status === "active" || p.status === "planning") c.activos++;
-    for (const f of filas.filter(f => f.project.id === p.id)) { c.aprobado += f.approvedBase; c.enRevision += f.working && !f.approved ? f.workingBase : 0; if (f.updated_at > c.ultimo) c.ultimo = f.updated_at; }
+    for (const f of filas.filter(f => f.project.id === p.id)) { c.aprobado += f.approvedBase; c.enRevision += f.working && !f.approved ? f.workingBase : 0; c.aprobadoTotal += f.approvedTotal; c.enRevisionTotal += f.working && !f.approved ? f.workingTotal : 0; if (f.updated_at > c.ultimo) c.ultimo = f.updated_at; }
     if (p.location && !c.ubicaciones.includes(p.location)) c.ubicaciones.push(p.location);
     if (p.created_at > c.ultimo) c.ultimo = p.created_at;
     map.set(key, c);

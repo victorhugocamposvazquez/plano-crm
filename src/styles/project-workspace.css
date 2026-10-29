@@ -99,7 +99,7 @@ button.overview-card:hover { border-color: var(--pl-strong-line); }
 .version-pill .pulse-dot { margin: 0 4px 0 2px; }
 .version-text { display: flex; flex-direction: column; gap: 1px; line-height: 1.2; }
 .version-text > span { display: inline-flex; align-items: center; gap: 4px; }
-.version-actual { margin-right: 6px; padding: 1px 6px; border-radius: var(--pl-radius-full); background: var(--pl-success-bg); color: var(--pl-success); font-style: normal; font-size: 10px; font-weight: var(--pl-weight-semibold); letter-spacing: 0.06em; text-transform: uppercase; }
+.version-actual { margin-right: 6px; padding: 1px 6px; border-radius: var(--pl-radius-full); background: var(--pl-success-bg); color: var(--pl-success); font-style: normal; font-size: var(--pl-text-xs); font-weight: var(--pl-weight-semibold); letter-spacing: 0.06em; text-transform: uppercase; }
 .version-date { display: inline-flex; align-items: center; flex-wrap: wrap; font-size: var(--pl-text-xs); font-weight: var(--pl-weight-regular); color: var(--pl-muted); }
 .version-mark { width: 16px; height: 16px; border-radius: var(--pl-radius-full); display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; background: var(--pl-raised); }
 .version-mark[data-state="approved"] { background: var(--pl-raised); color: var(--pl-ink); }
@@ -176,7 +176,7 @@ button.overview-card:hover { border-color: var(--pl-strong-line); }
 .cmp-delta[data-tone="up"] { color: var(--pl-warning); }
 .cmp-delta[data-tone="down"] { color: var(--pl-success); }
 .cmp-tags { display: flex; flex-wrap: wrap; gap: var(--pl-space-1); margin-top: 2px; }
-.cmp-tag { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: var(--pl-radius-full); background: var(--pl-raised); color: var(--pl-ink); font-size: 11px; font-weight: var(--pl-weight-semibold); letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap; }
+.cmp-tag { display: inline-flex; align-items: center; height: 20px; padding: 0 8px; border-radius: var(--pl-radius-full); background: var(--pl-raised); color: var(--pl-ink); font-size: var(--pl-text-xs); font-weight: var(--pl-weight-semibold); letter-spacing: 0.04em; text-transform: uppercase; white-space: nowrap; }
 .cmp-tag[data-kind="added"] { background: var(--pl-success-bg); color: var(--pl-success); }
 .cmp-tag[data-kind="removed"] { background: var(--pl-danger-bg); color: var(--pl-danger); }
 .cmp-chapter { display: grid; }

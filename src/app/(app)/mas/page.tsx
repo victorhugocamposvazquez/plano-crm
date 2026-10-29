@@ -5,6 +5,7 @@ import { Menu, FileText, BookOpen, Package, FolderOpen, Wallet, ChevronRight, Us
 import { useWorkspace } from "@/components/workspace-provider";
 import { AccountDialog } from "@/components/account-dialog";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { TextSizeToggle } from "@/components/ui/text-size-toggle";
 import { roleNames } from "@/lib/domain";
 import { veSeccion } from "@/lib/navegacion";
 
@@ -64,6 +65,10 @@ export default function MasPage() {
       <div className="account-row zone" style={{ padding: "12px 16px" }}>
         <span className="text-sm">Tema de la interfaz</span>
         <ThemeToggle withLabel />
+      </div>
+      <div className="account-row zone" style={{ padding: "12px 16px" }}>
+        <span className="text-sm">Tamaño de la letra</span>
+        <TextSizeToggle />
       </div>
 
       <p className="muted text-xs">Plano · {mode === "supabase" ? "espacio compartido de la empresa" : "modo demostración, los datos viven en este navegador"}.</p>
