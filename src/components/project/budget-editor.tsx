@@ -33,9 +33,14 @@ export function BudgetEditor({ open, onClose, project, version, guiaInicial }: {
   const catalogo = useRef<HTMLDivElement>(null);
 
   // Al abrir, o si la revisión cambia por debajo (otro guardado), se parte de lo que hay en el dominio.
-  useEffect(() => { if (open) { setItems(version.items); setNotes(version.notes); setGuia(false); setOpenChapters(new Set()); setConfirmClose(false); } }, [open, version.id, version.draft_revision]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Los capítulos nacen abiertos: revisar una partida no debe exigir abrir, leer y cerrar cada uno.
+  useEffect(() => { if (open) { setItems(version.items); setNotes(version.notes); setGuia(false); setOpenChapters(new Set(version.items.map(i => i.chapter))); setConfirmClose(false); } }, [open, version.id, version.draft_revision]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const dirty = JSON.stringify(items) !== JSON.stringify(version.items) || notes !== version.notes;
+  const original = useMemo(() => new Map(version.items.map(i => [i.id, JSON.stringify(i)])), [version.items]);
+  const cambiada = (item: BudgetItem) => original.get(item.id) !== JSON.stringify(item);
+  const cambios = items.filter(cambiada).length + version.items.filter(i => !items.some(x => x.id === i.id)).length + (notes !== version.notes ? 1 : 0);
+  const textoCambios = cambios === 0 ? "" : `${cambios} ${cambios === 1 ? "cambio" : "cambios"} sin guardar`;
   const errores = useMemo(() => validarPartidas(items), [items]);
   const errorDe = (id: string) => errores.find(e => e.id === id)?.message;
   const grupos = useMemo(() => partidasPorCapitulo(items), [items]);
@@ -81,14 +86,14 @@ export function BudgetEditor({ open, onClose, project, version, guiaInicial }: {
     <div className="editor-foot">
       <span className="editor-sum"><small>Base</small><strong className="pl-mono">{money(total.base)}</strong><small>IVA</small><strong className="pl-mono">{money(total.tax)}</strong><small>Total</small><strong className="pl-mono">{money(total.total)}</strong></span>
       <div style={{ display: "flex", gap: 8 }}>
-        <Button variant="secondary" onClick={intentarCerrar}>Cerrar</Button>
-        <Button variant="primary" onClick={guardar} disabled={!dirty || saving || busy || errores.length > 0} title={errores.length ? "Hay partidas incompletas" : undefined}>{saving ? "Guardando…" : `Guardar V${version.number}`}</Button>
+        <Button variant="secondary" onClick={intentarCerrar}>{dirty ? "Descartar" : "Cerrar"}</Button>
+        <Button variant="primary" onClick={guardar} disabled={!dirty || saving || busy || errores.length > 0} title={errores.length ? "Hay partidas incompletas" : undefined}>{saving ? "Guardando…" : cambios ? `Guardar V${version.number} · ${cambios}` : `Guardar V${version.number}`}</Button>
       </div>
     </div>
   );
 
   return (
-    <Drawer open={open} onClose={intentarCerrar} size="wide" title={`Partidas · V${version.number}`} subtitle={`${project.name} · ${total.incluidas} incluidas${total.alternativas ? ` · ${total.alternativas} alternativas` : ""}`} footer={footer}>
+    <Drawer open={open} onClose={intentarCerrar} size="wide" title={`Editar V${version.number} · partidas`} subtitle={[project.name, `${items.length} ${items.length === 1 ? "partida" : "partidas"}`, textoCambios].filter(Boolean).join(" · ")} footer={footer}>
       <div className="editor">
         {guia ? (
           <section className="guide zone">
@@ -116,12 +121,13 @@ export function BudgetEditor({ open, onClose, project, version, guiaInicial }: {
           {items.length === 0 && <div className="empty" style={{ padding: "22px 16px" }}><strong>Todavía no hay partidas</strong><span className="muted text-sm">Añádelas del catálogo más abajo o escribe una libre. El precio del catálogo se copia al añadir; luego puedes ajustarlo aquí.</span></div>}
           {[...grupos.entries()].map(([chapter, list]) => (
             <details key={chapter} className="editor-chapter editor-chapter-fold" open={openChapters.has(chapter)} onToggle={e => { const opened = e.currentTarget.open; setOpenChapters(prev => { if (prev.has(chapter) === opened) return prev; const next = new Set(prev); if (opened) next.add(chapter); else next.delete(chapter); return next; }); }}>
-              <summary className="editor-chapter-head"><span>{chapter} · {list.length} partidas</span><span className="pl-mono">{money(totalCapitulo(list))}</span></summary>
+              <summary className="editor-chapter-head"><span>{chapter} · {list.length} {list.length === 1 ? "partida" : "partidas"}</span><span className="pl-mono">{money(totalCapitulo(list))}</span></summary>
               {list.map(item => {
                 const error = errorDe(item.id);
                 return (
-                  <article key={item.id} className="editor-item" data-excluded={item.inclusion !== "included"} data-error={Boolean(error)}>
+                  <article key={item.id} className="editor-item" data-excluded={item.inclusion !== "included"} data-error={Boolean(error)} data-changed={cambiada(item) || undefined}>
                     <div className="editor-item-head">
+                      <span className="editor-changed" aria-hidden="true" title="Cambiada en esta sesión" />
                       <input type="text" className="editor-desc" value={item.description} onChange={e => update(item.id, { description: e.target.value })} placeholder="Descripción de la partida" aria-label="Descripción" aria-invalid={error ? true : undefined} maxLength={2000} />
                       <div className="editor-item-tools">
 
@@ -148,6 +154,7 @@ export function BudgetEditor({ open, onClose, project, version, guiaInicial }: {
                   </article>
                 );
               })}
+              <button type="button" className="editor-add-row" onClick={() => irA(chapter)}><Plus size={15} strokeWidth={1.8} aria-hidden="true" />Añadir en {chapter}</button>
             </details>
           ))}
           <datalist id="capitulos-editor">{[...new Set([...chapters, ...pasos.map(p => p.chapter)])].map(c => <option key={c} value={c} />)}</datalist>
