@@ -20,6 +20,8 @@ Documentos muestra antes sus archivos y la acción Adjuntar. La categoría y el 
 
 `npm run check`: tipos, pruebas de dominio/base de datos y compilación. El recorrido `tests/usabilidad/presupuesto.browser-check.cjs` usa datos sintéticos, revisiones con condiciones distintas, lectura histórica, edición, aprobado intacto y subida local de un PNG generado como fixture. Comprueba también plegado persistente y una selección entre doce versiones. No se usan originales de clientes ni servicios de análisis.
 
-Revisión visual local en móvil, tableta y escritorio, ambos temas, incluido texto ampliado. Se documentará el resultado efectivo antes de entregar. No sustituye una sesión de comprensión con personas nuevas; no se ha aplicado a todos los módulos.
+Resultado: `npm run check` correcto con 294 pruebas y una privada omitida, tipos y build. Recorrido de navegador completo correcto: lectura de versiones y condiciones, edición, aprobado intacto, plegado/recarga, doce versiones y PNG adjuntado con categoría y proyecto correctos. Sin errores de navegador ni desbordamiento en 390/768/1280 para comparación, 390/768/1440 para lectura y letra grande en 390. Documentos y diálogo revisados además en 390/1280 y ambos temas. Capturas locales ignoradas en `test-results/usabilidad` y `test-results/lectura-clara`.
+
+Entrega en f2aecfc / PR #63. No sustituye una sesión de comprensión con personas nuevas; no se ha aplicado a todos los módulos.
 
 Sin migraciones ni cambios de permisos, precios o estados de aprobación. No se publica producción ni se fusiona main desde esta rama.
