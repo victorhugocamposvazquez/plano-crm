@@ -28,8 +28,17 @@ export function projectFields(data: Workspace, project: Project): SearchField[] 
 
 export type SearchHit = { project: Project; matchedIn: string[] };
 
+const escapeRegExp = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 /**
- * Cada palabra de la consulta debe aparecer en algún campo de la obra (en cualquier orden).
+ * Un término coincide si empieza una palabra del campo («05» encuentra «cliente 05», no «PL-005»;
+ * «cli» encuentra «cliente»). Así «cliente 05» no arrastra proyectos cuyo código contiene «05».
+ */
+export function matchesTerm(normalizedField: string, term: string) {
+  return new RegExp(`(^|[\\s-])${escapeRegExp(term)}`).test(normalizedField);
+}
+
+/**
+ * Cada palabra de la consulta debe empezar alguna palabra de algún campo de la obra (en cualquier orden).
  * Devuelve en qué campos ha coincidido para explicárselo a quien busca.
  */
 export function searchProjects(data: Workspace, projects: Project[], query: string): SearchHit[] {
@@ -39,7 +48,7 @@ export function searchProjects(data: Workspace, projects: Project[], query: stri
     const fields = projectFields(data, project).map(f => ({ ...f, norm: normalize(f.text) }));
     const matched = new Set<string>();
     for (const term of terms) {
-      const hits = fields.filter(f => f.norm.includes(term));
+      const hits = fields.filter(f => matchesTerm(f.norm, term));
       if (!hits.length) return [];
       hits.forEach(h => matched.add(h.label));
     }
