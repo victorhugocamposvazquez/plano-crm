@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Footprints, ListPlus, Receipt, ArrowLeftRight, MessageSquare } from "lucide-react";
+import { Footprints, ListPlus, Receipt, ArrowLeftRight, MessageSquare, Ellipsis, Pencil, LayoutTemplate, Camera, ChevronRight } from "lucide-react";
 import { Menu } from "@/components/ui/menu";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
@@ -12,14 +12,16 @@ import { oficios, oficiosHabituales, personas } from "@/lib/agenda";
 import { eurosACentimos } from "@/lib/catalogo";
 import { localDate } from "@/lib/hoy";
 
-type Dialogo = "" | "estado" | "tarea" | "certificacion";
+type Dialogo = "" | "acciones" | "estado" | "tarea" | "certificacion";
 const estados = Object.keys(projectStatus) as Project["status"][];
 
 /**
- * Menú «···» de la ficha: lo que se hace con el proyecto y no cabe en la cabecera.
- * Cambiar de fase, planificar una tarea, abrir un borrador de certificación, ir a la visita o al chat.
+ * Acciones de la ficha: lo que se hace con el proyecto y no cabe en la cabecera.
+ * En escritorio es el menú «···»; en móvil, una hoja inferior con las acciones agrupadas por lo que hacen
+ * (nuevo presupuesto a mano / desde un plano / desde fotos · obra · proyecto), porque ahí la cabecera
+ * solo tiene sitio para el nombre, la fase y dos iconos.
  */
-export function ProjectMenu({ project, approvedVersion, puedeEstimar, onChat, solicitud, onAtendida }: { project: Project; approvedVersion?: BudgetVersion; puedeEstimar: boolean; onChat: () => void; solicitud?: Dialogo | null; onAtendida?: () => void }) {
+export function ProjectMenu({ project, approvedVersion, puedeEstimar, onChat, solicitud, onAtendida, planoHref, fotosHref, onManual }: { project: Project; approvedVersion?: BudgetVersion; puedeEstimar: boolean; onChat: () => void; solicitud?: Dialogo | null; onAtendida?: () => void; planoHref?: string; fotosHref?: string; onManual?: () => void }) {
   const router = useRouter();
   const { data, actor, busy, send, notify } = useWorkspace();
   const [dialogo, setDialogo] = useState<Dialogo>("");
@@ -80,9 +82,34 @@ export function ProjectMenu({ project, approvedVersion, puedeEstimar, onChat, so
     { id: "chat", label: "Abrir el chat", hint: "Conversación del equipo", icon: <MessageSquare size={16} strokeWidth={1.7} />, onSelect: onChat }
   ];
 
+  const puedeFase = can(actor.role, "project.status"), puedeTarea = can(actor.role, "task.create"), puedeCert = Boolean(approvedVersion) && can(actor.role, "certification.create");
+  const ir = (href?: string) => { setDialogo(""); if (href) router.push(href); };
+
   return (
     <>
-      <Menu items={items} label="Más acciones del proyecto" />
+      <span className="project-actions-wide"><Menu items={items} label="Más acciones del proyecto" /></span>
+      <span className="project-actions-compact"><Button variant="icon" aria-label="Acciones del proyecto" aria-haspopup="dialog" aria-expanded={dialogo === "acciones"} onClick={() => abrir("acciones")}><Ellipsis size={19} strokeWidth={1.7} aria-hidden="true" /></Button></span>
+
+      <Modal open={dialogo === "acciones"} onClose={cerrar} title={project.name}>
+        <div className="action-sheet">
+          <button type="button" className="opt-row" onClick={() => { setDialogo(""); onChat(); }}><span className="opt-ico"><MessageSquare size={18} strokeWidth={1.7} aria-hidden="true" /></span><span className="opt-text"><strong>Abrir el chat</strong><small>Conversación del equipo.</small></span><ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" className="muted" /></button>
+          {puedeEstimar && <div className="action-group" role="group" aria-labelledby="acciones-presupuesto">
+            <span className="section-label" id="acciones-presupuesto"><span>Nuevo presupuesto</span></span>
+            <button type="button" className="opt-row" onClick={() => { setDialogo(""); onManual?.(); }}><span className="opt-ico" data-tone="ink"><Pencil size={18} strokeWidth={1.7} aria-hidden="true" /></span><span className="opt-text"><strong>A mano, con el catálogo</strong><small>Partidas del catálogo o libres, con la guía por capítulos.</small></span><ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" className="muted" /></button>
+            {planoHref && <button type="button" className="opt-row" onClick={() => ir(planoHref)}><span className="opt-ico" data-tone="blue"><LayoutTemplate size={18} strokeWidth={1.7} aria-hidden="true" /></span><span className="opt-text"><strong>Desde un plano</strong><small>Sube el PDF: Plano mide las paredes y propone partidas.</small></span><ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" className="muted" /></button>}
+            {fotosHref && <button type="button" className="opt-row" onClick={() => ir(fotosHref)}><span className="opt-ico" data-tone="warning"><Camera size={18} strokeWidth={1.7} aria-hidden="true" /></span><span className="opt-text"><strong>Desde fotos</strong><small>Fotos de la obra, notas y una cifra orientativa.</small></span><ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" className="muted" /></button>}
+          </div>}
+          <div className="action-group" role="group" aria-labelledby="acciones-obra">
+            <span className="section-label" id="acciones-obra"><span>Obra</span></span>
+            <button type="button" className="opt-row" disabled={!puedeTarea} onClick={() => abrir("tarea")}><span className="opt-ico"><ListPlus size={18} strokeWidth={1.7} aria-hidden="true" /></span><span className="opt-text"><strong>Planificar tarea</strong><small>Oficio, responsable y fecha.</small></span><ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" className="muted" /></button>
+            <button type="button" className="opt-row" disabled={!puedeCert} onClick={() => abrir("certificacion")}><span className="opt-ico"><Receipt size={18} strokeWidth={1.7} aria-hidden="true" /></span><span className="opt-text"><strong>Nueva certificación</strong><small>{approvedVersion ? <>Quedan <span className="pl-mono">{money(saldo)}</span> de la V{approvedVersion.number} por certificar.</> : "Necesita un presupuesto aprobado."}</small></span><ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" className="muted" /></button>
+          </div>
+          <div className="action-group" role="group" aria-labelledby="acciones-proyecto">
+            <span className="section-label" id="acciones-proyecto"><span>Proyecto</span></span>
+            <button type="button" className="opt-row" disabled={!puedeFase} onClick={() => abrir("estado")}><span className="opt-ico"><ArrowLeftRight size={18} strokeWidth={1.7} aria-hidden="true" /></span><span className="opt-text"><strong>Cambiar de fase</strong><small>Ahora: {projectStatus[project.status]}.</small></span><ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" className="muted" /></button>
+          </div>
+        </div>
+      </Modal>
 
       <Modal open={dialogo === "estado"} onClose={cerrar} title="Cambiar de fase" footer={<><Button variant="secondary" onClick={cerrar} disabled={pending}>Cancelar</Button><Button variant="primary" onClick={cambiarEstado} disabled={pending || busy || estado === project.status}>{pending ? "Guardando…" : "Cambiar"}</Button></>}>
         <p className="text-sm">La fase ordena la lista de proyectos y los avisos de Hoy. La aprobación del presupuesto y las tareas no cambian solas con ella.</p>
