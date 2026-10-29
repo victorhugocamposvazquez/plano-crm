@@ -18,7 +18,7 @@ export default function PresupuestosPage() {
   const [filtro, setFiltro] = useQueryState<FiltroPresupuesto>("f", "all");
   const filas = useMemo(() => filasPresupuesto(data), [data]);
   const visibles = useMemo(() => filtrarPresupuestos(filas, filtro), [filas, filtro]);
-  const aprobado = filas.reduce((s, f) => s + f.approvedBase, 0);
+  const aprobado = filas.reduce((s, f) => s + f.approvedTotal, 0);
   const enRevision = filtrarPresupuestos(filas, "review").length;
 
   return (
@@ -26,7 +26,7 @@ export default function PresupuestosPage() {
       <div>
         <div className="eyebrow"><FileText size={13} strokeWidth={1.8} aria-hidden="true" /><span>{data.organization_name || "Espacio de trabajo"}</span></div>
         <h1 className="h1">Presupuestos.</h1>
-        <p className="subtitle">{loading ? "Cargando…" : `${filas.length} presupuestos · ${enRevision} en revisión · ${money(aprobado)} aprobados en total, sin IVA`}</p>
+        <p className="subtitle">{loading ? "Cargando…" : `${filas.length} presupuestos · ${enRevision} en revisión · ${money(aprobado)} aprobados en total, con IVA`}</p>
       </div>
 
       <Tabs label="Filtrar presupuestos" value={filtro} onChange={setFiltro} options={filtrosPresupuesto.map(f => ({ id: f.id, label: f.label, count: filtrarPresupuestos(filas, f.id).length }))} />
@@ -42,8 +42,8 @@ export default function PresupuestosPage() {
               <span className="row-budget-status"><Status label={estadoPresupuesto[f.estado]} tone={tono[f.estado]} /></span>
             </span>
             <span className="row-budget-amounts">
-              {f.approved && <span><small>Aprobado</small><strong className="pl-mono">{money(f.approvedBase)}</strong></span>}
-              {f.working && f.working.items.length > 0 && <span><small>{f.approved ? `V${f.working.number} · diferencia` : "En revisión"}</small><strong className="pl-mono" style={f.approved ? { color: f.delta >= 0 ? "var(--pl-warning)" : "var(--pl-success)" } : undefined}>{f.approved ? signed(f.delta) : money(f.workingBase)}</strong></span>}
+              {f.approved && <span><small>Aprobado</small><strong className="pl-mono">{money(f.approvedTotal)}</strong></span>}
+              {f.working && f.working.items.length > 0 && <span><small>{f.approved ? `V${f.working.number} · diferencia` : "En revisión"}</small><strong className="pl-mono" style={f.approved ? { color: f.deltaTotal >= 0 ? "var(--pl-warning)" : "var(--pl-success)" } : undefined}>{f.approved ? signed(f.deltaTotal) : money(f.workingTotal)}</strong></span>}
               {f.estado === "empty" && <span><small>Sin partidas</small><strong className="pl-mono muted">—</strong></span>}
             </span>
             <ArrowUpRight size={16} strokeWidth={1.6} aria-hidden="true" className="muted" />
@@ -51,7 +51,7 @@ export default function PresupuestosPage() {
         ))}
       </div>
 
-      <p className="muted text-xs">Importes sin IVA.</p>
+      <p className="muted text-xs">Importes con IVA, los que ve el cliente.</p>
     </div>
   );
 }

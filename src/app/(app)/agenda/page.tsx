@@ -74,7 +74,7 @@ export default function AgendaPage() {
     if (pending || busy) return;
     setPending("new");
     try {
-      await send({ type: "task.create", project_id: form.project_id, title: form.title.trim(), trade: form.trade.trim(), assignee: form.assignee.trim(), due_date: form.due_date, weight: Math.max(1, Math.min(100, Number(form.weight) || 10)) });
+      await send({ type: "task.create", project_id: form.project_id, title: form.title.trim(), trade: form.trade.trim() || "Coordinación", assignee: form.assignee.trim(), due_date: form.due_date, weight: Math.max(1, Math.min(100, Number(form.weight) || 10)) });
       notify(`Tarea planificada: ${form.title.trim()}`);
       setForm({ ...form, title: "" }); setAdding(false); elegirDia(form.due_date);
     } catch (e) { notify(e instanceof Error ? e.message : "No se ha podido crear la tarea."); }
@@ -105,12 +105,16 @@ export default function AgendaPage() {
             <label className="field"><span>Fecha</span><input type="date" value={form.due_date} onChange={e => setForm({ ...form, due_date: e.target.value })} required /></label>
           </div>
           <label className="field"><span>Tarea</span><input type="text" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Replantear tabiquería con el electricista" required maxLength={500} autoFocus /></label>
-          <div className="line-grid">
+          <details className="editor-advanced" open={Boolean(form.trade || form.assignee)}>
+          <summary>Más detalles · oficio, responsable y cuánto cuenta</summary>
+          <div className="line-grid" style={{ marginTop: 10 }}>
             <div className="field"><span>Oficio</span><Select label="Oficio" value={form.trade} onChange={v => setForm({ ...form, trade: v })} options={listaOficios.map(o => ({ value: o, label: o }))} placeholder="Elegir oficio…" /></div>
             <label className="field"><span>Responsable</span><input list="personas" type="text" value={form.assignee} onChange={e => setForm({ ...form, assignee: e.target.value })} placeholder="Nombre o equipo" maxLength={120} /><datalist id="personas">{listaPersonas.map(p => <option key={p} value={p} />)}</datalist></label>
             <label className="field"><span>Cuánto cuenta en el avance</span><span className="unit-input"><input type="number" inputMode="numeric" min={1} max={100} value={form.weight} onChange={e => setForm({ ...form, weight: e.target.value })} /><span>%</span></span></label>
           </div>
-          <div className="form-actions"><span className="muted text-xs" style={{ alignSelf: "center" }}>Reparte el avance del proyecto entre sus tareas; 10 es lo normal.</span><Button type="submit" variant="primary" disabled={pending === "new" || busy || !form.title.trim() || !form.trade.trim() || !form.project_id}>{pending === "new" ? "Guardando…" : "Planificar"}</Button></div>
+          <p className="muted text-xs">Sin oficio queda como «Coordinación»; el avance se reparte entre las tareas y 10 es lo normal.</p>
+          </details>
+          <div className="form-actions"><span className="muted text-xs" style={{ alignSelf: "center" }}>Con el qué y el cuándo basta para planificarla.</span><Button type="submit" variant="primary" disabled={pending === "new" || busy || !form.title.trim() || !form.project_id}>{pending === "new" ? "Guardando…" : "Planificar"}</Button></div>
         </form>
       )}
 

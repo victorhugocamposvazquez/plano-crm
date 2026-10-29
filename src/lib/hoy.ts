@@ -58,8 +58,8 @@ export function buildAlerts(data: Workspace, today = localDate()): Alert[] {
     const budget = data.budgets.find(b => b.id === version.budget_id); const p = budget && project(budget.project_id);
     if (!p || !budget.approved_version_id) continue;
     const approved = data.versions.find(v => v.id === budget.approved_version_id);
-    const delta = approved ? totals(version.items).base - totals(approved.items).base : 0;
-    alerts.push({ id: `draft-${version.id}`, tone: "muted", kind: "draft", title: `V${version.number} con cambios en preparación`, detail: `${p.name} · ${delta >= 0 ? "+" : "−"}${Math.abs(delta / 100).toLocaleString("es-ES", { style: "currency", currency: "EUR" })} sin IVA · ${version.created_by_name}`, href: `/proyectos/${p.id}?s=budget&p=${budget.id}` });
+    const delta = approved ? totals(version.items).total - totals(approved.items).total : 0;
+    alerts.push({ id: `draft-${version.id}`, tone: "muted", kind: "draft", title: `V${version.number} con cambios en preparación`, detail: `${p.name} · ${delta >= 0 ? "+" : "−"}${Math.abs(delta / 100).toLocaleString("es-ES", { style: "currency", currency: "EUR" })} con IVA · ${version.created_by_name}`, href: `/proyectos/${p.id}?s=budget&p=${budget.id}` });
   }
 
   for (const purchase of data.purchases.filter(p => p.status === "ordered")) {

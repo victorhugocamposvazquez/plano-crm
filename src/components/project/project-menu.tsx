@@ -53,7 +53,7 @@ export function ProjectMenu({ project, approvedVersion, puedeEstimar, onChat, so
     if (pending || busy) return;
     setPending(true);
     try {
-      await send({ type: "task.create", project_id: project.id, title: tarea.title.trim(), trade: tarea.trade.trim(), assignee: tarea.assignee.trim(), due_date: tarea.due_date, weight: Math.min(100, Math.max(1, Number(tarea.weight) || 10)) });
+      await send({ type: "task.create", project_id: project.id, title: tarea.title.trim(), trade: tarea.trade.trim() || "Coordinación", assignee: tarea.assignee.trim(), due_date: tarea.due_date, weight: Math.min(100, Math.max(1, Number(tarea.weight) || 10)) });
       notify(`Tarea planificada: ${tarea.title.trim()}`);
       setTarea({ title: "", trade: tarea.trade, assignee: tarea.assignee, due_date: tarea.due_date, weight: "10" });
       setDialogo("");
@@ -118,18 +118,21 @@ export function ProjectMenu({ project, approvedVersion, puedeEstimar, onChat, so
         </div>
       </Modal>
 
-      <Modal open={dialogo === "tarea"} onClose={cerrar} title={`Planificar tarea · ${project.name}`} footer={<><Button variant="secondary" onClick={cerrar} disabled={pending}>Cancelar</Button><Button variant="primary" type="submit" form="nueva-tarea" disabled={pending || busy || !tarea.title.trim() || !tarea.trade.trim() || !tarea.due_date}>{pending ? "Guardando…" : "Planificar"}</Button></>}>
+      <Modal open={dialogo === "tarea"} onClose={cerrar} title={`Planificar tarea · ${project.name}`} footer={<><Button variant="secondary" onClick={cerrar} disabled={pending}>Cancelar</Button><Button variant="primary" type="submit" form="nueva-tarea" disabled={pending || busy || !tarea.title.trim() || !tarea.due_date}>{pending ? "Guardando…" : "Planificar"}</Button></>}>
         <form id="nueva-tarea" className="form" onSubmit={crearTarea} style={{ maxWidth: "none" }}>
-          <label className="field"><span>Tarea</span><input type="text" value={tarea.title} onChange={e => setTarea({ ...tarea, title: e.target.value })} placeholder="Replantear tabiquería con el electricista" required maxLength={500} autoFocus /></label>
           <div className="line-grid">
-            <div className="field"><span>Oficio</span><Select label="Oficio" value={tarea.trade} onChange={v => setTarea({ ...tarea, trade: v })} options={listaOficios.map(o => ({ value: o, label: o }))} placeholder="Elegir oficio…" /></div>
+            <label className="field" style={{ gridColumn: "1 / -1" }}><span>Tarea</span><input type="text" value={tarea.title} onChange={e => setTarea({ ...tarea, title: e.target.value })} placeholder="Replantear tabiquería con el electricista" required maxLength={500} autoFocus /></label>
             <label className="field"><span>Fecha</span><input type="date" value={tarea.due_date} onChange={e => setTarea({ ...tarea, due_date: e.target.value })} required /></label>
           </div>
-          <div className="line-grid">
+          <details className="editor-advanced" open={Boolean(tarea.trade || tarea.assignee)}>
+          <summary>Más detalles · oficio, responsable y cuánto cuenta</summary>
+          <div className="line-grid" style={{ marginTop: 10 }}>
+            <div className="field"><span>Oficio</span><Select label="Oficio" value={tarea.trade} onChange={v => setTarea({ ...tarea, trade: v })} options={listaOficios.map(o => ({ value: o, label: o }))} placeholder="Coordinación" /></div>
             <label className="field"><span>Responsable</span><input list="personas-ficha" type="text" value={tarea.assignee} onChange={e => setTarea({ ...tarea, assignee: e.target.value })} placeholder="Nombre o equipo" maxLength={120} /><datalist id="personas-ficha">{listaPersonas.map(p => <option key={p} value={p} />)}</datalist></label>
             <label className="field"><span>Cuánto cuenta en el avance</span><span className="unit-input"><input type="number" inputMode="numeric" min={1} max={100} value={tarea.weight} onChange={e => setTarea({ ...tarea, weight: e.target.value })} /><span>%</span></span></label>
           </div>
-          <p className="muted text-xs">Reparte el avance del proyecto entre sus tareas; 10 es lo normal. Se ve también en la Agenda.</p>
+          <p className="muted text-xs">Sin oficio queda como «Coordinación»; el avance se reparte entre las tareas y 10 es lo normal. Se ve también en la Agenda.</p>
+          </details>
         </form>
       </Modal>
 

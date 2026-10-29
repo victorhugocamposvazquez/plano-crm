@@ -23,7 +23,7 @@ export default function ClientesPage() {
       <div>
         <div className="eyebrow"><Users size={13} strokeWidth={1.8} aria-hidden="true" /><span>{data.organization_name || "Espacio de trabajo"}</span></div>
         <h1 className="h1">Clientes.</h1>
-        <p className="subtitle">{loading ? "Cargando…" : `${lista.length} clientes · ${enObra} con obra en marcha · ${money(lista.reduce((s, c) => s + c.aprobado, 0))} aprobados, sin IVA`}</p>
+        <p className="subtitle">{loading ? "Cargando…" : `${lista.length} clientes · ${enObra} con obra en marcha · ${money(lista.reduce((s, c) => s + c.aprobadoTotal, 0))} aprobados, con IVA`}</p>
       </div>
 
       <label className="search">
@@ -46,8 +46,8 @@ export default function ClientesPage() {
             </header>
             <dl className="client-facts">
               <div><dt>Proyectos</dt><dd className="pl-mono">{c.projects.length}{c.activos ? <small className="muted"> · {c.activos} en marcha</small> : null}</dd></div>
-              <div><dt>Aprobado</dt><dd className="pl-mono">{c.aprobado ? money(c.aprobado) : "—"}</dd></div>
-              <div><dt>En revisión</dt><dd className="pl-mono">{c.enRevision ? money(c.enRevision) : "—"}</dd></div>
+              <div><dt>Aprobado</dt><dd className="pl-mono">{c.aprobadoTotal ? money(c.aprobadoTotal) : "—"}</dd></div>
+              <div><dt>En revisión</dt><dd className="pl-mono">{c.enRevisionTotal ? money(c.enRevisionTotal) : "—"}</dd></div>
             </dl>
             <ul className="client-projects">
               {c.projects.map(p => <li key={p.id}><Link href={`/proyectos/${p.id}`}><span>{p.name}</span><ProjectStatus status={p.status} /></Link></li>)}
