@@ -158,9 +158,10 @@ p {
 
   .nav {
     position: sticky;
-    top: 0;
     inset: auto;
+    top: 0;
     height: 100dvh;
+    overflow-y: auto;
     width: var(--pl-rail);
     flex-shrink: 0;
     display: flex;
@@ -3518,3 +3519,17 @@ a.flow-back, a.flow-back:hover { text-decoration: none; }
 .form-optional > summary { cursor: pointer; list-style: none; display: flex; flex-direction: column; gap: 2px; }
 .form-optional > summary::-webkit-details-marker { display: none; }
 .form-optional[open] > summary { margin-bottom: 4px; }
+
+/* ---------- Versión actual del presupuesto: inconfundible ---------- */
+.current-badge { display: inline-flex; width: fit-content; max-width: 100%; align-items: center; gap: 8px; margin: 0; padding: 6px 12px; border-radius: var(--pl-radius-full); font-size: var(--pl-text-sm); }
+.current-badge[data-tone="current"] { background: var(--pl-success-bg); color: var(--pl-success); border: var(--pl-hairline) solid color-mix(in srgb, var(--pl-success) 45%, transparent); }
+.current-badge[data-tone="current"] strong { color: inherit; text-transform: uppercase; letter-spacing: 0.06em; font-size: 11px; }
+.current-badge[data-tone="old"] { background: var(--pl-warning-bg); color: var(--pl-warning); gap: 12px; flex-wrap: wrap; }
+.current-badge[data-tone="old"] .link-button { color: inherit; font-weight: var(--pl-weight-medium); text-decoration: underline; }
+.current-badge-inline { padding: 2px 8px; margin-left: 8px; font-size: 11px; vertical-align: middle; }
+.pulse-dot { position: relative; width: 9px; height: 9px; border-radius: 50%; background: var(--pl-success); flex: 0 0 auto; }
+.pulse-dot::after { content: ""; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid var(--pl-success); opacity: 0.7; animation: pulse-dot 1.6s ease-out infinite; }
+@keyframes pulse-dot { 0% { transform: scale(0.6); opacity: 0.8; } 100% { transform: scale(1.6); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .pulse-dot::after { animation: none; opacity: 0.35; } }
+.budget-history-card[data-actual] { border-color: var(--pl-success); box-shadow: inset 4px 0 0 var(--pl-success); }
+.budget-version-picker .current-badge { align-self: flex-start; }

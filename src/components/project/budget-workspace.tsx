@@ -35,6 +35,9 @@ export function BudgetWorkspace({budget,versions,onNavigate,onEdit,canEdit,addin
       <label className="field"><span>Versión que estás viendo</span><select className="workspace-select" value={shown.id} onChange={e=>{const v=history.versions.find(v=>v.id===e.target.value);if(v)showVersion(v);}}>
         {history.versions.map(v=><option key={v.id} value={v.id}>V{v.number} · {versionLabel(v,history)}</option>)}
       </select></label>
+      {current && (shown.id===current.id
+        ? <p className="current-badge" data-tone="current"><span className="pulse-dot" aria-hidden="true"/><strong>Actual</strong> · V{current.number} {current.id===approved?.id?"aprobada para obra":current.status==="draft"?"en borrador":"pendiente de aprobación"}</p>
+        : <p className="current-badge" data-tone="old"><span>Versión anterior · la actual es la <strong>V{current.number}</strong></span><button type="button" className="link-button" onClick={()=>showVersion(current)}>Ir a la actual</button></p>)}
       {approved && <p className="version-authority"><span className="status-dot" aria-hidden="true"/>Para ejecutar la obra: <strong>V{approved.number} aprobada</strong>{working?` · V${working.number} en preparación`:""}</p>}
       {!approved && <p className="muted text-sm">Todavía no hay una versión aprobada para ejecutar la obra.</p>}
     </div>
@@ -68,8 +71,8 @@ export function BudgetWorkspace({budget,versions,onNavigate,onEdit,canEdit,addin
       <div><h2>Versiones del presupuesto</h2><p className="muted">Consulta cualquier versión o descubre qué cambió respecto a la anterior.</p></div>
       <ol className="budget-history-list">{history.versions.map(v=>{
         const prev=history.versions.find(p=>p.number<v.number),diff=prev?compareBudgetHistory(prev,v):null;
-        return <li key={v.id} className="budget-history-card">
-          <header><span><strong>V{v.number}</strong><span className="version-status" data-current={v.id===approved?.id?"approved":v.id===working?.id?"working":undefined}>{versionLabel(v,history)}</span></span><strong className="pl-mono">{money(totals(v.items).total)}<small className="muted">con IVA</small></strong></header>
+        return <li key={v.id} className="budget-history-card" data-actual={v.id===current?.id||undefined}>
+          <header><span><strong>V{v.number}{v.id===current?.id && <span className="current-badge current-badge-inline" data-tone="current"><span className="pulse-dot" aria-hidden="true"/>Actual</span>}</strong><span className="version-status" data-current={v.id===approved?.id?"approved":v.id===working?.id?"working":undefined}>{versionLabel(v,history)}</span></span><strong className="pl-mono">{money(totals(v.items).total)}<small className="muted">con IVA</small></strong></header>
           <p className="muted text-sm">Última edición {dateLabel(v.updated_at)} · creada por {v.created_by_name}</p>
           <p>{v.change_reason || "Sin motivo registrado"}</p>
           {diff?<p className="history-diff-summary">Desde V{prev!.number}: {diff.hasChanges?[
