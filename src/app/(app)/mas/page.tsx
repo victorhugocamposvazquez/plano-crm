@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Menu, FileText, BookOpen, Package, FolderOpen, Wallet, ChevronRight, UserRound, Palette, FolderDown, ShieldCheck, Sparkles } from "lucide-react";
+import { Menu, FileText, BookOpen, Package, FolderOpen, Wallet, ChevronRight, UserRound, Palette, FolderDown, ShieldCheck, Sparkles, CircleHelp, Smartphone } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
 import { AccountDialog } from "@/components/account-dialog";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -10,6 +10,8 @@ import { roleNames } from "@/lib/domain";
 import { veSeccion } from "@/lib/navegacion";
 
 const entradas = [
+  { href: "/ayuda", label: "Ayuda", hint: "Cómo se hace un presupuesto, qué es una versión, cómo apunto lo de hoy…", icon: CircleHelp },
+  { href: "/instalar", label: "Instalar Plano en el móvil", hint: "Icono en la pantalla de inicio y pantalla completa", icon: Smartphone },
   { href: "/presupuestos", label: "Presupuestos", hint: "Todos los presupuestos, por estado", icon: FileText },
   { href: "/catalogo", label: "Catálogo", hint: "Artículos y precios por categoría", icon: BookOpen },
   { href: "/compras", label: "Compras", hint: "Materiales por pedir, pedidos y en obra", icon: Package },

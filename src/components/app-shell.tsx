@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { House, Layers2, CalendarDays, Users, Menu, Plus, Search, FileText, BookOpen, Package, FolderOpen, Wallet } from "lucide-react";
 import { CommandPalette } from "@/components/command-palette";
+import { QuickCreate, opcionesPara } from "@/components/quick-create";
 import { Brand } from "@/components/ui/brand";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { AccountDialog } from "@/components/account-dialog";
@@ -35,6 +36,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   const visibles = items.filter(item => veSeccion(actor.role, item.href));
   const [account, setAccount] = useState(false);
   const [search, setSearch] = useState(false);
+  const [crear, setCrear] = useState(false);
+  const puedeCrear = opcionesPara(actor.role).length > 0;
   // ⌘K / Ctrl+K abre el buscador desde cualquier pantalla.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") { e.preventDefault(); setSearch(v => !v); } };
@@ -73,7 +76,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           <Link prefetch={false} href="/" aria-label="Inicio" style={{ color: "inherit", textDecoration: "none" }}><Brand /></Link>
           <div className="topbar-tools">
             <button type="button" className="topbar-search" onClick={() => setSearch(true)} aria-label="Buscar en Plano"><Search size={19} strokeWidth={1.6} aria-hidden="true" /></button>
-            <Link prefetch={false} href="/proyectos?nuevo=1" aria-label="Nuevo proyecto" title="Nuevo proyecto" className="topbar-new"><Plus size={18} strokeWidth={1.9} aria-hidden="true" /></Link>
+            {puedeCrear && <button type="button" className="topbar-new" aria-label="Crear: proyecto, visita o tarea" title="¿Qué quieres hacer?" aria-haspopup="dialog" aria-expanded={crear} onClick={() => setCrear(true)}><Plus size={18} strokeWidth={1.9} aria-hidden="true" /></button>}
             <ThemeToggle />
             <button type="button" className="avatar avatar-button" onClick={() => setAccount(true)} aria-label={`Tu cuenta · ${actor.name}`} aria-haspopup="dialog" aria-expanded={account}>{initials || "·"}</button>
           </div>
@@ -83,6 +86,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
       <AccountDialog open={account} onClose={() => setAccount(false)} />
       <CommandPalette open={search} onClose={() => setSearch(false)} />
+      <QuickCreate open={crear} onClose={() => setCrear(false)} />
       {notice && <div className="notice" role="status"><span>{notice}</span>{noticeAction && <button type="button" className="notice-action" onClick={() => { const run = noticeAction.run; dismissNotice(); void run(); }}>{noticeAction.label}</button>}</div>}
     </div>
   );
