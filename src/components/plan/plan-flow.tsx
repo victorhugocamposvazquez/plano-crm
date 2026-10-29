@@ -14,26 +14,28 @@ import { budgetHistory } from "@/lib/budget-history";
 import { formatSize } from "@/lib/documentos";
 import { borradorNuevo, cargarBorrador, guardarBorrador, borrarBorrador, añadirPlano, quitarPlano, usos, nombreUso, paginaDe, planoParaMedir, mismaHoja, comparteEscala, confirmarEscalaCompartida, cambiarPagina, medidaDe, escalaDe, escala, planosSinEscala, colores, cuentaComoPared, puntoCercano, paredes as calcularParedes, resumenParedes, trabajos, articulosMedibles, sugerirArticulo, cantidadTrabajo, huecosTrabajo, asegurarIds, propuesta as calcularPropuesta, coincidencias, fusionar, numero, type Borrador, type Paso, type PlanoCargado, type Decision } from "@/lib/plano-flujo";
 
+/** Tres pasos. Internamente se conservan los números 1, 2 y 4 para que los borradores guardados sigan valiendo. */
 const pasos: { n: Paso; titulo: string; corto: string }[] = [
-  { n: 1, titulo: "Tus planos", corto: "Planos" }, { n: 2, titulo: "Dale una medida", corto: "Medida" }, { n: 3, titulo: "Confirma las paredes", corto: "Paredes" },
-  { n: 4, titulo: "¿Qué se hace?", corto: "Trabajos" }, { n: 5, titulo: "Revisa y añade al presupuesto", corto: "Revisar" }
+  { n: 1, titulo: "Tus planos", corto: "Planos" },
+  { n: 2, titulo: "Mide y confirma las paredes", corto: "Medir" },
+  { n: 4, titulo: "Qué se hace y qué entra en el presupuesto", corto: "Partidas" }
 ];
+const pasoVigente = (paso: Paso): Paso => (paso === 3 ? 2 : paso === 5 ? 4 : paso);
 const cantidad = (n: number) => new Intl.NumberFormat("es-ES", { maximumFractionDigits: 2 }).format(n);
 type Vista = { medida: boolean };
 
 /**
  * Flujo «Presupuestar desde un plano». Un expediente trae varios planos de la misma vivienda: cada uno dice
  * para qué sirve, comparten una medida tras confirmar que tienen la misma escala y cada trabajo toma su cantidad del plano que
- * le toca. Cinco pasos con palabras de obra; la X siempre arriba; el borrador se guarda en este navegador.
+ * le toca. Tres pasos con palabras de obra; la X siempre arriba; el borrador se guarda en este navegador.
  */
 export function PlanFlow({ project, budgetId }: { project: Project; budgetId: string | null }) {
   const { data, actor, busy, send, notify, upload, fileUrl, mode } = useWorkspace();
   const router = useRouter();
   const puede = can(actor.role, "budget.save");
-  const [b, setB] = useState<Borrador>(() => (typeof window !== "undefined" && cargarBorrador(project.id)) || borradorNuevo(project.id, budgetId));
+  const [b, setB] = useState<Borrador>(() => { const guardado = typeof window !== "undefined" ? cargarBorrador(project.id) : null; return guardado ? { ...guardado, paso: pasoVigente(guardado.paso) } : borradorNuevo(project.id, budgetId); });
   const [subiendo, setSubiendo] = useState(false);
-  const [midiendo, setMidiendo] = useState<string | null>(null);
-  const [planoVisto, setPlanoVisto] = useState<string | null>(null);
+  const [planoActivoId, setPlanoActivoId] = useState<string | null>(null);
   const [seleccionada, setSeleccionada] = useState<string | null>(null);
   const [decisiones, setDecisiones] = useState<Record<string, Decision>>({});
   const [guardando, setGuardando] = useState(false);
@@ -60,8 +62,9 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
   const conParedes = b.planos.filter(p => usos.find(u => u.id === p.uso)?.paredes);
   const sinEscala = planosSinEscala(b);
   const base = b.planos.find(p => p.id === b.medida.planoId) ?? null;
-  const planoMedida = b.planos.find(p => p.id === midiendo) ?? base ?? planoParaMedir(b);
-  const planoParedes = b.planos.find(p => p.id === planoVisto && usos.find(u => u.id === p.uso)?.paredes) ?? conParedes[0] ?? null;
+  const planoActivo = b.planos.find(p => p.id === planoActivoId) ?? base ?? planoParaMedir(b);
+  const planoMedida = planoActivo;
+  const planoParedes = planoActivo && usos.find(u => u.id === planoActivo.uso)?.paredes ? planoActivo : null;
 
   useEffect(() => { if (!guardarBorrador(b) && !avisoGuardado) { setAvisoGuardado(true); notify("No se ha podido guardar el borrador en este navegador (ocupa demasiado); sigue, pero no cierres la pestaña."); } }, [b]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { setB(prev => asegurarIds(prev, ps)); }, [ps]);
@@ -154,9 +157,10 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
     else set({ medida: { ...b.medida, start: null, end: null } });
   }
   const alternarPared = (id: string) => setB(prev => ({ ...prev, noParedes: prev.noParedes.includes(id) ? prev.noParedes.filter(x => x !== id) : [...prev.noParedes, id] }));
+  // Detalles secundarios de los trabajos (huecos) plegados por defecto.
   const alternarColor = (p: PlanoCargado, key: string) => actualizarPlano(p.id, { ignorados: p.ignorados.includes(key) ? p.ignorados.filter(k => k !== key) : [...p.ignorados, key] });
 
-  const resultado = useMemo(() => (b.paso === 5 ? calcularPropuesta(b, ps, data.articles, data.organization_id) : null), [b, ps, data.articles, data.organization_id]);
+  const resultado = useMemo(() => (b.paso === 4 ? calcularPropuesta(b, ps, data.articles, data.organization_id) : null), [b, ps, data.articles, data.organization_id]);
   const nuevos = resultado && !("error" in resultado) ? resultado.items : [];
   const pares = useMemo(() => coincidencias(existentes, nuevos), [existentes, nuevos]);
   const finales = useMemo(() => fusionar(existentes, nuevos, decisiones, pares), [existentes, nuevos, decisiones, pares]);
@@ -187,7 +191,8 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
   function empezarDeNuevo() { borrarBorrador(project.id); setB(borradorNuevo(project.id, budgetId)); setDecisiones({}); }
 
   const cabeceraDestino = destino ? `Añadiendo al presupuesto · V${destino.number} · ${destino.status === "draft" ? "borrador" : destino.status === "issued" ? "revisión cerrada, se abrirá una nueva" : "aprobada, se abrirá una revisión nueva"}` : "Se abrirá el presupuesto · V1";
-  const actual = pasos.find(p => p.n === b.paso)!;
+  const indice = Math.max(0, pasos.findIndex(p => p.n === b.paso));
+  const actual = pasos[indice];
   const vista: Vista = { medida: Boolean(b.medida.start && b.medida.end) };
 
   if (!puede) return <div className="empty"><strong>Tu perfil puede ver el presupuesto, pero no añadir partidas.</strong><Link prefetch={false} href={salida} className="btn btn-secondary">Volver a la ficha</Link></div>;
@@ -200,9 +205,9 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
         <button type="button" className="btn btn-icon" aria-label="Salir y volver al proyecto" title="Salir · el borrador se guarda" onClick={salir}><X size={19} strokeWidth={1.6} aria-hidden="true" /></button>
       </header>
       <ol className="flow-steps" aria-label="Pasos">
-        {pasos.map(p => <li key={p.n} data-state={p.n < b.paso ? "done" : p.n === b.paso ? "current" : "todo"} aria-current={p.n === b.paso ? "step" : undefined}><button type="button" disabled={p.n > b.paso} onClick={() => ir(p.n)}><i>{p.n < b.paso ? <Check size={11} strokeWidth={2.6} aria-hidden="true" /> : p.n}</i><span>{p.corto}</span></button></li>)}
+        {pasos.map((p, i) => <li key={p.n} data-state={i < indice ? "done" : i === indice ? "current" : "todo"} aria-current={i === indice ? "step" : undefined}><button type="button" disabled={i > indice} onClick={() => ir(p.n)}><i>{i < indice ? <Check size={11} strokeWidth={2.6} aria-hidden="true" /> : i + 1}</i><span>{p.corto}</span></button></li>)}
       </ol>
-      <div className="flow-title"><span className="eyebrow">Paso {b.paso} de 5</span><h1 className="h2">{actual.titulo}</h1></div>
+      <div className="flow-title"><span className="eyebrow">Paso {indice + 1} de {pasos.length}</span><h1 className="h2">{actual.titulo}</h1></div>
 
       {b.paso === 1 && (
         <div className="flow-body">
@@ -239,71 +244,58 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
           {b.planos.length > 0 && conParedes.length === 0 && <p className="muted text-sm">Ningún plano está marcado como demolición u obra nueva: sin ellos no saldrán paredes. Áreas e instalaciones se aprovecharán cuando el motor las lea.</p>}
           <footer className="flow-foot">
             <Button variant="ghost" onClick={salir}>Salir</Button>
-            <Button variant="primary" disabled={!b.planos.length || subiendo || busy} onClick={() => { setMidiendo(planoParaMedir(b)?.id ?? null); ir(2); }}>Siguiente: dale una medida<ArrowRight size={16} strokeWidth={1.8} aria-hidden="true" /></Button>
+            <Button variant="primary" disabled={!b.planos.length || subiendo || busy} onClick={() => { setPlanoActivoId(planoParaMedir(b)?.id ?? null); ir(2); }}>Siguiente: mide y confirma las paredes<ArrowRight size={16} strokeWidth={1.8} aria-hidden="true" /></Button>
           </footer>
         </div>
       )}
 
       {b.paso === 2 && planoMedida && (
         <div className="flow-body flow-split">
-          <div className="plan-stage"><PlanSvg page={paginaDe(planoMedida)} medida={medidaEnPantalla ?? undefined} onPick={marcar} label={`${planoMedida.nombre}: toca dos puntos para marcar una medida conocida`} /></div>
+          <div>
+            {b.planos.length > 1 && <div className="plan-tabs" role="tablist" aria-label="Plano">{b.planos.map(p => <button key={p.id} type="button" role="tab" className="chip" aria-selected={planoActivo?.id === p.id} onClick={() => setPlanoActivoId(p.id)}>{nombreUso(p.uso)} · {p.nombre}</button>)}</div>}
+            <div className="plan-stage"><PlanSvg page={paginaDe(planoMedida)} paredes={ps.filter(w => w.planoId === planoMedida.id)} seleccionada={seleccionada} medida={medidaEnPantalla ?? undefined} onPick={marcar} onPared={id => setSeleccionada(id)} label={`${planoMedida.nombre}: toca dos puntos para marcar una medida conocida; las paredes encontradas se marcan encima`} /></div>
+            <p className="muted text-sm" style={{ marginTop: 8 }}>Toca los dos extremos de una cota que conozcas y escribe cuánto mide. En cuanto haya medida, las paredes del plano se dibujan con sus metros.</p>
+          </div>
           <div className="flow-side">
-            {b.planos.length > 1 && <Select label="Medir en" value={planoMedida.id} onChange={v => setMidiendo(v)} options={b.planos.map(p => ({ value: p.id, label: `${p.nombre} · ${nombreUso(p.uso)}` }))} />}
-            <p className="muted">Toca los dos extremos de una cota que conozcas y escribe cuánto mide. Puedes usar una sola medida si confirmas que los demás planos están a la misma escala. El mismo tamaño de papel no lo garantiza.</p>
             <div className="panel"><div className="panel-body" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <span className="eyebrow">{!medidaEnPantalla?.start ? "1. Toca el primer extremo" : !medidaEnPantalla.end ? "2. Toca el segundo extremo" : "Esa distancia mide"}</span>
-              <label className="field-inline"><input className="input pl-mono" inputMode="decimal" value={medidaEnPantalla?.metros ?? ""} onChange={e => metrosEnPantalla(e.target.value)} placeholder="4,20" aria-label="Metros" style={{ fontSize: 24, maxWidth: 140 }} /><span className="muted">metros</span></label>
+              <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+                <label className="field-inline"><input className="input pl-mono" inputMode="decimal" value={medidaEnPantalla?.metros ?? ""} onChange={e => metrosEnPantalla(e.target.value)} placeholder="4,20" aria-label="Metros" style={{ fontSize: 24, maxWidth: 140 }} /><span className="muted">metros</span></label>
+                <button type="button" className="link-button text-sm" onClick={reiniciarMedida}><RotateCcw size={13} strokeWidth={1.8} aria-hidden="true" /> Marcar otra</button>
+              </div>
               {escalaDe(b, planoMedida) && <span className="muted text-sm"><Ruler size={13} strokeWidth={1.8} aria-hidden="true" /> Escala lista: 1 m son {cantidad(1 / escalaDe(b, planoMedida)!)} unidades del dibujo.</span>}
+              {b.planos.length > 1 && vista.medida && (
+                <ul className="info-list" style={{ marginTop: 4 }}>{b.planos.filter(p => p.id !== b.medida.planoId).map(p => { const k = escalaDe(b, p); const comparte = comparteEscala(b, p); return (
+                  <li key={p.id} className="info-row plan-scale-row"><span><strong>{p.nombre}</strong><small className="muted">{comparte ? "Misma escala confirmada" : k ? "Con su propia medida" : "Escala pendiente"}</small>
+                    <label className="legend-row"><input type="checkbox" aria-label={`Confirmo la misma escala para ${p.nombre} que ${base?.nombre}`} checked={comparte} onChange={e => setB(prev => confirmarEscalaCompartida(prev, p.id, e.target.checked))} />Misma escala que {base?.nombre}</label>
+                    {!k && <small className="muted">{base && mismaHoja(base, p) ? "Mismo papel; comprueba la escala escrita o una medida conocida." : "Comprueba la escala o toma una medida propia."}</small>}
+                  </span><Button variant="secondary" onClick={() => setPlanoActivoId(p.id)}>Medir este</Button>{k ? <Check size={16} strokeWidth={2} aria-hidden="true" style={{ color: "var(--pl-success)" }} /> : null}</li>
+                ); })}</ul>
+              )}
             </div></div>
-            {b.planos.length > 1 && vista.medida && (
-              <ul className="info-list">{b.planos.map(p => { const k = escalaDe(b, p); const comparte = comparteEscala(b, p); return (
-                <li key={p.id} className="info-row plan-scale-row"><span><strong>{p.nombre}</strong><small className="muted">{p.id === b.medida.planoId ? "Aquí se ha medido" : comparte ? "Misma escala confirmada" : k ? "Con su propia medida" : "Escala pendiente"}</small>
-                  {p.id !== b.medida.planoId && <label className="legend-row"><input type="checkbox" aria-label={`Confirmo la misma escala para ${p.nombre} que ${base?.nombre}`} checked={comparte} onChange={e => setB(prev => confirmarEscalaCompartida(prev, p.id, e.target.checked))} />Confirmo la misma escala que {base?.nombre}</label>}
-                  {!k && p.id !== b.medida.planoId && <small className="muted">{base && mismaHoja(base, p) ? "Mismo papel; comprueba la escala escrita o una medida conocida." : "Comprueba la escala o toma una medida propia."}</small>}
-                </span>{p.id !== b.medida.planoId && <Button variant="secondary" onClick={() => setMidiendo(p.id)}>Medir este</Button>}{k ? <Check size={16} strokeWidth={2} aria-hidden="true" style={{ color: "var(--pl-success)" }} /> : null}</li>
-              ); })}</ul>
-            )}
-            <p className="muted text-sm">Usa una distancia conocida o medida en la visita. El ancho de una puerta varía: no lo supongas para fijar la escala.</p>
-            <footer className="flow-foot">
-              <Button variant="ghost" onClick={reiniciarMedida}><RotateCcw size={15} strokeWidth={1.8} aria-hidden="true" />Marcar otra medida</Button>
-              <Button variant="primary" disabled={!escala(b) || sinEscala.length > 0} onClick={() => { setPlanoVisto(conParedes[0]?.id ?? null); ir(3); }}>{sinEscala.length ? `Faltan medidas: ${sinEscala.length}` : <>Siguiente: confirma las paredes<ArrowRight size={16} strokeWidth={1.8} aria-hidden="true" /></>}</Button>
-            </footer>
-          </div>
-        </div>
-      )}
-
-      {b.paso === 3 && (
-        <div className="flow-body flow-split">
-          <div>
-            {conParedes.length > 1 && <div className="plan-tabs" role="tablist" aria-label="Plano">{conParedes.map(p => <button key={p.id} type="button" role="tab" className="chip" aria-selected={planoParedes?.id === p.id} onClick={() => setPlanoVisto(p.id)}>{nombreUso(p.uso)} · {p.nombre}</button>)}</div>}
-            {planoParedes ? <div className="plan-stage"><PlanSvg page={paginaDe(planoParedes)} paredes={ps.filter(w => w.planoId === planoParedes.id)} seleccionada={seleccionada} medida={comparteEscala(b, planoParedes) ? undefined : medidaDe(b, planoParedes) ?? undefined} onPared={id => setSeleccionada(id)} label={`${planoParedes.nombre} con las paredes encontradas`} /></div> : <div className="empty"><strong>Ningún plano de demolición u obra nueva</strong><span className="muted text-sm">Vuelve a «Tus planos» y marca cuál es cuál.</span></div>}
-          </div>
-          <div className="flow-side">
-            {planoParedes && (
-              <div className="panel"><div className="panel-body" style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                <span className="eyebrow">{nombreUso(planoParedes.uso)} · lo coloreado {planoParedes.uso === "demolicion" ? "se tira" : "es nuevo"}</span>
-                <p className="muted text-sm" style={{ margin: 0 }}>Estos colores cuentan como pared. Desmarca los que sean otra cosa (cotas, muebles, rayados).</p>
-                {colores(paginaDe(planoParedes)).length === 0 && <p className="muted text-sm" style={{ margin: 0 }}>Este plano no tiene rellenos de color, así que no podemos distinguir paredes.</p>}
-                {colores(paginaDe(planoParedes)).map(c => <label key={c.key} className="legend-row" style={{ cursor: "pointer" }}><input type="checkbox" checked={cuentaComoPared(planoParedes, c)} onChange={() => alternarColor(planoParedes, c.key)} /><span className="legend-swatch" style={{ background: colorCss(c.color) }} aria-hidden="true" /><span style={{ flex: 1 }}><strong style={{ textTransform: "capitalize" }}>{c.nombre}</strong><small className="muted"> · {c.paths} trazos</small></span></label>)}
-              </div></div>
+            {planoParedes && colores(paginaDe(planoParedes)).length > 0 && (
+              <details className="panel" open={false}><summary className="panel-body" style={{ cursor: "pointer" }}><span className="eyebrow">{nombreUso(planoParedes.uso)} · lo coloreado {planoParedes.uso === "demolicion" ? "se tira" : "es nuevo"}</span><br /><small className="muted">Colores que cuentan como pared · toca para ajustar</small></summary>
+                <div className="panel-body" style={{ display: "flex", flexDirection: "column", gap: 8, paddingTop: 0 }}>
+                  {colores(paginaDe(planoParedes)).map(c => <label key={c.key} className="legend-row" style={{ cursor: "pointer" }}><input type="checkbox" checked={cuentaComoPared(planoParedes, c)} onChange={() => alternarColor(planoParedes, c.key)} /><span className="legend-swatch" style={{ background: colorCss(c.color) }} aria-hidden="true" /><span style={{ flex: 1 }}><strong style={{ textTransform: "capitalize" }}>{c.nombre}</strong><small className="muted"> · {c.paths} trazos</small></span></label>)}
+                </div>
+              </details>
             )}
             <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
               <span className="pill" data-tone="danger">Se tira · {resumen.tira.n} · {cantidad(resumen.tira.metros)} m</span>
               <span className="pill" data-tone="success">Nueva · {resumen.nueva.n} · {cantidad(resumen.nueva.metros)} m</span>
               {resumen.descartadas > 0 && <span className="pill">No son paredes · {resumen.descartadas}</span>}
             </div>
-            {ps.length > 0 && (
+            {ps.length > 0 ? (
               <ul className="wall-list">{ps.map(w => (
                 <li key={w.id} className="wall-row" data-estado={w.estado} data-descartada={w.descartada || undefined} data-seleccionada={w.id === seleccionada || undefined}>
-                  <button type="button" className="wall-main" onClick={() => { setSeleccionada(w.id); setPlanoVisto(w.planoId); }}><strong>{w.nombre}</strong><small className="muted">{w.estado === "tira" ? "Se tira" : "Nueva"} · {cantidad(w.longitud)} m{conParedes.length > 1 ? ` · ${w.plano}` : ""}</small></button>
+                  <button type="button" className="wall-main" onClick={() => { setSeleccionada(w.id); setPlanoActivoId(w.planoId); }}><strong>{w.nombre}</strong><small className="muted">{w.estado === "tira" ? "Se tira" : "Nueva"} · {cantidad(w.longitud)} m{b.planos.length > 1 ? ` · ${w.plano}` : ""}</small></button>
                   <button type="button" className="btn btn-ghost" style={{ height: 32, fontSize: 13 }} onClick={() => alternarPared(w.id)}>{w.descartada ? "Sí es pared" : "No es pared"}</button>
                 </li>
               ))}</ul>
-            )}
-            <p className="muted text-sm">Las paredes que se quedan no salen de estos planos. Toca una pared en el dibujo o en la lista para verla.</p>
+            ) : conParedes.length === 0 ? <p className="muted text-sm">Ningún plano está marcado como demolición u obra nueva: vuelve a «Tus planos» y di cuál es cuál.</p> : <p className="muted text-sm">Las paredes aparecerán aquí cuando haya medida.</p>}
             <footer className="flow-foot">
-              <Button variant="ghost" onClick={() => ir(2)}><ArrowLeft size={15} strokeWidth={1.8} aria-hidden="true" />Volver a la medida</Button>
-              <Button variant="primary" disabled={resumen.tira.n + resumen.nueva.n === 0} onClick={() => ir(4)}>Siguiente: ¿qué se hace?<ArrowRight size={16} strokeWidth={1.8} aria-hidden="true" /></Button>
+              <Button variant="ghost" onClick={() => ir(1)}><ArrowLeft size={15} strokeWidth={1.8} aria-hidden="true" />Tus planos</Button>
+              <Button variant="primary" disabled={!escala(b) || sinEscala.length > 0 || resumen.tira.n + resumen.nueva.n === 0} onClick={() => ir(4)}>{sinEscala.length ? `Faltan medidas: ${sinEscala.length}` : <>Siguiente: qué se hace<ArrowRight size={16} strokeWidth={1.8} aria-hidden="true" /></>}</Button>
             </footer>
           </div>
         </div>
@@ -314,8 +306,13 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
           <p className="muted">Marca los trabajos. Las cantidades salen de los planos; el precio, de tu catálogo. Todo se puede cambiar después en el presupuesto.</p>
           <div className="facts-2">
             <label className="field"><span className="field-label">Altura de las paredes</span><span className="field-inline"><input className="input pl-mono" inputMode="decimal" value={b.altura} onChange={e => set({ altura: e.target.value })} aria-label="Altura en metros" /><span className="muted">m</span></span><small className="muted">Confirma la altura medida; el valor inicial es solo una referencia.</small></label>
-            <label className="field"><span className="field-label">Huecos en paredes nuevas</span><span className="field-inline"><input className="input pl-mono" inputMode="decimal" value={b.huecos} onChange={e => set({ huecos: e.target.value })} aria-label="Huecos en paredes nuevas en metros cuadrados" /><span className="muted">m²</span></span><small className="muted">Superficie de puertas y ventanas de una cara. Se descuenta también al pintar las dos caras.</small></label>
-            <label className="field"><span className="field-label">Huecos en paredes de demolición</span><span className="field-inline"><input className="input pl-mono" inputMode="decimal" value={b.huecosDemolicion ?? b.huecos} onChange={e => set({ huecosDemolicion: e.target.value })} aria-label="Huecos en paredes de demolición en metros cuadrados" /><span className="muted">m²</span></span><small className="muted">Solo se descuentan de las paredes que se tiran.</small></label>
+            <details className="field" open={numero(b.huecos) > 0 || numero(b.huecosDemolicion ?? "0") > 0}>
+              <summary className="field-label" style={{ cursor: "pointer" }}>Huecos que no cuentan <small className="muted">· opcional, puertas y ventanas</small></summary>
+              <div style={{ display: "flex", flexDirection: "column", gap: 10, marginTop: 8 }}>
+                <label className="field"><span className="field-label">Huecos en paredes nuevas</span><span className="field-inline"><input className="input pl-mono" inputMode="decimal" value={b.huecos} onChange={e => set({ huecos: e.target.value })} aria-label="Huecos en paredes nuevas en metros cuadrados" /><span className="muted">m²</span></span><small className="muted">Superficie de puertas y ventanas de una cara. Se descuenta también al pintar las dos caras.</small></label>
+                <label className="field"><span className="field-label">Huecos en paredes de demolición</span><span className="field-inline"><input className="input pl-mono" inputMode="decimal" value={b.huecosDemolicion ?? b.huecos} onChange={e => set({ huecosDemolicion: e.target.value })} aria-label="Huecos en paredes de demolición en metros cuadrados" /><span className="muted">m²</span></span><small className="muted">Solo se descuentan de las paredes que se tiran.</small></label>
+              </div>
+            </details>
           </div>
           {trabajos.map(t => {
             const cfg = b.trabajos[t.id]; const hay = ps.some(p => !p.descartada && p.estado === t.aplicaA);
@@ -330,16 +327,8 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
             );
           })}
           {b.planos.some(p => p.uso === "areas" || p.uso === "instalaciones") && <p className="muted text-sm">Los planos de áreas e instalaciones ya están guardados. Suelos, techos, pintura de lo existente y puntos de luz o clima saldrán de ellos en cuanto el motor los lea; de momento, añádelos a mano.</p>}
-          <footer className="flow-foot">
-            <Button variant="ghost" onClick={() => ir(3)}><ArrowLeft size={15} strokeWidth={1.8} aria-hidden="true" />Volver a las paredes</Button>
-            <Button variant="primary" disabled={!trabajos.some(t => b.trabajos[t.id].activo && ps.some(p => !p.descartada && p.estado === t.aplicaA))} onClick={() => ir(5)}>Ver las partidas<ArrowRight size={16} strokeWidth={1.8} aria-hidden="true" /></Button>
-          </footer>
-        </div>
-      )}
-
-      {b.paso === 5 && (
-        <div className="flow-body">
-          {resultado && "error" in resultado && <div className="empty"><strong>No se ha podido calcular</strong><span className="muted text-sm">{resultado.error}</span></div>}
+          <div className="section-label"><span>Lo que entra en el presupuesto</span><span className="muted text-xs">se recalcula al cambiar lo de arriba</span></div>
+          {resultado && "error" in resultado && <div className="empty"><strong>Todavía no hay partidas</strong><span className="muted text-sm">{resultado.error}</span></div>}
           {resultado && !("error" in resultado) && (
             <>
               {b.planos.some(p => p.lectura?.partial) && <div className="panel notice-panel"><div className="panel-body"><strong>Hay planos con lectura parcial</strong><p className="muted text-sm">Las partidas solo incluyen las paredes detectadas y revisadas. Comprueba las zonas no interpretadas y añade sus trabajos antes de emitir el presupuesto.</p></div></div>}
@@ -367,7 +356,7 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
             </>
           )}
           <footer className="flow-foot">
-            <Button variant="ghost" onClick={() => ir(4)}><ArrowLeft size={15} strokeWidth={1.8} aria-hidden="true" />Volver a los trabajos</Button>
+            <Button variant="ghost" onClick={() => ir(2)}><ArrowLeft size={15} strokeWidth={1.8} aria-hidden="true" />Volver a medir</Button>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <Button variant="secondary" onClick={salir}>Guardar y seguir luego</Button>
               <Button variant="primary" disabled={!nuevos.length || guardando || busy || pares.some(p => !decisiones[p.nuevo.id]) || Boolean(resultado && !("error" in resultado) && resultado.pendientes > 0)} onClick={añadir}>{guardando ? "Añadiendo…" : `Añadir ${nuevos.length} partida${nuevos.length === 1 ? "" : "s"} ${destino ? `a la V${destino.number}` : "al presupuesto"}`}</Button>
