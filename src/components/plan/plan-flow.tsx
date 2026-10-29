@@ -9,7 +9,7 @@ import { useWorkspace } from "@/components/workspace-provider";
 import { PlanSvg } from "@/components/plan/plan-svg";
 import { pdfExtractionSchema, colorCss } from "@/lib/captura/pdf-extraction";
 import { samplePlan } from "@/lib/captura/sample-plan";
-import { can, money, lineTotal, type Project, type BudgetItem } from "@/lib/domain";
+import { can, money, lineTotal, type Project, type BudgetItem, type Document } from "@/lib/domain";
 import { formatSize } from "@/lib/documentos";
 import { borradorNuevo, cargarBorrador, guardarBorrador, borrarBorrador, añadirPlano, quitarPlano, usos, nombreUso, paginaDe, planoParaMedir, mismaHoja, comparteEscala, confirmarEscalaCompartida, cambiarPagina, medidaDe, escalaDe, escala, planosSinEscala, colores, cuentaComoPared, puntoCercano, paredes as calcularParedes, resumenParedes, trabajos, articulosMedibles, sugerirArticulo, cantidadTrabajo, huecosTrabajo, asegurarIds, propuesta as calcularPropuesta, coincidencias, fusionar, numero, type Borrador, type Paso, type PlanoCargado, type Decision } from "@/lib/plano-flujo";
 
@@ -26,13 +26,11 @@ type Vista = { medida: boolean };
  * le toca. Cinco pasos con palabras de obra; la X siempre arriba; el borrador se guarda en este navegador.
  */
 export function PlanFlow({ project, budgetId }: { project: Project; budgetId: string | null }) {
-  const { data, actor, busy, send, notify, upload, mode } = useWorkspace();
+  const { data, actor, busy, send, notify, upload, fileUrl, mode } = useWorkspace();
   const router = useRouter();
   const puede = can(actor.role, "budget.save");
   const [b, setB] = useState<Borrador>(() => (typeof window !== "undefined" && cargarBorrador(project.id)) || borradorNuevo(project.id, budgetId));
   const [subiendo, setSubiendo] = useState(false);
-  const [pendiente, setPendiente] = useState<{ name: string; since: string } | null>(null);
-  const [sinLeer, setSinLeer] = useState<{ documentId: string; nombre: string }[]>([]);
   const [midiendo, setMidiendo] = useState<string | null>(null);
   const [planoVisto, setPlanoVisto] = useState<string | null>(null);
   const [seleccionada, setSeleccionada] = useState<string | null>(null);
@@ -41,6 +39,9 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
   const [avisoGuardado, setAvisoGuardado] = useState(false);
   const pdfInput = useRef<HTMLInputElement>(null);
   const jsonInput = useRef<HTMLInputElement>(null);
+  const lecturaActual = useRef<AbortController | null>(null);
+  const [progresoLectura, setProgresoLectura] = useState("");
+  useEffect(() => () => lecturaActual.current?.abort(), []);
 
   const salida = `/proyectos/${project.id}?s=budget${b.budgetId ? `&p=${b.budgetId}` : ""}`;
   const budgets = useMemo(() => data.budgets.filter(x => x.project_id === project.id).sort((x, y) => x.created_at.localeCompare(y.created_at)), [data.budgets, project.id]);
@@ -50,7 +51,7 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
   const aprobada = versions.find(v => v.id === budget?.approved_version_id);
   const destino = abierta ?? aprobada;
   const existentes: BudgetItem[] = destino?.items ?? [];
-  const planosAdjuntos = useMemo(() => data.documents.filter(d => d.project_id === project.id && d.mime_type === "application/pdf").sort((x, y) => y.created_at.localeCompare(x.created_at)), [data.documents, project.id]);
+  const planosAdjuntos = useMemo(() => data.documents.filter(d => d.project_id === project.id && d.mime_type === "application/pdf" && d.category === "plan").sort((x, y) => y.created_at.localeCompare(x.created_at)), [data.documents, project.id]);
 
   const ps = useMemo(() => calcularParedes(b), [b]);
   const resumen = resumenParedes(ps);
@@ -63,7 +64,6 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
 
   useEffect(() => { if (!guardarBorrador(b) && !avisoGuardado) { setAvisoGuardado(true); notify("No se ha podido guardar el borrador en este navegador (ocupa demasiado); sigue, pero no cierres la pestaña."); } }, [b]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { setB(prev => asegurarIds(prev, ps)); }, [ps]);
-  useEffect(() => { if (!pendiente) return; const doc = data.documents.find(d => d.project_id === project.id && d.name === pendiente.name && d.created_at >= pendiente.since); if (doc) { setSinLeer(prev => [...prev, { documentId: doc.id, nombre: doc.name }]); setPendiente(null); } }, [data.documents, pendiente, project.id]);
   useEffect(() => { if (b.paso !== 4) return; setB(prev => { let cambiado = false; const t = { ...prev.trabajos }; for (const tr of trabajos) if (!t[tr.id].articleId) { const a = sugerirArticulo(data.articles, tr); if (a) { t[tr.id] = { ...t[tr.id], articleId: a.id }; cambiado = true; } } return cambiado ? { ...prev, trabajos: t } : prev; }); }, [b.paso, data.articles]);
 
   const set = (patch: Partial<Borrador>) => setB(prev => ({ ...prev, ...patch }));
@@ -76,25 +76,55 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
   async function subir(e: ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0]; e.target.value = ""; if (!file) return;
     if (file.type !== "application/pdf") { notify("Sube el plano en PDF. Si solo tienes una foto o un escaneo, adjúntalo al proyecto y presupuesta a mano."); return; }
-    setSubiendo(true); const since = new Date(Date.now() - 1000).toISOString();
-    try { await upload(file, project.id, "plan"); setPendiente({ name: file.name, since }); }
-    catch (err) { notify(err instanceof Error ? err.message : "No se ha podido subir el plano."); }
-    finally { setSubiendo(false); }
+    await leerArchivo(file);
+  }
+  async function leerArchivo(file: File, existente?: Document) {
+    await procesarPlano(async () => file, existente);
+  }
+  async function procesarPlano(obtener: (signal: AbortSignal) => Promise<File>, existente?: Document) {
+    if (lecturaActual.current || busy) return;
+    const controller = new AbortController(); lecturaActual.current = controller;
+    setSubiendo(true); setProgresoLectura(existente ? "Abriendo el PDF adjunto…" : "Leyendo el plano…");
+    try {
+      const file = await obtener(controller.signal);
+      if (controller.signal.aborted) return;
+      const { readPdfFile } = await import("@/lib/captura/read-pdf-browser");
+      const lectura = await readPdfFile(file, { signal: controller.signal, onProgress: (page, total) => setProgresoLectura(`Leyendo página ${page} de ${total}…`) });
+      if (controller.signal.aborted) return;
+      if (b.planos.some(p => p.extraction.sha256 === lectura.extraction.sha256 && p.page === lectura.extraction.pages[0].page)) { notify("Este plano ya está añadido. No se ha creado otra copia en Documentos."); return; }
+      setProgresoLectura(existente ? "Vinculando el plano…" : "Guardando el original en Documentos…");
+      const documento = existente ?? await upload(file, project.id, "plan");
+      if (controller.signal.aborted) return;
+      setB(prev => añadirPlano(prev, { nombre: file.name, extraction: lectura.extraction, documentId: documento.id, lectura: lectura.report }));
+      if (lectura.report.partial) notify("El plano se ha leído parcialmente. Revisa los avisos antes de medir o presupuestar.");
+    } catch (err) { if (!controller.signal.aborted) notify(err instanceof Error ? err.message : "No se ha podido leer el plano."); }
+    finally { if (lecturaActual.current === controller) lecturaActual.current = null; if (!controller.signal.aborted) { setSubiendo(false); setProgresoLectura(""); } }
+  }
+  async function leerAdjunto(documento: Document) {
+    await procesarPlano(async signal => {
+      const url = await fileUrl(documento);
+      try {
+        const response = await fetch(url, { signal });
+        if (!response.ok) throw new Error("No se ha podido abrir el PDF adjunto.");
+        if (Number(response.headers.get("content-length")) > 50 * 1024 * 1024) throw new Error("El PDF supera los 50 MB de la lectura rápida.");
+        return new File([await response.blob()], documento.name, { type: "application/pdf" });
+      } finally { if (url.startsWith("blob:")) URL.revokeObjectURL(url); }
+    }, documento);
   }
   async function cargarLecturas(e: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []); e.target.value = ""; if (!files.length) return;
-    let b2 = b; let leidos = 0; const quedan = [...sinLeer];
+    let b2 = b; let leidos = 0;
     for (const file of files) {
       try {
+        if (file.size > 20 * 1024 * 1024) throw new Error("La lectura técnica supera los 20 MB.");
         const r = pdfExtractionSchema.safeParse(JSON.parse(await file.text()));
         if (!r.success) throw new Error(`«${file.name}» no es una lectura de plano de Plano.`);
         const nombre = file.name.replace(/\.json$/i, ".pdf").replace(/_/g, " ");
-        const doc = quedan.find(d => d.nombre.replace(/_/g, " ").toLowerCase() === nombre.toLowerCase()) ?? (quedan.length === 1 && files.length === 1 ? quedan[0] : undefined);
-        if (doc) quedan.splice(quedan.indexOf(doc), 1);
-        b2 = añadirPlano(b2, { nombre: doc?.nombre ?? nombre, extraction: r.data, documentId: doc?.documentId ?? null }); leidos++;
+        const doc = planosAdjuntos.find(d => d.name.replace(/_/g, " ").toLowerCase() === nombre.toLowerCase());
+        b2 = añadirPlano(b2, { nombre: doc?.name ?? nombre, extraction: r.data, documentId: doc?.id ?? null }); leidos++;
       } catch (err) { notify(err instanceof Error ? err.message : "No se ha podido leer un archivo."); }
     }
-    if (leidos) { setB(b2); setSinLeer(quedan); }
+    if (leidos) { setB(b2); }
   }
   function usarEjemplo() {
     let b2 = añadirPlano(b, { nombre: "Ejemplo · Plano Demolición.pdf", extraction: { ...samplePlan, sha256: "a".repeat(64), pages: [{ ...samplePlan.pages[0], paths: samplePlan.pages[0].paths.filter(p => p.id !== "construir-b") }] } });
@@ -153,7 +183,7 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
     finally { setGuardando(false); }
   }
   function salir() { router.push(salida); }
-  function empezarDeNuevo() { borrarBorrador(project.id); setB(borradorNuevo(project.id, budgetId)); setDecisiones({}); setSinLeer([]); }
+  function empezarDeNuevo() { borrarBorrador(project.id); setB(borradorNuevo(project.id, budgetId)); setDecisiones({}); }
 
   const cabeceraDestino = destino ? `Añadiendo al presupuesto · V${destino.number} · ${destino.status === "draft" ? "borrador" : destino.status === "issued" ? "revisión cerrada, se abrirá una nueva" : "aprobada, se abrirá una revisión nueva"}` : "Se abrirá el presupuesto · V1";
   const actual = pasos.find(p => p.n === b.paso)!;
@@ -175,46 +205,40 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
 
       {b.paso === 1 && (
         <div className="flow-body">
-          <p className="muted">Un expediente suele traer varios planos de la misma vivienda: demolición, obra nueva, cotas, áreas, instalaciones. Añádelos todos y di para qué sirve cada uno. Se guardan en Documentos del proyecto.</p>
+          <p className="muted">Un expediente suele traer varios planos del mismo espacio: demolición, obra nueva, cotas, áreas, instalaciones. Añádelos todos y di para qué sirve cada uno. Se guardan en Documentos del proyecto.</p>
           {b.planos.length > 0 && (
             <ul className="plan-list">{b.planos.map(p => { const page = paginaDe(p); const u = usos.find(x => x.id === p.uso)!; return (
               <li key={p.id} className="plan-card" data-uso={p.uso}>
                 <div className="plan-stage plan-stage-xs"><PlanSvg page={page} label={`Vista previa de ${p.nombre}`} /></div>
                 <div className="plan-card-body">
                   <strong title={p.nombre}>{p.nombre}</strong>
-                  <small className="muted">{p.extraction.pages.length} página{p.extraction.pages.length === 1 ? "" : "s"} · {page.paths.length.toLocaleString("es-ES")} trazos{p.documentId ? " · en Documentos" : ""}</small>
+                  <small className="muted">{p.extraction.pages.length} página{p.extraction.pages.length === 1 ? "" : "s"} · {page.paths.length.toLocaleString("es-ES")} trazo{page.paths.length === 1 ? "" : "s"}{p.documentId ? " · en Documentos" : ""}</small>
                   <Select label={`¿Qué muestra ${p.nombre}?`} size="sm" value={p.uso} onChange={v => actualizarPlano(p.id, { uso: v })} options={usos.map(x => ({ value: x.id, label: x.label }))} />
                   <small className="muted">{u.hint}</small>
+                  {p.lectura?.warnings.length ? <details><summary>{p.lectura.partial ? "Lectura parcial · revisar" : "Avisos de lectura"}</summary><ul>{p.lectura.warnings.map(w => <li key={w} className="muted text-sm">{w}</li>)}</ul></details> : null}
                   {p.extraction.pages.length > 1 && <Select label="Página" size="sm" value={String(p.page)} onChange={v => actualizarPlano(p.id, { page: Number(v) })} options={p.extraction.pages.map(x => ({ value: String(x.page), label: `Página ${x.page} · ${x.paths.length} trazos` }))} />}
                 </div>
-                <button type="button" className="btn btn-icon" aria-label={`Quitar ${p.nombre}`} onClick={() => setB(prev => quitarPlano(prev, p.id))}><X size={16} strokeWidth={1.7} aria-hidden="true" /></button>
+                <button type="button" className="btn btn-icon" disabled={subiendo || busy} aria-label={`Quitar ${p.nombre}`} onClick={() => setB(prev => quitarPlano(prev, p.id))}><X size={16} strokeWidth={1.7} aria-hidden="true" /></button>
               </li>
             ); })}</ul>
-          )}
-          {sinLeer.length > 0 && (
-            <div className="panel notice-panel"><div className="panel-body" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-              <strong>{sinLeer.length === 1 ? `«${sinLeer[0].nombre}» está guardado en Documentos, pero aún no leído.` : `${sinLeer.length} planos guardados en Documentos, aún no leídos.`}</strong>
-              <span className="muted text-sm">La lectura automática del PDF todavía no está en Plano. El equipo técnico puede dártela como archivo de lectura; cárgalo y se unirá a su PDF.</span>
-              <div><Button variant="secondary" onClick={() => jsonInput.current?.click()}><FileText size={16} strokeWidth={1.7} aria-hidden="true" />Tengo la lectura (.json)</Button></div>
-            </div></div>
           )}
           <div className="plan-add">
             <button type="button" className="dropzone dropzone-sm" disabled={subiendo || busy} onClick={() => pdfInput.current?.click()}>
               {subiendo ? <Loader2 size={24} strokeWidth={1.6} aria-hidden="true" className="spin" /> : <Upload size={24} strokeWidth={1.5} aria-hidden="true" />}
-              <strong>{subiendo ? "Subiendo…" : "Subir un plano (PDF)"}</strong><span className="muted text-xs">hasta 50 MB · queda en Documentos</span>
+              <strong>{subiendo ? progresoLectura : "Añadir y leer un plano (PDF)"}</strong><span className="muted text-xs">hasta 50 MB y 20 páginas · lectura local · original en Documentos</span>
             </button>
             <div className="plan-add-alt">
-              <Button variant="ghost" onClick={() => jsonInput.current?.click()}><Plus size={15} strokeWidth={1.8} aria-hidden="true" />Añadir lecturas de plano (.json)</Button>
-              {(mode === "demo" || b.planos.length === 0) && <Button variant="ghost" onClick={usarEjemplo}>Probar con planos de ejemplo</Button>}
-              {planosAdjuntos.length > 0 && <span className="muted text-xs">{planosAdjuntos.length} PDF ya adjunto{planosAdjuntos.length === 1 ? "" : "s"} en Documentos; súbelos aquí de nuevo o carga su lectura.</span>}
+              <details><summary>Opciones de soporte</summary><Button variant="ghost" disabled={subiendo || busy} onClick={() => jsonInput.current?.click()}><Plus size={15} strokeWidth={1.8} aria-hidden="true" />Importar lectura técnica (.json)</Button></details>
+              {(mode === "demo" || b.planos.length === 0) && <Button variant="ghost" disabled={subiendo || busy} onClick={usarEjemplo}>Probar con planos de ejemplo</Button>}
+              {planosAdjuntos.length > 0 && <details><summary>Leer un plano de Documentos ({planosAdjuntos.length})</summary><ul className="info-list">{planosAdjuntos.map(doc => <li key={doc.id} className="info-row"><span>{doc.name}</span><Button variant="secondary" disabled={subiendo || busy} onClick={() => leerAdjunto(doc)}><FileText size={15} aria-hidden="true" />Leer este plano</Button></li>)}</ul></details>}
             </div>
           </div>
           <input ref={pdfInput} type="file" accept="application/pdf" onChange={subir} style={{ display: "none" }} aria-hidden="true" tabIndex={-1} />
           <input ref={jsonInput} type="file" accept=".json,application/json" multiple onChange={cargarLecturas} style={{ display: "none" }} aria-hidden="true" tabIndex={-1} />
           {b.planos.length > 0 && conParedes.length === 0 && <p className="muted text-sm">Ningún plano está marcado como demolición u obra nueva: sin ellos no saldrán paredes. Áreas e instalaciones se aprovecharán cuando el motor las lea.</p>}
           <footer className="flow-foot">
-            <Button variant="ghost" onClick={salir}>{sinLeer.length && !b.planos.length ? "Dejar los planos guardados y salir" : "Salir"}</Button>
-            <Button variant="primary" disabled={!b.planos.length} onClick={() => { setMidiendo(planoParaMedir(b)?.id ?? null); ir(2); }}>Siguiente: dale una medida<ArrowRight size={16} strokeWidth={1.8} aria-hidden="true" /></Button>
+            <Button variant="ghost" onClick={salir}>Salir</Button>
+            <Button variant="primary" disabled={!b.planos.length || subiendo || busy} onClick={() => { setMidiendo(planoParaMedir(b)?.id ?? null); ir(2); }}>Siguiente: dale una medida<ArrowRight size={16} strokeWidth={1.8} aria-hidden="true" /></Button>
           </footer>
         </div>
       )}
@@ -317,6 +341,7 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
           {resultado && "error" in resultado && <div className="empty"><strong>No se ha podido calcular</strong><span className="muted text-sm">{resultado.error}</span></div>}
           {resultado && !("error" in resultado) && (
             <>
+              {b.planos.some(p => p.lectura?.partial) && <div className="panel notice-panel"><div className="panel-body"><strong>Hay planos con lectura parcial</strong><p className="muted text-sm">Las partidas solo incluyen las paredes detectadas y revisadas. Comprueba las zonas no interpretadas y añade sus trabajos antes de emitir el presupuesto.</p></div></div>}
               <p className="muted">{nuevos.length} partida{nuevos.length === 1 ? "" : "s"} nueva{nuevos.length === 1 ? "" : "s"} para {destino ? `la V${destino.number}` : "el presupuesto"}. {existentes.length > 0 ? `Las ${existentes.length} que ya tenías se quedan como están.` : ""}</p>
               <div className="panel">
                 {resultado.lineas.map(l => (

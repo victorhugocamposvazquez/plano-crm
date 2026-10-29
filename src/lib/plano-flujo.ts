@@ -2,6 +2,7 @@ import { filledColors, type PdfExtraction, type PdfPage, type RGB } from "./capt
 import { proposeWallCandidates, type LegendRule } from "./captura/wall-candidates";
 import { metersPerDrawingUnit, polylineLength } from "./captura/geometry";
 import { createEstimateProposal } from "./captura/estimate";
+import type { PdfReadReport } from "./captura/read-pdf";
 import type { EstimateInput, Point } from "./captura/schema";
 import { normalize } from "./search";
 import { totals, type Article, type BudgetItem } from "./domain";
@@ -26,7 +27,7 @@ export const usoSugerido = (nombre: string): Uso => usos.find(u => u.patron.test
 export const nombreUso = (uso: Uso) => usos.find(u => u.id === uso)?.label ?? uso;
 
 export type Medida = { start: Point | null; end: Point | null; metros: string };
-export type PlanoCargado = { id: string; nombre: string; documentId: string | null; extraction: PdfExtraction; page: number; uso: Uso; medida: Medida | null; ignorados: string[]; escalaConfirmada?: string };
+export type PlanoCargado = { id: string; nombre: string; documentId: string | null; extraction: PdfExtraction; page: number; uso: Uso; medida: Medida | null; ignorados: string[]; escalaConfirmada?: string; lectura?: PdfReadReport };
 export type TrabajoId = "demoler" | "levantar" | "acabar";
 export type Paso = 1 | 2 | 3 | 4 | 5;
 export type Borrador = {
@@ -63,9 +64,9 @@ export function guardarBorrador(b: Borrador) { try { localStorage.setItem(claveB
 export function borrarBorrador(projectId: string) { try { localStorage.removeItem(claveBorrador(projectId)); } catch { /* sin almacenamiento */ } }
 
 /** Añade un plano leído; el uso se sugiere por el nombre y se puede cambiar. */
-export function añadirPlano(b: Borrador, plano: { nombre: string; extraction: PdfExtraction; documentId?: string | null }): Borrador {
+export function añadirPlano(b: Borrador, plano: { nombre: string; extraction: PdfExtraction; documentId?: string | null; lectura?: PdfReadReport }): Borrador {
   if (b.planos.some(p => p.extraction.sha256 === plano.extraction.sha256 && p.page === plano.extraction.pages[0].page)) return b;
-  const nuevo: PlanoCargado = { id: uuid(), nombre: plano.nombre, documentId: plano.documentId ?? null, extraction: plano.extraction, page: plano.extraction.pages[0].page, uso: usoSugerido(plano.nombre), medida: null, ignorados: [] };
+  const nuevo: PlanoCargado = { id: uuid(), nombre: plano.nombre, documentId: plano.documentId ?? null, extraction: plano.extraction, page: plano.extraction.pages[0].page, uso: usoSugerido(plano.nombre), medida: null, ignorados: [], ...(plano.lectura ? { lectura: plano.lectura } : {}) };
   return { ...b, planos: [...b.planos, nuevo] };
 }
 export function quitarPlano(b: Borrador, planoId: string): Borrador {

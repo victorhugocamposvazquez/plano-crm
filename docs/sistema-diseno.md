@@ -270,3 +270,7 @@ La escena conserva los colores RGB de sus materiales y utiliza `--pl-document-bg
 ### Confirmación de escala en varios planos
 
 La coincidencia de tamaño de papel se presenta como ayuda, sin declarar escala verificada. Cada plano puede reutilizar una medida tras confirmación expresa o tener medida propia. El control identifica los dos planos, tiene etiqueta accesible y objetivo táctil mínimo `--pl-touch`; la lista permite varias líneas en móvil. La revisión de partidas requiere elegir sustituir/añadir y muestra la diferencia económica después de esas elecciones.
+
+### Lectura directa de PDF · 28 octubre 2026
+
+En «Tus planos», la acción «Añadir y leer un plano (PDF)» informa del progreso y guarda el original en Documentos. Los avisos se despliegan bajo cada plano como «Lectura parcial · revisar»; un archivo leído no se presenta como presupuesto validado. Se pueden releer planos adjuntos y las opciones JSON de soporte quedan cerradas inicialmente. Se reutilizan componentes y tokens existentes, con la misma estructura en Workspace y Grafito.
