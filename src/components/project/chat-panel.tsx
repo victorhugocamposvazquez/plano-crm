@@ -234,9 +234,13 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
           <button type="button" className="chat-top-people" onClick={() => setVista("info")} title="Participantes y elementos compartidos"><AvatarStack /><span className="chat-top-names"><strong>{gente.length} participante{gente.length === 1 ? "" : "s"}</strong><small className="muted">{nombres}</small></span></button>
         )}
         <span className="chat-top-tools">
-          <button type="button" className="composer-tool" aria-label="Buscar en la conversación" aria-pressed={buscando} title="Buscar en la conversación" onClick={() => { setVista("chat"); setBuscando(v => !v); if (buscando) setConsulta(""); }}><Search size={17} strokeWidth={1.7} aria-hidden="true" /></button>
-          <button type="button" className="composer-tool" aria-label="Información del chat" aria-pressed={vista === "info"} title="Participantes, fotos, documentos y enlaces" onClick={() => setVista(v => (v === "info" ? "chat" : "info"))}><Info size={17} strokeWidth={1.7} aria-hidden="true" /></button>
-          <button type="button" className="composer-tool" aria-label="Cómo se usa el chat" title="Cómo se usa el chat" onClick={() => setAyuda(true)}><CircleHelp size={17} strokeWidth={1.7} aria-hidden="true" /></button>
+          <Menu label="Más opciones del chat" align="end" items={[
+            { id: "buscar", label: "Buscar en la conversación", hint: "Por palabra, sin acentos", icon: <Search size={16} strokeWidth={1.7} />, onSelect: () => { setVista("chat"); setBuscando(true); } },
+            { id: "info", label: "Fotos, documentos y participantes", hint: "Todo lo compartido aquí", icon: <Info size={16} strokeWidth={1.7} />, onSelect: () => setVista("info") },
+            { id: "mencionar", label: "Mencionar algo del proyecto", hint: "Presupuesto, documento, tarea…", icon: <Hash size={16} strokeWidth={1.7} />, onSelect: () => { setVista("chat"); setPicker({ open: true, query: "", cat: null, active: 0 }); setBody(b => `${b}${b && !b.endsWith(" ") ? " " : ""}#`); setTimeout(() => textarea.current?.focus(), 0); } },
+            { id: "consultar", label: "Consultar escribiendo", hint: "Escribe / y elige", icon: <Slash size={16} strokeWidth={1.7} />, onSelect: () => { setVista("chat"); setBody("/"); setTimeout(() => textarea.current?.focus(), 0); } },
+            { id: "ayuda", label: "Cómo se usa el chat", icon: <CircleHelp size={16} strokeWidth={1.7} />, onSelect: () => setAyuda(true) }
+          ]} />
         </span>
       </div>
 
@@ -275,7 +279,7 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
             <div className="chat-empty">
               <strong>Sin mensajes todavía</strong>
               <span className="muted text-sm">Lo que se escriba aquí lo ve todo el equipo del proyecto.</span>
-              <span className="chat-empty-tips"><span className="ref-chip"><Receipt size={12} strokeWidth={2} aria-hidden="true" />los botones de abajo consultan sin salir</span><span className="ref-chip"><Hash size={12} strokeWidth={2} aria-hidden="true" />menciona un presupuesto, documento o tarea</span><span className="ref-chip"><Paperclip size={12} strokeWidth={2} aria-hidden="true" />adjunta fotos y PDF</span></span>
+              <span className="muted text-sm">Los botones de abajo consultan el presupuesto, las tareas o las compras sin salir de aquí.</span>
             </div>
           )}
           {buscando && consulta.trim() && gruposVisibles.length === 0 && <div className="chat-empty"><strong>Nada coincide con «{consulta}»</strong></div>}
@@ -379,7 +383,6 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
             </div>
           )}
           <div className="composer">
-            <button type="button" className="composer-tool" aria-label="Mencionar algo del proyecto" title="Mencionar un presupuesto, documento, tarea, compra, cliente o proyecto (#)" onClick={() => { setPicker({ open: true, query: "", cat: null, active: 0 }); setBody(b => `${b}${b && !b.endsWith(" ") ? " " : ""}#`); textarea.current?.focus(); }}><Hash size={17} strokeWidth={1.7} aria-hidden="true" /></button>
             <button type="button" className="composer-tool" aria-label="Adjuntar foto o PDF" title="Adjuntar foto o PDF" disabled={uploading} onClick={() => attachInput.current?.click()}>{uploading ? <Loader2 size={16} strokeWidth={1.8} aria-hidden="true" className="spin" /> : <Paperclip size={16} strokeWidth={1.7} aria-hidden="true" />}</button>
             <input ref={attachInput} type="file" accept={adjuntables.join(",")} capture="environment" onChange={e => { void adjuntar(e.target.files?.[0]); e.target.value = ""; }} style={{ display: "none" }} aria-hidden="true" tabIndex={-1} />
             <textarea ref={textarea} value={body} onChange={e => onChange(e.target.value)} onKeyDown={onKey} rows={1} placeholder={uploading ? "Subiendo el archivo…" : "Mensaje"} aria-label="Nuevo mensaje" maxLength={5000} />
@@ -400,7 +403,7 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
           </section>
           <section>
             <h3><Hash size={15} strokeWidth={2} aria-hidden="true" />Mencionar algo del proyecto</h3>
-            <p className="text-sm">Pulsa <kbd>#</kbd> (o escríbelo) para señalar en tu mensaje de qué hablas: «revisad <span className="ref-chip" style={{ cursor: "default" }}><Receipt size={11} strokeWidth={2} aria-hidden="true" />V2 · Presupuesto de reforma</span> antes del viernes». Quien lo lea lo abre con un toque sin buscarlo, y en la información del chat queda reunido todo lo que se ha mencionado. No hace falta para hablar; sirve para ser concreto cuando hay varios presupuestos, documentos o tareas.</p>
+            <p className="text-sm">Escribe <kbd>#</kbd> (o elige «Mencionar algo del proyecto» en el menú <kbd>···</kbd>) para señalar en tu mensaje de qué hablas: «revisad <span className="ref-chip" style={{ cursor: "default" }}><Receipt size={11} strokeWidth={2} aria-hidden="true" />V2 · Presupuesto de reforma</span> antes del viernes». Quien lo lea lo abre con un toque sin buscarlo, y en la información del chat queda reunido todo lo que se ha mencionado. No hace falta para hablar; sirve para ser concreto cuando hay varios presupuestos, documentos o tareas.</p>
             <ul className="help-grid">{categorias.map(c => { const Icon = iconFor(c.type); return <li key={c.type}><Icon size={14} strokeWidth={1.8} aria-hidden="true" /><span><strong>{c.label}</strong><small className="muted">{c.hint}</small></span></li>; })}</ul>
           </section>
           <section>
