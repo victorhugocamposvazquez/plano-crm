@@ -320,3 +320,16 @@ Sale del lienzo «Usabilidad Plano» (Design artifact) y de sus tres principios:
 - **Capítulos abiertos**: `.budget-chapter` nace abierto, sin caja, con chevron, cabecera de 44 px y partidas en filas densas (`.budget-reading-item`, nombre · medición · importe; alternativas y excluidas en gris). La app recuerda los capítulos que plegaste (`localStorage`, `plano.capitulos-cerrados.<presupuesto>`). «Añadir trabajos a la Vn · catálogo · plano · fotos» es una fila tocable después del último capítulo que abre `AddToBudget` en un `Modal`.
 
 Tokens: ninguno nuevo. Pendiente para otra pasada: Hoy, editor de partidas a pantalla completa, comparador por filas y agenda compacta (tableros del mismo lienzo).
+
+### Lectura con más espacio · 29 octubre 2026
+
+Nueva pasada autorizada por Hugo después de #62: se conserva Workspace/Grafito y el verde que identifica la versión actual. No se reduce la letra ni se vuelven a ocultar todas las partidas al entrar.
+
+- `--pl-reading-width: 960px` limita el ancho de presupuestos y documentos: descripción e importe quedan más próximos en escritorio.
+- La fila de versiones muestra número, estado y «Actual», sin repetir fechas. Mantiene desplazamiento horizontal con anchura mínima por botón; la versión seleccionada se lleva al área visible.
+- El resumen del presupuesto separa título, total con IVA y diferencia frente a la aprobada. «Historial» y «Comparar» tienen texto. Base, IVA, fechas y autor de creación se consultan en «Desglose y datos de esta versión»; no se atribuye la última edición al autor de creación.
+- Los capítulos tienen aire entre grupos y una jerarquía clara entre descripción, cálculo e importe. «Plegar todo» / «Desplegar todo» conserva la elección en el navegador por presupuesto; los capítulos siguen abiertos inicialmente.
+- En móvil las tarjetas de avance y presupuesto ocupan todo el ancho. El título del proyecto puede ocupar varias líneas. En escritorio «Añadir trabajos» abre las opciones a mano / plano / fotos en lugar de mostrar tres botones a la vez.
+- Documentos da prioridad a los archivos y a «Adjuntar». Categoría y selector de archivos se abren en un diálogo; la lista de requisitos se consulta en un desplegable que conserva el contador de categorías adjuntadas. Adjuntar no equivale a revisar ni aprobar.
+
+Alcance y comprobación: `docs/usabilidad/lectura-clara.md`. No cambia las reglas económicas, la aprobación ni los permisos.

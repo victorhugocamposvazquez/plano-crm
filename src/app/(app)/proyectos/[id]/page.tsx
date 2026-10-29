@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { MessageSquare, Plus, Check } from "lucide-react";
 import { Drawer } from "@/components/ui/drawer";
+import { Modal } from "@/components/ui/modal";
 import { BackLink } from "@/components/ui/back-link";
 import { TaskRow } from "@/components/project/task-row";
 import { TaskDialog } from "@/components/project/task-dialog";
@@ -20,7 +21,6 @@ import { BudgetWorkspace } from "@/components/project/budget-workspace";
 import { ProjectMenu } from "@/components/project/project-menu";
 import { NextStep } from "@/components/project/next-step";
 import { AddToBudget } from "@/components/plan/add-to-budget";
-import { BudgetDoors } from "@/components/plan/budget-doors";
 import { cargarBorrador } from "@/lib/plano-flujo";
 import { budgetHistory } from "@/lib/budget-history";
 import { siguientePaso, type TipoAccion } from "@/lib/siguiente-paso";
@@ -45,6 +45,7 @@ export default function ObraPage() {
   const [abierta,setAbierta]=useState<Task|null>(null),[pendingTask,setPendingTask]=useState<string|null>(null);
   const [solicitud,setSolicitud]=useState<"tarea"|"certificacion"|"estado"|null>(null);
   const [creatingBudget,setCreatingBudget]=useState(false),[borradorPlano,setBorradorPlano]=useState(false);
+  const [addingWork,setAddingWork]=useState(false);
   const project=data.projects.find(p=>p.id===id),canBudget=can(actor.role,"budget.create"),canToggle=can(actor.role,"task.toggle");
   const budgets=useMemo(()=>data.budgets.filter(b=>b.project_id===id).sort((a,b)=>a.created_at.localeCompare(b.created_at)),[data.budgets,id]);
   const budget=budgets.find(b=>b.id===budgetId) ?? budgets[0];
@@ -130,7 +131,7 @@ export default function ObraPage() {
       </div>
       <button type="button" className="pill project-phase" data-tone={faseTone(project.status)} aria-haspopup="dialog" title={puedeFase?"Cambiar de fase":"Fase del proyecto"} disabled={!puedeFase} onClick={()=>setSolicitud("estado")}>{projectStatus[project.status]}</button>
       <div className="head-actions">
-        {canBudget && <BudgetDoors planoHref={planoHref} fotosHref={fotosHref} onManual={aMano}/>}
+        {canBudget && <Button variant="secondary" className="project-add-launcher" onClick={()=>setAddingWork(true)} aria-haspopup="dialog"><Plus size={17} aria-hidden="true"/>Añadir trabajos</Button>}
         <Button variant="secondary" className="chat-launcher" onClick={()=>navigate({chat:"1"})} aria-haspopup="dialog" aria-expanded={chatAbierto} aria-label="Chat del proyecto"><MessageSquare size={17} aria-hidden="true"/><span className="chat-launcher-text">Chat</span></Button>
         <ProjectMenu project={project} approvedVersion={approved} puedeEstimar={canBudget} onChat={()=>navigate({chat:"1"})} solicitud={solicitud} onAtendida={()=>setSolicitud(null)} planoHref={planoHref} fotosHref={fotosHref} onManual={aMano} borrador={editable}/>
       </div>
@@ -141,7 +142,7 @@ export default function ObraPage() {
       {paso && <NextStep paso={paso} busy={busy} allowed={puedePaso} compact onAccion={accionPaso}/>}
       <div className="project-overview-grid">
         {enObra
-          ? <button type="button" className="workspace-card overview-card" onClick={()=>selectSection("work")} aria-label={`Obra: ${progress} % · ${doneTasks.length} de ${tasks.length} tareas hechas. Ver tareas y avance`}>
+          ? <button type="button" className="workspace-card overview-card overview-card-work" onClick={()=>selectSection("work")} aria-label={`Obra: ${progress} % · ${doneTasks.length} de ${tasks.length} tareas hechas. Ver tareas y avance`}>
               <span className="overview-kicker"><span>Obra</span><span className="status" data-tone={faseTone(project.status)}>{projectStatus[project.status]}</span></span>
               <strong className="overview-figure pl-mono">{progress} %</strong>
               <Meter value={progress} label={`Avance de ${project.name}`} tone={meterTone}/>
@@ -151,7 +152,7 @@ export default function ObraPage() {
               <span className="overview-kicker"><span id="para-presupuestar">Para poder presupuestar</span><span className="muted">{requisitos.filter(r=>r.done).length} de {requisitos.length}</span></span>
               <ul className="overview-checklist">{requisitos.map(r=><li key={r.id} data-done={r.done}><span className="overview-check" aria-hidden="true">{r.done && <Check size={12} strokeWidth={2.6}/>}</span><span><span>{r.label}</span><small className="muted">{r.hint}</small></span></li>)}</ul>
             </section>}
-        <button type="button" className="workspace-card overview-card" onClick={()=>selectSection("budget")} aria-label={current?`Presupuesto: ${money(totals(current.items).total)} con IVA. Ver presupuesto y versiones`:"Presupuesto: todavía no hay. Ver opciones para presupuestar"}>
+        <button type="button" className="workspace-card overview-card overview-card-budget" onClick={()=>selectSection("budget")} aria-label={current?`Presupuesto: ${money(totals(current.items).total)} con IVA. Ver presupuesto y versiones`:"Presupuesto: todavía no hay. Ver opciones para presupuestar"}>
           <span className="overview-kicker"><span>Presupuesto</span>{budgets.length>1 && <span className="muted">{budgets.length} presupuestos</span>}</span>
           {current ? <>
             <strong className="overview-figure pl-mono">{money(totals(current.items).total)}<small>con IVA</small></strong>
@@ -178,6 +179,7 @@ export default function ObraPage() {
     {section==="documents" && <DocumentsPanel project={project} documents={documents}/>}
     {section==="purchases" && <PurchasesPanel projectId={project.id} purchases={purchases}/>}
     <TaskDialog task={abierta?data.tasks.find(t=>t.id===abierta.id) ?? null:null} onClose={()=>setAbierta(null)}/>
+    {canBudget && <Modal open={addingWork} onClose={()=>setAddingWork(false)} title="Añadir trabajos al presupuesto"><AddToBudget planoHref={planoHref} visitaHref={fotosHref} haPresupuesto={budgets.length>0} borradorPlano={borradorPlano} onManual={()=>{setAddingWork(false);aMano();}}/></Modal>}
     {editable && <BudgetEditor open={editando} onClose={()=>navigate({editar:null})} project={project} version={editable} guiaInicial={editable.items.length===0}/>}
     <Drawer open={chatAbierto} onClose={()=>navigate({chat:null})} title={project.name} subtitle={[project.location,project.code].filter(Boolean).join(" · ")}><ChatPanel projectId={project.id} messages={messages}/></Drawer>
   </div>;

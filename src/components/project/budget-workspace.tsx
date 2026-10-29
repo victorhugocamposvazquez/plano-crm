@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 import { ArrowLeft, ArrowRight, FileText, Check, GitCompareArrows, History, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -26,16 +26,26 @@ function estadoVersion(v:BudgetVersion,history:ReturnType<typeof budgetHistory>)
 function useCapitulosCerrados(budgetId:string) {
   const key=`plano.capitulos-cerrados.${budgetId}`;
   const [cerrados,setCerrados]=useState<string[]>([]);
-  useEffect(()=>{try{const raw=localStorage.getItem(key);setCerrados(raw?JSON.parse(raw) as string[]:[]);}catch{setCerrados([]);}},[key]);
-  const toggle=(chapter:string,open:boolean)=>setCerrados(prev=>{const next=open?prev.filter(c=>c!==chapter):prev.includes(chapter)?prev:[...prev,chapter];try{localStorage.setItem(key,JSON.stringify(next));}catch{}return next;});
-  return {cerrados,toggle};
+  useEffect(()=>{try{const raw=JSON.parse(localStorage.getItem(key) ?? "[]");setCerrados(Array.isArray(raw)?raw.filter((chapter):chapter is string=>typeof chapter==="string"):[]);}catch{setCerrados([]);}},[key]);
+  const remember=(next:string[])=>{try{localStorage.setItem(key,JSON.stringify(next));}catch{}return next;};
+  const toggle=(chapter:string,open:boolean)=>setCerrados(prev=>{
+    if(prev.includes(chapter)===!open)return prev;
+    return remember(open?prev.filter(c=>c!==chapter):[...prev,chapter]);
+  });
+  const setAll=(chapters:string[],open:boolean)=>setCerrados(remember(open?[]:chapters));
+  return {cerrados,toggle,setAll};
 }
 
 export function BudgetWorkspace({budget,versions,onNavigate,onEdit,canEdit,adding}:{budget:Budget;versions:BudgetVersion[];onNavigate:Patch;onEdit:()=>void;canEdit:boolean;adding:ReactNode}) {
   const params=useSearchParams(),history=budgetHistory(budget,versions),{approved,working,current}=history;
   const shown=history.versions.find(v=>v.id===params.get("v")) ?? current;
   const view:View=params.get("vista")==="versions"?"versions":params.get("vista")==="changes"?"changes":"items";
-  const {cerrados,toggle}=useCapitulosCerrados(budget.id);
+  const versionRow=useRef<HTMLDivElement>(null);
+  useEffect(()=>{
+    const row=versionRow.current,selected=row?.querySelector<HTMLElement>('[aria-pressed="true"]');
+    if(row && selected)row.scrollLeft=selected.offsetLeft-(row.clientWidth-selected.clientWidth)/2;
+  },[shown?.id,view]);
+  const {cerrados,toggle,setAll}=useCapitulosCerrados(budget.id);
   const [anadiendo,setAnadiendo]=useState(false);
   if(!shown)return <p className="muted">Este presupuesto todavía no tiene versiones.</p>;
   const t=totals(shown.items),previous=history.versions.find(v=>v.number<shown.number);
@@ -47,6 +57,7 @@ export function BudgetWorkspace({budget,versions,onNavigate,onEdit,canEdit,addin
   const showVersion=(v:BudgetVersion)=>onNavigate({v:v.id,vista:"items",desde:null,hasta:null});
   const compare=(before:BudgetVersion,after:BudgetVersion)=>onNavigate({vista:"changes",v:after.id,desde:before.id,hasta:after.id});
   const chapters=partidasPorCapitulo(shown.items);
+  const allClosed=chapters.size>0 && [...chapters.keys()].every(chapter=>cerrados.includes(chapter));
   const ascendente=[...history.versions].reverse();
   const referencia=shown.id===working?.id && approved?approved:previous;
   const deltaAprobada=currentView && approved && working?totals(working.items).total-totals(approved.items).total:null;
@@ -54,35 +65,48 @@ export function BudgetWorkspace({budget,versions,onNavigate,onEdit,canEdit,addin
 
   return <section className="budget-workspace" aria-label={`Presupuesto ${budget.title}`}>
     {view==="items" && <div className="budget-view" data-view="items" role="region" aria-label={`Partidas de V${shown.number}`}>
-      <div className="version-row" role="group" aria-label="Versiones del presupuesto">
+      <div className="budget-version-bar"><span className="budget-section-label">Versiones</span><div ref={versionRow} className="version-row" role="group" aria-label="Versiones del presupuesto">
         {ascendente.map(v=>{const {estado,label}=estadoVersion(v,history),actual=v.id===current?.id;
-          const fecha=estado==="approved" && v.approved_at?`aprobada el ${dateLabel(v.approved_at)}`:estado==="draft"?`editada el ${dateLabel(v.updated_at)}`:estado==="issued"?`terminada el ${dateLabel(v.updated_at)}`:dateLabel(v.updated_at);
           return <button key={v.id} type="button" className="version-pill" data-state={estado} data-actual={actual||undefined} aria-pressed={v.id===shown.id} onClick={()=>showVersion(v)}>
           {actual?<span className="pulse-dot" aria-hidden="true"/>:<span className="version-mark" data-state={estado} aria-hidden="true">{estado==="approved" && <Check size={10} strokeWidth={3}/>}</span>}
-          <span className="version-text"><span>V{v.number}<small>· {label}</small></span><small className="version-date">{actual && <em className="version-actual">Actual</em>}{fecha}</small></span>
+          <span className="version-text"><span>V{v.number}{actual && <em className="version-actual">Actual</em>}</span><small>{label}</small></span>
         </button>;})}
-      </div>
+      </div></div>
 
-      <header className="budget-total-head">
-        <span className="eyebrow budget-total-eyebrow">V{shown.number} · {budget.title}</span>
-        <strong className="budget-total-figure"><span className="pl-mono">{money(t.total)}</span><small>con IVA</small></strong>
-        <span className="budget-total-base">Sin IVA {money(t.base)} · IVA {money(t.tax)}{deltaAprobada!==null && approved && working && <> · <button type="button" className="link-button" onClick={()=>compare(approved,working)}><span className="pl-mono">{signed(deltaAprobada)}</span> frente a V{approved.number}</button></>}</span>
-        <span className="budget-total-meta">{versionLabel(shown,history)} · editada el {dateLabel(shown.updated_at)} por {shown.created_by_name}</span>
-        <div className="budget-total-tools">
-          {referencia && <Button variant="icon" aria-label={`Comparar V${referencia.number} con V${shown.number}`} title="Qué cambió" onClick={()=>compare(referencia,shown)}><GitCompareArrows size={18} strokeWidth={1.6} aria-hidden="true"/></Button>}
-          <Button variant="icon" aria-label="Historial de versiones" title="Historial de versiones" onClick={()=>onNavigate({vista:"versions"})}><History size={18} strokeWidth={1.6} aria-hidden="true"/></Button>
-          {currentView && (shown.items.length>0 || shown.status!=="draft") && <BudgetActions budget={budget} approved={approved} working={working} shown={shown} onEdit={onEdit} onRevisionCreated={showVersion} onCompare={referencia?()=>compare(referencia,shown):undefined} compareLabel={referencia?`frente a V${referencia.number}`:undefined}/>}
-          {!currentView && shown.items.length>0 && <Link prefetch={false} href={`/imprimir/presupuesto/${shown.id}`} target="_blank" rel="noopener" className="btn btn-icon" aria-label={`PDF de la V${shown.number}`} title={`PDF de la V${shown.number}`}><FileText size={18} strokeWidth={1.6} aria-hidden="true"/></Link>}
+      <div className="budget-summary">
+        <header className="budget-total-head">
+          <div className="budget-summary-title"><span className="budget-section-label">V{shown.number} · {versionLabel(shown,history)}</span><h2>{budget.title}</h2></div>
+          <strong className="budget-total-figure"><span className="pl-mono">{money(t.total)}</span><small>con IVA</small></strong>
+          {deltaAprobada!==null && approved && working && <button type="button" className="budget-difference" onClick={()=>compare(approved,working)}><span className="pl-mono">{signed(deltaAprobada)}</span> frente a la V{approved.number} aprobada<ArrowRight size={15} aria-hidden="true"/></button>}
+        </header>
+        <div className="budget-summary-actions">
+          <div className="budget-reading-nav">
+            <Button variant="ghost" aria-label="Historial de versiones" onClick={()=>onNavigate({vista:"versions"})}><History size={17} strokeWidth={1.6} aria-hidden="true"/>Historial</Button>
+            {referencia && <Button variant="ghost" aria-label={`Comparar V${referencia.number} con V${shown.number}`} onClick={()=>compare(referencia,shown)}><GitCompareArrows size={17} strokeWidth={1.6} aria-hidden="true"/>Comparar</Button>}
+          </div>
+          <div className="budget-total-tools">
+            {currentView && (shown.items.length>0 || shown.status!=="draft") && <BudgetActions budget={budget} approved={approved} working={working} shown={shown} onEdit={onEdit} onRevisionCreated={showVersion}/>}
+            {!currentView && shown.items.length>0 && <Link prefetch={false} href={`/imprimir/presupuesto/${shown.id}`} target="_blank" rel="noopener" className="btn btn-secondary" aria-label={`PDF de la V${shown.number}`}><FileText size={17} strokeWidth={1.6} aria-hidden="true"/>PDF</Link>}
+          </div>
         </div>
-      </header>
+        <details className="budget-summary-details"><summary>Desglose y datos de esta versión</summary><dl className="workspace-facts">
+          <div><dt>Importe sin IVA</dt><dd className="pl-mono">{money(t.base)}</dd></div>
+          <div><dt>IVA</dt><dd className="pl-mono">{money(t.tax)}</dd></div>
+          <div><dt>Última edición</dt><dd>{dateLabel(shown.updated_at)}</dd></div>
+          <div><dt>Creada por</dt><dd>{shown.created_by_name}</dd></div>
+          {shown.approved_at && <div><dt>Aprobación</dt><dd>{dateLabel(shown.approved_at)}</dd></div>}
+        </dl></details>
+      </div>
       {!currentView && <div className="workspace-callout"><p>{shown.id===approved?.id?`Esta es la versión aprobada. Hay una V${current?.number} posterior en preparación.`:`Estás consultando una versión anterior. La actual es la V${current?.number}.`}</p><Button variant="secondary" onClick={()=>current && showVersion(current)}>Ver V{current?.number}<ArrowRight size={16} aria-hidden="true"/></Button></div>}
 
-      {shown.items.length===0 ? <div className="empty"><strong>Esta versión aún no tiene partidas</strong><span className="muted">Añade trabajos desde el catálogo, un plano o las fotos de la visita.</span>{canEdit && currentView && shown.status==="draft" && <Button variant="primary" onClick={onEdit}>Añadir partidas</Button>}</div> : <div className="budget-chapters">
-        {[...chapters].map(([chapter,items])=><details className="budget-chapter" key={chapter} open={!cerrados.includes(chapter)} onToggle={e=>toggle(chapter,e.currentTarget.open)}>
-          <summary><span><strong>{chapter}</strong><small className="muted">{items.length} partida{items.length===1?"":"s"}{items.some(i=>i.inclusion!=="included")?` · ${items.filter(i=>i.inclusion!=="included").length} no suma`:""}</small></span><strong className="pl-mono">{money(totalCapitulo(items))}</strong></summary>
+      {shown.items.length===0 ? <div className="empty"><strong>Esta versión aún no tiene partidas</strong><span className="muted">Añade trabajos desde el catálogo, un plano o las fotos de la visita.</span>{canEdit && currentView && shown.status==="draft" && <Button variant="primary" onClick={onEdit}>Añadir partidas</Button>}</div> : <section className="budget-content" aria-label="Lectura de partidas">
+        <header className="budget-content-head"><div><h3>Trabajos por capítulo</h3><span className="muted text-sm">{shown.items.length} partidas · importes sin IVA</span></div><Button variant="ghost" onClick={()=>setAll([...chapters.keys()],allClosed)}>{allClosed?"Desplegar todo":"Plegar todo"}</Button></header>
+        <div className="budget-chapters">
+        {[...chapters].map(([chapter,items])=><details className="budget-chapter" key={chapter} open={!cerrados.includes(chapter)}>
+          <summary onClick={event=>{event.preventDefault();toggle(chapter,cerrados.includes(chapter));}}><span><strong>{chapter}</strong><small className="muted">{items.length} partida{items.length===1?"":"s"}{items.some(i=>i.inclusion!=="included")?` · ${items.filter(i=>i.inclusion!=="included").length} no suma`:""}</small></span><strong className="pl-mono">{money(totalCapitulo(items))}</strong></summary>
           <ul>{items.map(item=><li key={item.id} className="budget-reading-item" data-inclusion={item.inclusion}><div><strong>{item.description}</strong><small className="muted">{number(item.quantity)} {item.unit} × {money(item.unit_price)}{item.adjustment_percent?` · ${item.adjustment_percent>0?"recargo":"descuento"} ${number(Math.abs(item.adjustment_percent))} %`:""}{item.inclusion!=="included"?` · ${item.inclusion==="optional"?"alternativa":"excluida"}, no suma`:""}</small></div><span className="pl-mono">{money(lineTotal(item))}</span></li>)}</ul>
         </details>)}
-      </div>}
+      </div></section>}
       {canEdit && currentView && <button type="button" className="budget-add-row" onClick={()=>setAnadiendo(true)} aria-haspopup="dialog"><Plus size={17} strokeWidth={1.8} aria-hidden="true"/>Añadir trabajos a la V{shown.number}<small>catálogo · plano · fotos</small></button>}
       {shown.notes && <details className="budget-notes"><summary>Notas y condiciones de V{shown.number}</summary><p>{shown.notes}</p></details>}
       {canEdit && currentView && <Modal open={anadiendo} onClose={()=>setAnadiendo(false)} title={`Añadir trabajos a la V${shown.number}`}>{adding}</Modal>}

@@ -1,9 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
 import { Sun, Moon } from "lucide-react";
+import { THEME_STORAGE_KEY as KEY } from "@/lib/appearance";
 
 export type Theme = "light" | "dark";
-const KEY = "plano.theme";
 const labels: Record<Theme, string> = { light: "Tema claro", dark: "Tema oscuro" };
 
 /** Aplica el tema al <html>: con data-theme fuerza Workspace o Grafito. */
@@ -16,9 +16,6 @@ export function currentTheme(): Theme {
   try { const saved = localStorage.getItem(KEY); if (saved === "light" || saved === "dark") return saved; } catch {}
   return typeof window !== "undefined" && window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
 }
-
-/** Script en línea para el <head>: lee la preferencia guardada antes de pintar y evita el parpadeo. */
-export const themeBootScript = `try{var t=localStorage.getItem("${KEY}");if(t==="light"||t==="dark")document.documentElement.dataset.theme=t;}catch(e){}`;
 
 export function useTheme(): [Theme, (next: Theme) => void] {
   const [theme, setTheme] = useState<Theme>("light");

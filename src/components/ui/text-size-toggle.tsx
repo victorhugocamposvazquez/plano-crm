@@ -1,12 +1,9 @@
 "use client";
 import { useEffect, useState } from "react";
 import { ALargeSmall } from "lucide-react";
+import { TEXT_STORAGE_KEY as KEY } from "@/lib/appearance";
 
-const KEY = "plano.text";
 type Size = "normal" | "large";
-
-/** Letra grande: sube la base de la tipografía un 15 % (los tamaños van en rem). Se guarda por navegador. */
-export const textBootScript = `try{if(localStorage.getItem("${KEY}")==="large")document.documentElement.dataset.text="large";}catch(e){}`;
 
 function current(): Size {
   try { return localStorage.getItem(KEY) === "large" ? "large" : "normal"; } catch { return "normal"; }
