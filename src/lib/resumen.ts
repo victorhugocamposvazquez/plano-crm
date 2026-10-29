@@ -44,7 +44,7 @@ export function filtrarPresupuestos(filas: FilaPresupuesto[], filtro: FiltroPres
 }
 
 export const estadoPresupuesto: Record<FilaPresupuesto["estado"], string> = {
-  empty: "Sin partidas", draft: "Borrador", issued: "Revisión cerrada · por aprobar", approved: "Aprobado para obra", changes: "Aprobado · cambios en preparación"
+  empty: "Sin partidas", draft: "Borrador", issued: "Terminada · por aprobar", approved: "Aprobado para obra", changes: "Aprobado · cambios en preparación"
 };
 
 /* ---------- Clientes ---------- */

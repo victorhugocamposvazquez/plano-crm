@@ -38,7 +38,7 @@ export default function PresupuestosPage() {
           <Link key={f.budget.id} href={`/proyectos/${f.project.id}?s=budget&p=${f.budget.id}`} className="row-budget">
             <span style={{ minWidth: 0 }}>
               <strong>{f.project.name}{data.budgets.filter(b => b.project_id === f.project.id).length > 1 ? ` · ${f.budget.title}` : ""}</strong>
-              <small>{[f.project.client_name, f.project.code, `V${f.latest.number} · ${dateLabel(f.updated_at)}`].filter(Boolean).join(" · ")}</small>
+              <small>{[f.project.client_name, f.project.location, `V${f.latest.number} · ${dateLabel(f.updated_at)}`].filter(Boolean).join(" · ")}</small>
               <span className="row-budget-status"><Status label={estadoPresupuesto[f.estado]} tone={tono[f.estado]} /></span>
             </span>
             <span className="row-budget-amounts">
@@ -51,7 +51,7 @@ export default function PresupuestosPage() {
         ))}
       </div>
 
-      <p className="muted text-xs">Importes en base sin IVA. El envío al cliente, la firma y el PDF del presupuesto llegarán con las plantillas de documentos.</p>
+      <p className="muted text-xs">Importes sin IVA.</p>
     </div>
   );
 }

@@ -11,7 +11,7 @@ import { partidaDesdeArticulo, partidaLibre, actualizarPartida, quitarPartida, m
 
 type Inclusion = BudgetItem["inclusion"];
 const inclusionOptions: { value: Inclusion; label: string; hint?: string }[] = [
-  { value: "included", label: "Incluida" }, { value: "optional", label: "Alternativa", hint: "Se muestra, no suma" }, { value: "excluded", label: "Excluida", hint: "Queda fuera del precio" }
+  { value: "included", label: "Sí, entra en el precio" }, { value: "optional", label: "Como alternativa", hint: "Se enseña al cliente, no suma" }, { value: "excluded", label: "No entra", hint: "Queda fuera del precio" }
 ];
 const unidadOptions = unidadesPartida.map(u => ({ value: u, label: u }));
 
@@ -84,7 +84,7 @@ export function BudgetEditor({ open, onClose, project, version, guiaInicial }: {
     </div>
   ) : (
     <div className="editor-foot">
-      <span className="editor-sum"><small>Base</small><strong className="pl-mono">{money(total.base)}</strong><small>IVA</small><strong className="pl-mono">{money(total.tax)}</strong><small>Total</small><strong className="pl-mono">{money(total.total)}</strong></span>
+      <span className="editor-sum"><small>Sin IVA</small><strong className="pl-mono">{money(total.base)}</strong><small>IVA</small><strong className="pl-mono">{money(total.tax)}</strong><small>Total</small><strong className="pl-mono">{money(total.total)}</strong></span>
       <div style={{ display: "flex", gap: 8 }}>
         <Button variant="secondary" onClick={intentarCerrar}>{dirty ? "Descartar" : "Cerrar"}</Button>
         <Button variant="primary" onClick={guardar} disabled={!dirty || saving || busy || errores.length > 0} title={errores.length ? "Hay partidas incompletas" : undefined}>{saving ? "Guardando…" : cambios ? `Guardar V${version.number} · ${cambios}` : `Guardar V${version.number}`}</Button>
@@ -138,14 +138,14 @@ export function BudgetEditor({ open, onClose, project, version, guiaInicial }: {
                     <div className="editor-grid editor-grid-primary">
                       <label className="field"><span>Cantidad</span><span className="unit-input"><input type="number" inputMode="decimal" min={0} step={item.unit === "ud" ? 1 : 0.1} value={item.quantity} onChange={e => update(item.id, { quantity: Number(e.target.value) || 0 })} aria-label="Cantidad" /><span>{item.unit}</span></span></label>
                       <label className="field"><span>Precio sin IVA</span><span className="unit-input"><input type="number" inputMode="decimal" min={0} step={0.01} value={item.unit_price / 100} onChange={e => update(item.id, { unit_price: Math.round((Number(e.target.value) || 0) * 100) })} aria-label="Precio unitario en euros" /><span>€</span></span></label>
-                      <div className="field editor-amount"><span>Importe sin IVA</span><strong className="pl-mono">{money(lineTotal(item))}</strong>{item.adjustment_percent !== 0 && <small className="muted">Ajuste {item.adjustment_percent}% aplicado</small>}{item.inclusion !== "included" && <small className="muted">{item.inclusion === "optional" ? "Alternativa" : "Excluida"} · no suma</small>}</div>
+                      <div className="field editor-amount"><span>Importe sin IVA</span><strong className="pl-mono">{money(lineTotal(item))}</strong>{item.adjustment_percent !== 0 && <small className="muted">{item.adjustment_percent > 0 ? "Recargo" : "Descuento"} del {Math.abs(item.adjustment_percent)} % aplicado</small>}{item.inclusion !== "included" && <small className="muted">{item.inclusion === "optional" ? "Alternativa" : "No entra"} · no suma</small>}</div>
                     </div>
                     <details className="editor-advanced">
-                      <summary>Ajustes y opciones</summary>
+                      <summary>Más opciones · unidad, recargo o descuento, si entra en el precio</summary>
                       <div className="editor-grid">
                         <div className="field"><span>Unidad</span><Select size="sm" label="Unidad" value={item.unit} onChange={u => update(item.id, { unit: u })} options={unidadOptions} /></div>
-                        <label className="field"><span>Ajuste de precio</span><span className="unit-input"><input type="number" inputMode="numeric" min={-50} max={100} step={1} value={item.adjustment_percent} onChange={e => update(item.id, { adjustment_percent: Number(e.target.value) || 0 })} aria-label="Ajuste en porcentaje" /><span>%</span></span></label>
-                        <div className="field"><span>Inclusión</span><Select size="sm" label="Inclusión" value={item.inclusion} onChange={v => update(item.id, { inclusion: v })} options={inclusionOptions} /></div>
+                        <label className="field"><span>Recargo (+) o descuento (−)</span><span className="unit-input"><input type="number" inputMode="numeric" min={-50} max={100} step={1} value={item.adjustment_percent} onChange={e => update(item.id, { adjustment_percent: Number(e.target.value) || 0 })} aria-label="Ajuste en porcentaje" /><span>%</span></span></label>
+                        <div className="field"><span>¿Entra en el precio?</span><Select size="sm" label="Entra en el precio" value={item.inclusion} onChange={v => update(item.id, { inclusion: v })} options={inclusionOptions} /></div>
                       </div>
                       <label className="field"><span>Capítulo</span><input type="text" list="capitulos-editor" defaultValue={item.chapter} onBlur={e => update(item.id, { chapter: e.target.value.trim() || "Varios" })} aria-label="Capítulo" maxLength={120} /></label>
                       <div className="editor-item-tools"><Button variant="ghost" aria-label="Subir partida" onClick={() => setItems(prev => moverPartida(prev, item.id, -1))}><ChevronUp size={14} aria-hidden="true"/>Subir</Button><Button variant="ghost" aria-label="Bajar partida" onClick={() => setItems(prev => moverPartida(prev, item.id, 1))}><ChevronDown size={14} aria-hidden="true"/>Bajar</Button></div>

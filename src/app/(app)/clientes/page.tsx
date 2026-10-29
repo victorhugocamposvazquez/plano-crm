@@ -50,13 +50,11 @@ export default function ClientesPage() {
               <div><dt>En revisión</dt><dd className="pl-mono">{c.enRevision ? money(c.enRevision) : "—"}</dd></div>
             </dl>
             <ul className="client-projects">
-              {c.projects.map(p => <li key={p.id}><Link href={`/proyectos/${p.id}`}><span>{p.name}<small className="muted"> · {p.code}</small></span><ProjectStatus status={p.status} /></Link></li>)}
+              {c.projects.map(p => <li key={p.id}><Link href={`/proyectos/${p.id}`}><span>{p.name}</span><ProjectStatus status={p.status} /></Link></li>)}
             </ul>
           </article>
         ))}
       </div>
-
-      <p className="muted text-xs">Teléfono, correo, dirección de facturación y notas del cliente llegarán cuando el dominio tenga ficha de cliente; hoy el cliente es el nombre escrito en cada proyecto.</p>
     </div>
   );
 }

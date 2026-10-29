@@ -102,7 +102,7 @@ export function ProjectMenu({ project, approvedVersion, puedeEstimar, onChat, so
           <div className="action-group" role="group" aria-labelledby="acciones-obra">
             <span className="section-label" id="acciones-obra"><span>Obra</span></span>
             <button type="button" className="opt-row" disabled={!puedeTarea} onClick={() => abrir("tarea")}><span className="opt-ico"><ListPlus size={18} strokeWidth={1.7} aria-hidden="true" /></span><span className="opt-text"><strong>Planificar tarea</strong><small>Oficio, responsable y fecha.</small></span><ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" className="muted" /></button>
-            <button type="button" className="opt-row" disabled={!puedeCert} onClick={() => abrir("certificacion")}><span className="opt-ico"><Receipt size={18} strokeWidth={1.7} aria-hidden="true" /></span><span className="opt-text"><strong>Nueva certificación</strong><small>{approvedVersion ? <>Quedan <span className="pl-mono">{money(saldo)}</span> de la V{approvedVersion.number} por certificar.</> : "Necesita un presupuesto aprobado."}</small></span><ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" className="muted" /></button>
+            <button type="button" className="opt-row" disabled={!puedeCert} onClick={() => abrir("certificacion")}><span className="opt-ico"><Receipt size={18} strokeWidth={1.7} aria-hidden="true" /></span><span className="opt-text"><strong>Nueva certificación</strong><small>{approvedVersion ? <>Lo ejecutado que ya puedes facturar · quedan <span className="pl-mono">{money(saldo)}</span> de la V{approvedVersion.number}.</> : "Lo ejecutado que ya puedes facturar · necesita un presupuesto aprobado."}</small></span><ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" className="muted" /></button>
           </div>
           <div className="action-group" role="group" aria-labelledby="acciones-proyecto">
             <span className="section-label" id="acciones-proyecto"><span>Proyecto</span></span>
@@ -127,15 +127,15 @@ export function ProjectMenu({ project, approvedVersion, puedeEstimar, onChat, so
           </div>
           <div className="line-grid">
             <label className="field"><span>Responsable</span><input list="personas-ficha" type="text" value={tarea.assignee} onChange={e => setTarea({ ...tarea, assignee: e.target.value })} placeholder="Nombre o equipo" maxLength={120} /><datalist id="personas-ficha">{listaPersonas.map(p => <option key={p} value={p} />)}</datalist></label>
-            <label className="field"><span>Peso en el avance</span><span className="unit-input"><input type="number" inputMode="numeric" min={1} max={100} value={tarea.weight} onChange={e => setTarea({ ...tarea, weight: e.target.value })} /><span>%</span></span></label>
+            <label className="field"><span>Cuánto cuenta en el avance</span><span className="unit-input"><input type="number" inputMode="numeric" min={1} max={100} value={tarea.weight} onChange={e => setTarea({ ...tarea, weight: e.target.value })} /><span>%</span></span></label>
           </div>
-          <p className="muted text-xs">El peso reparte el avance del proyecto entre sus tareas. Se ve también en la Agenda.</p>
+          <p className="muted text-xs">Reparte el avance del proyecto entre sus tareas; 10 es lo normal. Se ve también en la Agenda.</p>
         </form>
       </Modal>
 
       <Modal open={dialogo === "certificacion"} onClose={cerrar} title="Nueva certificación" footer={<><Button variant="secondary" onClick={cerrar} disabled={pending}>Cancelar</Button><Button variant="primary" type="submit" form="nueva-cert" disabled={pending || busy || !cert.title.trim() || importe === null || importe <= 0 || importe > saldo}>{pending ? "Guardando…" : "Crear borrador"}</Button></>}>
         <form id="nueva-cert" className="form" onSubmit={crearCertificacion} style={{ maxWidth: "none" }}>
-          <p className="text-sm">Borrador sobre la V{approvedVersion?.number} aprobada ({approvedVersion ? money(totals(approvedVersion.items).base) : "—"} sin IVA). Queda <strong className="pl-mono">{money(saldo)}</strong> por certificar. La validación y la factura llegarán con el dominio.</p>
+          <p className="text-sm">Borrador sobre la V{approvedVersion?.number} aprobada ({approvedVersion ? money(totals(approvedVersion.items).base) : "—"} sin IVA). Queda <strong className="pl-mono">{money(saldo)}</strong> por certificar.</p>
           <label className="field"><span>Concepto</span><input type="text" value={cert.title} onChange={e => setCert({ ...cert, title: e.target.value })} placeholder="Certificación 1 · demoliciones y albañilería" required maxLength={500} autoFocus /></label>
           <label className="field"><span>Importe sin IVA</span><span className="unit-input"><input type="text" inputMode="decimal" value={cert.amount} onChange={e => setCert({ ...cert, amount: e.target.value })} placeholder="4.500,00" required aria-invalid={cert.amount !== "" && (importe === null || importe > saldo) ? true : undefined} /><span>€</span></span></label>
           {importe !== null && importe > saldo && <p className="text-xs" role="alert" style={{ color: "var(--pl-danger)" }}>Supera el saldo del presupuesto aprobado.</p>}

@@ -10,9 +10,9 @@ export function budgetHistory(budget: Pick<Budget,"id"|"approved_version_id">, a
 
 export function versionLabel(version:BudgetVersion, history:ReturnType<typeof budgetHistory>) {
   if(version.id===history.approved?.id)return "Aprobada para obra";
-  if(version.id===history.working?.id)return version.status==="draft"?"Borrador actual":"Pendiente de aprobación";
+  if(version.id===history.working?.id)return version.status==="draft"?"Borrador actual":"Terminada · pendiente de aprobar";
   if(version.status==="superseded" || version.status==="approved")return "Aprobación anterior";
-  return version.status==="issued"?"Cerrada · histórica":"Borrador anterior";
+  return version.status==="issued"?"Terminada · anterior":"Borrador anterior";
 }
 
 /** El motivo explica la intención; las diferencias se calculan sobre las partidas y condiciones realmente guardadas. */

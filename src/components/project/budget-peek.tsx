@@ -34,7 +34,7 @@ export function BudgetPeek({ versionId, data, onVersion }: { versionId: string; 
         </nav>
       )}
       <dl className="peek-totals">
-        <div><dt>Base</dt><dd className="pl-mono">{money(t.base)}</dd></div>
+        <div><dt>Sin IVA</dt><dd className="pl-mono">{money(t.base)}</dd></div>
         <div><dt>IVA</dt><dd className="pl-mono">{money(t.tax)}</dd></div>
         <div><dt>Total</dt><dd className="pl-mono"><strong>{money(t.total)}</strong></dd></div>
         {ref && <div><dt>Respecto a la V{ref.number} aprobada</dt><dd className="pl-mono" data-tone={diff > 0 ? "warning" : diff < 0 ? "success" : undefined}>{diff > 0 ? "+" : ""}{money(diff)}</dd></div>}

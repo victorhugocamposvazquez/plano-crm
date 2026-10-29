@@ -74,7 +74,7 @@ export function TaskDialog({ task, onClose }: { task: Task | null; onClose: () =
           </div>
           <div className="line-grid">
             <label className="field"><span>Responsable</span><input list="personas-tarea" type="text" value={form.assignee} onChange={e => setForm({ ...form, assignee: e.target.value })} placeholder="Nombre o equipo" maxLength={120} /><datalist id="personas-tarea">{listaPersonas.map(p => <option key={p} value={p} />)}</datalist></label>
-            <label className="field"><span>Peso en el avance</span><span className="unit-input"><input type="number" inputMode="numeric" min={1} max={100} value={form.weight} onChange={e => setForm({ ...form, weight: e.target.value })} /><span>%</span></span></label>
+            <label className="field"><span>Cuánto cuenta en el avance</span><span className="unit-input"><input type="number" inputMode="numeric" min={1} max={100} value={form.weight} onChange={e => setForm({ ...form, weight: e.target.value })} /><span>%</span></span></label>
           </div>
         </form>
       )}
@@ -94,7 +94,7 @@ export function TaskDialog({ task, onClose }: { task: Task | null; onClose: () =
             <div><dt>Oficio</dt><dd>{task.trade}</dd></div>
             <div><dt>Responsable</dt><dd>{task.assignee || "Sin asignar"}</dd></div>
             <div><dt>Fecha</dt><dd>{fechaLarga.format(new Date(`${task.due_date}T12:00:00`)).replace(/^./, c => c.toUpperCase())}{vencida ? <span className="danger"> · vencida</span> : ""}</dd></div>
-            <div><dt>Peso en el avance</dt><dd className="pl-mono">{task.weight} %</dd></div>
+            <div><dt>Cuánto cuenta en el avance</dt><dd className="pl-mono">{task.weight} %</dd></div>
           </dl>
           {(canEdit || canDelete) && (
             <div className="task-tools">

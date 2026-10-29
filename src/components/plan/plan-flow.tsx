@@ -348,7 +348,7 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
                   <span className="seg" role="radiogroup" aria-label="Qué hacer con la partida repetida">{(["sustituir", "añadir"] as const).map(d => <button key={d} type="button" role="radio" aria-checked={decisiones[par.nuevo.id] === d} onClick={() => setDecisiones(prev => ({ ...prev, [par.nuevo.id]: d }))}>{d === "sustituir" ? "Sustituir" : "Añadir aparte"}</button>)}</span>
                 </div></div>
               ))}
-              <div className="proposal-total"><span className="muted">Partidas calculadas · base sin IVA</span><span className="pl-mono">{money(sumaNuevos)}</span></div>
+              <div className="proposal-total"><span className="muted">Partidas calculadas · sin IVA</span><span className="pl-mono">{money(sumaNuevos)}</span></div>
               {pares.some(p => !decisiones[p.nuevo.id]) ? <p className="muted text-sm">Elige qué hacer con cada coincidencia antes de añadir las partidas.</p> : <p className="muted text-sm">Cambio en la base del presupuesto: {money(finales.reduce((s, i) => s + lineTotal(i), 0) - existentes.reduce((s, i) => s + lineTotal(i), 0))}. Incluye las sustituciones elegidas.</p>}
               {resultado.lineas.some(l => l.avisos.length) && <p className="muted text-sm"><Sparkles size={13} strokeWidth={1.8} aria-hidden="true" /> {resultado.lineas.flatMap(l => l.avisos)[0]}</p>}
               {resultado.pendientes > 0 && <p role="alert" className="muted text-sm">Completa las partidas pendientes o vuelve a los trabajos y desmarca los que queden fuera del encargo.</p>}
