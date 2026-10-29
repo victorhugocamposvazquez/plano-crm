@@ -2523,10 +2523,10 @@ p {
 }
 
 @media (max-width: 767px) {
-  /* En móvil el título ocupa su línea y el botón de crear baja, compacto y a la izquierda. */
-  .page-head:has(.btn-new) { flex-wrap: wrap; }
-  .page-head:has(.btn-new) .h1 { flex: 1 1 100%; }
-  .page-head .btn-new { height: 38px; font-size: var(--pl-text-sm); }
+  /* En móvil el botón de crear va junto al título, compacto, para que la lista empiece más arriba (Hugo, 29-10). */
+  .page-head:has(.btn-new) { align-items: center; }
+  .page-head:has(.btn-new) .h1 { flex: 1 1 auto; min-width: 0; font-size: var(--pl-text-h2); letter-spacing: var(--pl-tracking-h2); }
+  .page-head .btn-new { height: 38px; font-size: var(--pl-text-sm); flex-shrink: 0; }
 }
 
 /* ---------- Cuenta: avatar pulsable y panel ---------- */

@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Lock, Stamp, GitBranch, Printer, Pencil } from "lucide-react";
+import { Lock, Stamp, GitBranch, Printer, Pencil, GitCompareArrows } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
 import { Menu, type MenuItem } from "@/components/ui/menu";
 import { Button } from "@/components/ui/button";
@@ -16,7 +16,7 @@ const signed = (cents: number) => `${cents < 0 ? "−" : "+"}${money(Math.abs(ce
  * (imprimir, cerrar la revisión, abrir una nueva) en el menú «···» de la versión. Cerrar y aprobar
  * confirman siempre en un diálogo sobre la ficha, porque no tienen vuelta atrás.
  */
-export function BudgetActions({ budget, approved, working, shown, onEdit, onRevisionCreated }: { budget: Budget; approved?: BudgetVersion; working?: BudgetVersion; shown?: BudgetVersion; onEdit: () => void; onRevisionCreated?: (version: BudgetVersion) => void }) {
+export function BudgetActions({ budget, approved, working, shown, onEdit, onRevisionCreated, onCompare, compareLabel }: { budget: Budget; approved?: BudgetVersion; working?: BudgetVersion; shown?: BudgetVersion; onEdit: () => void; onRevisionCreated?: (version: BudgetVersion) => void; onCompare?: () => void; compareLabel?: string }) {
   const { actor, busy, send, notify } = useWorkspace();
   const permisos = { guardar: can(actor.role, "budget.save"), aprobar: can(actor.role, "budget.approve") };
   const acciones = accionesPresupuesto(approved, working, permisos);
@@ -45,6 +45,7 @@ export function BudgetActions({ budget, approved, working, shown, onEdit, onRevi
 
   const imprimible = shown && shown.items.length > 0 ? shown : undefined;
   const items: MenuItem[] = [
+    ...(onCompare ? [{ id: "cambios", label: "Ver cambios", hint: `Qué cambió ${compareLabel ?? "entre versiones"}`, icon: <GitCompareArrows size={16} strokeWidth={1.7} />, onSelect: onCompare }] : []),
     ...(imprimible ? [{ id: "imprimir", label: imprimible.status === "draft" ? `Imprimir borrador V${imprimible.number}` : `PDF de la V${imprimible.number}`, hint: "Se abre en otra pestaña", icon: <Printer size={16} strokeWidth={1.7} />, onSelect: () => { window.open(`/imprimir/presupuesto/${imprimible.id}`, "_blank", "noopener"); } }] : []),
     ...(acciones.includes("revisar") ? [{ id: "revisar", label: "Nueva revisión", hint: `Copia la V${base?.number ?? ""} a un borrador nuevo`, icon: <GitBranch size={16} strokeWidth={1.7} />, onSelect: () => setDialogo("revisar") }] : []),
     ...(acciones.includes("cerrar") && working ? [{ id: "cerrar", label: `Cerrar V${working.number}…`, hint: "Deja de editarse y queda lista para aprobar", icon: <Lock size={16} strokeWidth={1.7} />, onSelect: () => setDialogo("cerrar") }] : [])
