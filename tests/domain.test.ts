@@ -71,6 +71,22 @@ describe("Versionado de presupuesto",()=>{
     expect(()=>applyCommand(state,{type:"budget.issue",version_id:demoId(61),expected_revision:1},demoActor)).toThrow("partida incluida");
   });
 });
+describe("Catálogo: editar y eliminar artículos",()=>{
+  it("actualiza solo los campos enviados y no repite referencia",()=>{
+    const next=applyCommand(createDemo(),{type:"article.update",id:demoId(30),chapter:"Derribos",unit_price:3000},demoActor);
+    const a=next.articles.find(x=>x.id===demoId(30))!;expect(a).toMatchObject({code:"DEM-001",chapter:"Derribos",unit_price:3000,name:"Demolición de tabiquería interior"});
+    expect(()=>applyCommand(next,{type:"article.update",id:demoId(30),code:"alb-001"},demoActor)).toThrow("referencia");
+    expect(()=>applyCommand(next,{type:"article.update",id:demoId(999),name:"X"},demoActor)).toThrow("no encontrado");
+    expect(commandSchema.safeParse({type:"article.update",id:demoId(30),unit_price:-5}).success).toBe(false);
+  });
+  it("elimina el artículo sin tocar los presupuestos y respeta permisos",()=>{
+    const state=createDemo(),items=structuredClone(state.versions[0].items);
+    const next=applyCommand(state,{type:"article.delete",id:demoId(30)},demoActor);
+    expect(next.articles.some(a=>a.id===demoId(30))).toBe(false);expect(next.versions[0].items).toEqual(items);
+    expect(can("site","article.update")).toBe(false);expect(can("manager","article.delete")).toBe(true);
+  });
+});
+
 describe("Permisos y seguimiento",()=>{
   it("el equipo de obra no modifica precios y el jefe no aprueba",()=>{
     expect(can("site","budget.save")).toBe(false);expect(can("manager","budget.approve")).toBe(false);expect(can("viewer","message.send")).toBe(false);

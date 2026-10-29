@@ -182,6 +182,27 @@ describe("Reacciones en PostgreSQL",()=>{
   });
 });
 
+describe("Editar y eliminar artículos del catálogo en PostgreSQL",()=>{
+  async function articulo(){await command({type:"article.create",code:"PIN-001",name:"Pintura plástica",chapter:"Pintura",unit:"m²",unit_price:1450,vat_rate:21});return (await db.query<{id:string}>("select id from articles")).rows[0].id;}
+  it("cambia solo los campos enviados, no repite referencia y respeta los límites",async()=>{
+    const id=await articulo();
+    await command({type:"article.create",code:"PIN-002",name:"Esmalte",chapter:"Pintura",unit:"m²",unit_price:2000,vat_rate:21});
+    await command({type:"article.update",id,chapter:"Acabados",unit_price:1600},manager);
+    expect((await db.query<{code:string;name:string;chapter:string;unit_price:number}>("select code,name,chapter,unit_price::int from articles where id=$1",[id])).rows[0]).toEqual({code:"PIN-001",name:"Pintura plástica",chapter:"Acabados",unit_price:1600});
+    await expect(command({type:"article.update",id,code:"pin-002"},manager)).rejects.toThrow(/referencia/);
+    await expect(command({type:"article.update",id,unit_price:-1},manager)).rejects.toThrow(/unit_price/);
+    await expect(command({type:"article.update",id,name:"X"},site)).rejects.toThrow(/permiso/);
+    await expect(command({type:"article.update",id:demoId(999),name:"X"},admin)).rejects.toThrow(/no encontrado/);
+  });
+  it("elimina el artículo y deja actividad",async()=>{
+    const id=await articulo();
+    await expect(command({type:"article.delete",id},site)).rejects.toThrow(/permiso/);
+    await command({type:"article.delete",id},admin);
+    expect((await db.query("select id from articles")).rows).toHaveLength(0);
+    expect((await db.query<{text:string}>("select text from activities order by created_at desc limit 1")).rows[0].text).toMatch(/Artículo eliminado/);
+  });
+});
+
 describe("Editar y eliminar tareas en PostgreSQL",()=>{
   async function tarea(){const p=await project();await command({type:"task.create",project_id:p,title:"Replantear",trade:"Albañilería",assignee:"",due_date:"2026-11-02",weight:20});return (await db.query<{id:string}>("select id from tasks")).rows[0].id;}
   it("cambia solo los campos enviados y respeta los límites",async()=>{
