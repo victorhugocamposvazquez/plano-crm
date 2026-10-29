@@ -11,7 +11,9 @@ import { can, money, kindNames, dateLabel, type Project, type BudgetVersion } fr
 import { trabajosRapidos, articulosPorCapitulo, articuloPara, partidasDesdeLineas, rangoEstimacion, importeLinea, notasDeVisita, comprobaciones, type Linea } from "@/lib/estimacion";
 
 type Step = 1 | 2 | 3 | 4 | 5;
-const steps: { id: Step; label: string }[] = [{ id: 1, label: "Datos" }, { id: 2, label: "Fotos" }, { id: 3, label: "Alcance" }, { id: 4, label: "Partidas" }, { id: 5, label: "Resumen" }];
+/** Sobre un proyecto: fotos y notas, y guardar. Proyecto nuevo desde la visita: además los datos. Los números internos se conservan. */
+const pantallasExistente: { id: Step; label: string }[] = [{ id: 2, label: "Fotos y notas" }, { id: 5, label: "Guardar" }];
+const pantallasNuevo: { id: Step; label: string }[] = [{ id: 1, label: "Datos" }, { id: 2, label: "Fotos y notas" }, { id: 5, label: "Resumen" }];
 
 /** Dictado del navegador (Web Speech API). Transcribe lo que se dice; no interpreta ni calcula nada. */
 type Recognition = { lang: string; continuous: boolean; interimResults: boolean; onresult: ((e: { resultIndex: number; results: ArrayLike<ArrayLike<{ transcript: string }> & { isFinal: boolean }> }) => void) | null; onend: (() => void) | null; onerror: ((e: { error: string }) => void) | null; start(): void; stop(): void };
@@ -30,6 +32,9 @@ export default function NuevaVisitaPage() {
   const existente = useMemo(() => (proyectoId ? data.projects.find(p => p.id === proyectoId) ?? null : null), [data.projects, proyectoId]);
   const allowed = (existente ? true : can(actor.role, "project.create")) && can(actor.role, "budget.create");
   const [step, setStep] = useState<Step>(1);
+  const pantallas = existente ? pantallasExistente : pantallasNuevo;
+  // Sobre un proyecto ya dado de alta no hay datos que repetir: se empieza por las fotos.
+  useEffect(() => { if (existente && step === 1) setStep(2); }, [existente, step]);
   // En móvil la fila de pasos se desplaza: el paso actual siempre queda a la vista.
   useEffect(() => { document.querySelector('.step[aria-current="step"]')?.scrollIntoView({ inline: "center", block: "nearest" }); }, [step]);
   const [datos, setDatos] = useState({ name: "", client_name: "", location: "", kind: "integral" as Project["kind"] });
@@ -158,7 +163,7 @@ export default function NuevaVisitaPage() {
       </div>
 
       <ol className="steps" aria-label="Pasos">
-        {steps.map(s => <li key={s.id}><button type="button" className="step" aria-current={s.id === step ? "step" : undefined} data-done={s.id < step} onClick={() => s.id < step && setStep(s.id)} disabled={s.id > step}><span className="pl-mono">{s.id}</span>{s.label}</button></li>)}
+        {pantallas.map((s, i) => <li key={s.id}><button type="button" className="step" aria-current={s.id === step ? "step" : undefined} data-done={s.id < step} onClick={() => s.id < step && setStep(s.id)} disabled={s.id > step}><span className="pl-mono">{i + 1}</span>{s.label}</button></li>)}
       </ol>
 
       {step === 1 && existente && (
@@ -199,12 +204,11 @@ export default function NuevaVisitaPage() {
               ))}
             </ul>
           )}
-          <p className="muted text-xs">Se guardan en la obra como fotos de «antes». No se miden ni se interpretan automáticamente: las cantidades las estimas tú en el paso de partidas.</p>
-          <div className="form-actions"><Button variant="secondary" onClick={() => setStep(1)}>Atrás</Button><Button variant="primary" onClick={() => setStep(3)}>{fotos.length ? "Seguir con el alcance" : "Seguir sin fotos"}</Button></div>
+          <p className="muted text-xs">Se guardan en la obra como fotos de «antes». No se miden ni se interpretan automáticamente.</p>
         </section>
       )}
 
-      {step === 3 && (
+      {step === 2 && (
         <section className="form">
           <label className="field">
             <span>Qué quiere reformar el cliente</span>
@@ -227,12 +231,13 @@ export default function NuevaVisitaPage() {
             ))}
             <span className="muted text-xs">Lo que no marques queda anotado como pendiente en el presupuesto.</span>
           </div>
-          <div className="form-actions"><Button variant="secondary" onClick={() => setStep(2)}>Atrás</Button><Button variant="primary" onClick={() => setStep(4)}>Seguir con las partidas</Button></div>
         </section>
       )}
 
-      {step === 4 && (
-        <section className="form">
+      {step === 2 && (
+        <details className="form-optional" open={lineas.length > 0}>
+        <summary><strong>¿Quieres dejar una cifra orientativa?</strong> <span className="muted text-sm">Opcional · partidas del catálogo con cantidades a ojo</span></summary>
+        <section className="form" style={{ marginTop: 12 }}>
           <div className="field" style={{ gap: 8 }}>
             <span>Trabajos habituales</span>
             <div className="chips">
@@ -270,8 +275,12 @@ export default function NuevaVisitaPage() {
             );
           })}
 
-          <div className="form-actions"><Button variant="secondary" onClick={() => setStep(3)}>Atrás</Button><Button variant="primary" disabled={items.length === 0 && !existente} onClick={() => setStep(5)}>{items.length === 0 && existente ? "Ver el resumen" : "Ver la estimación"}</Button></div>
         </section>
+        </details>
+      )}
+
+      {step === 2 && (
+        <div className="form-actions">{!existente && <Button variant="secondary" onClick={() => setStep(1)}>Atrás</Button>}<Button variant="primary" disabled={items.length === 0 && !existente} onClick={() => setStep(5)}>{items.length === 0 && existente ? "Ver el resumen" : "Ver la estimación"}</Button></div>
       )}
 
       {step === 5 && (
@@ -297,7 +306,7 @@ export default function NuevaVisitaPage() {
           </div></div>
 
           {error && <p role="alert" className="auth-error">{error}</p>}
-          <div className="form-actions"><Button variant="secondary" onClick={() => setStep(4)} disabled={saving}>Atrás</Button><Button variant="primary" onClick={guardar} disabled={saving || busy || !puedeGuardar}>{saving ? "Guardando…" : soloFotos ? "Guardar fotos y notas" : "Guardar estimación"}</Button></div>
+          <div className="form-actions"><Button variant="secondary" onClick={() => setStep(2)} disabled={saving}>Atrás</Button><Button variant="primary" onClick={guardar} disabled={saving || busy || !puedeGuardar}>{saving ? "Guardando…" : soloFotos ? "Guardar fotos y notas" : "Guardar estimación"}</Button></div>
         </section>
       )}
       {modalSalida}

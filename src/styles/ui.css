@@ -3514,3 +3514,7 @@ a.flow-back, a.flow-back:hover { text-decoration: none; }
 /* Información secundaria de Hoy: se consulta cuando hace falta. */
 .home-disclosure > summary { min-height: var(--pl-touch); padding: var(--pl-space-3) 0; cursor: pointer; font-size: var(--pl-text-ui); font-weight: var(--pl-weight-medium); }
 .home-disclosure > div { margin-top: var(--pl-space-3); }
+.form-optional { border: var(--pl-hairline) dashed var(--pl-strong-line); border-radius: var(--pl-radius-panel); padding: 12px 14px; }
+.form-optional > summary { cursor: pointer; list-style: none; display: flex; flex-direction: column; gap: 2px; }
+.form-optional > summary::-webkit-details-marker { display: none; }
+.form-optional[open] > summary { margin-bottom: 4px; }
