@@ -1364,6 +1364,18 @@ p {
   font-size: var(--pl-text-md);
 }
 
+.help-list { display: flex; flex-direction: column; border-top: var(--pl-hairline) solid var(--pl-line); }
+.help-item { border-bottom: var(--pl-hairline) solid var(--pl-line); padding: 4px 0 14px; }
+.help-item > summary { min-height: var(--pl-touch); display: flex; align-items: center; cursor: pointer; font-size: var(--pl-text-ui); font-weight: var(--pl-weight-medium); }
+.help-item > h2 { margin: 12px 0 4px; }
+.help-steps { margin: 6px 0 12px; padding-left: 22px; display: grid; gap: 8px; font-size: var(--pl-text-md); line-height: 1.5; }
+.help-glossary { margin: 0; display: grid; gap: 10px; }
+.help-glossary > div { display: grid; gap: 2px; padding: 10px 0; border-top: var(--pl-hairline) solid var(--pl-line); font-size: var(--pl-text-md); line-height: 1.45; }
+.help-glossary dt { font-weight: var(--pl-weight-medium); }
+.help-glossary dd { margin: 0; color: var(--pl-muted); }
+.install-hint { display: flex; align-items: center; gap: 12px; padding: 12px 14px; }
+.install-hint strong { display: block; font-size: var(--pl-text-sm); font-weight: var(--pl-weight-medium); }
+.install-hint small { display: block; font-size: var(--pl-text-xs); }
 .empty-line { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .empty-line .link-button, .empty-line .link-inline { font-size: var(--pl-text-sm); font-weight: var(--pl-weight-medium); }
 .notice > span { flex: 1 1 auto; min-width: 0; }

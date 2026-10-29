@@ -9,6 +9,7 @@ import { TaskRow } from "@/components/project/task-row";
 import { TaskDialog } from "@/components/project/task-dialog";
 import { budgetHistory } from "@/lib/budget-history";
 import { Onboarding } from "@/components/onboarding";
+import { InstallHint } from "@/components/install-hint";
 import { queToca, etapas } from "@/lib/siguiente-paso";
 import { can, dateLabel, type Task } from "@/lib/domain";
 import { buildAgenda, buildAlerts, greeting, localDate, longDate, type AgendaTask } from "@/lib/hoy";
@@ -64,6 +65,7 @@ export default function HoyPage() {
       </div>
 
       <Onboarding />
+      <InstallHint />
 
       <div className="detail">
         <section style={{ display: "flex", flexDirection: "column", gap: 4 }}>
