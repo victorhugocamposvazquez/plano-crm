@@ -20,6 +20,7 @@ import { BudgetWorkspace } from "@/components/project/budget-workspace";
 import { ProjectMenu } from "@/components/project/project-menu";
 import { NextStep } from "@/components/project/next-step";
 import { AddToBudget } from "@/components/plan/add-to-budget";
+import { BudgetDoors } from "@/components/plan/budget-doors";
 import { cargarBorrador } from "@/lib/plano-flujo";
 import { budgetHistory } from "@/lib/budget-history";
 import { siguientePaso, type TipoAccion } from "@/lib/siguiente-paso";
@@ -101,13 +102,15 @@ export default function ObraPage() {
   if(!hydrated || loading)return <p className="muted">Cargando el proyecto…</p>;
   if(!project)return <div className="empty"><strong>Proyecto no encontrado</strong><LinkButton href="/proyectos" variant="ghost">Volver a proyectos</LinkButton></div>;
   const progress=projectProgress(data,project.id),meterTone=progressTone({overdue:pendingTasks.filter(t=>t.due_date<localDate()).length,done:project.status==="completed" || progress>=100});
-  const add=<AddToBudget planoHref={`/proyectos/${project.id}/plano${budget?`?p=${budget.id}`:""}`} visitaHref={`/proyectos/nueva?proyecto=${project.id}`} haPresupuesto={budgets.length>0} borradorPlano={borradorPlano} onManual={()=>{if(!budget)void crearPresupuesto();else if(editable)editBudget();else{navigate({s:"budget",vista:"items",v:current?.id});}}}/>;
+  const planoHref=`/proyectos/${project.id}/plano${budget?`?p=${budget.id}`:""}`,fotosHref=`/proyectos/nueva?proyecto=${project.id}`;
+  const aMano=()=>{if(!budget)void crearPresupuesto();else if(editable)editBudget();else{navigate({s:"budget",vista:"items",v:current?.id});}};
+  const add=<AddToBudget planoHref={planoHref} visitaHref={fotosHref} haPresupuesto={budgets.length>0} borradorPlano={borradorPlano} onManual={aMano}/>;
   const taskRows=(rows:Task[])=>rows.map(task=><TaskRow key={task.id} task={task} canToggle={canToggle} pending={pendingTask===task.id} showDate compact onToggle={toggleTask} onOpen={setAbierta}/>);
 
   return <div className="page project-workspace">
     <header className="project-heading">
       <div className="eyebrow"><BackLink fallback="/proyectos">Proyectos</BackLink><span>· {project.code}</span></div>
-      <div className="page-head"><div><h1 className="h1">{project.name}</h1><p className="subtitle">{[project.client_name,project.location].filter(Boolean).join(" · ")}</p></div><div className="head-actions"><Button variant="secondary" className="chat-launcher" onClick={()=>navigate({chat:"1"})} aria-haspopup="dialog" aria-expanded={chatAbierto}><MessageSquare size={17} aria-hidden="true"/>Chat</Button><ProjectMenu project={project} approvedVersion={approved} puedeEstimar={canBudget} onChat={()=>navigate({chat:"1"})} solicitud={solicitud} onAtendida={()=>setSolicitud(null)}/></div></div>
+      <div className="page-head"><div><h1 className="h1">{project.name}</h1><p className="subtitle">{[project.client_name,project.location].filter(Boolean).join(" · ")}</p></div><div className="head-actions">{canBudget && <BudgetDoors planoHref={planoHref} fotosHref={fotosHref} onManual={aMano}/>}<Button variant="secondary" className="chat-launcher" onClick={()=>navigate({chat:"1"})} aria-haspopup="dialog" aria-expanded={chatAbierto}><MessageSquare size={17} aria-hidden="true"/>Chat</Button><ProjectMenu project={project} approvedVersion={approved} puedeEstimar={canBudget} onChat={()=>navigate({chat:"1"})} solicitud={solicitud} onAtendida={()=>setSolicitud(null)}/></div></div>
     </header>
     <Tabs label="Secciones del proyecto" value={section} onChange={selectSection} options={[{id:"overview",label:"Resumen"},{id:"budget",label:"Presupuesto"},{id:"work",label:"Obra"},{id:"documents",label:"Documentos"},{id:"purchases",label:"Compras"}]}/>
 

@@ -2,7 +2,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { House, Layers2, CalendarDays, Users, Menu, Plus, Search } from "lucide-react";
+import { House, Layers2, CalendarDays, Users, Menu, Plus, Search, FileText, BookOpen, Package, FolderOpen, Wallet } from "lucide-react";
 import { CommandPalette } from "@/components/command-palette";
 import { Brand } from "@/components/ui/brand";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -13,15 +13,19 @@ import { roleNames } from "@/lib/domain";
 const iconProps = { size: 19, strokeWidth: 1.55, "aria-hidden": true } as const;
 
 /** Las cuatro primeras entradas son las de la navegación inferior en móvil. */
-/** Cinco entradas, iguales en móvil y escritorio. El resto de secciones viven en «Más» y en el buscador (⌘K). */
+/** En móvil, cinco entradas (las marcadas como principales); en tablet y escritorio, el menú completo. */
 const items = [
   { href: "/", label: "Hoy", icon: House, primary: true, exact: true },
   { href: "/proyectos", label: "Proyectos", icon: Layers2, primary: true },
   { href: "/agenda", label: "Agenda", icon: CalendarDays, primary: true },
   { href: "/clientes", label: "Clientes", icon: Users, primary: true },
+  { href: "/presupuestos", label: "Presupuestos", icon: FileText },
+  { href: "/catalogo", label: "Catálogo", icon: BookOpen },
+  { href: "/compras", label: "Compras", icon: Package },
+  { href: "/documentos", label: "Documentos", icon: FolderOpen },
+  { href: "/finanzas", label: "Finanzas", icon: Wallet },
   { href: "/mas", label: "Más", icon: Menu, primary: true }
 ];
-/** Secciones que cuelgan de «Más»: cuando se está en una de ellas, «Más» queda marcado. */
 const secundarias = ["/presupuestos", "/catalogo", "/compras", "/documentos", "/finanzas", "/configuracion", "/sistema", "/laboratorio"];
 
 export function AppShell({ children }: { children: ReactNode }) {
@@ -45,7 +49,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         <button type="button" className="nav-search" onClick={() => setSearch(true)} aria-label="Buscar en Plano" title="Buscar (⌘K)"><Search size={17} strokeWidth={1.7} aria-hidden="true" /><span>Buscar…</span><span className="pl-mono">⌘K</span></button>
         {items.map(item => {
           const Icon = item.icon;
-          const active = item.href === "/mas" ? (isActive(item.href, item.exact) || secundarias.some(h => isActive(h, false))) : isActive(item.href, item.exact);
+          const active = isActive(item.href, item.exact) || (item.href === "/mas" && secundarias.some(h => isActive(h, false)) && !items.some(o => o.href !== "/mas" && isActive(o.href, o.exact)));
           return (
             <Link key={item.href} prefetch={false} href={item.href} className="nav-item" data-primary={item.primary || undefined} aria-current={active ? "page" : undefined} aria-label={item.label} title={item.label}>
               <span className="nav-icon"><Icon {...iconProps} /></span>
