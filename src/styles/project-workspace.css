@@ -184,10 +184,15 @@ button.overview-card:hover { border-color: var(--pl-strong-line); }
 .editor-advanced > summary { min-height: var(--pl-touch); display: flex; align-items: center; cursor: pointer; color: var(--pl-blue); font-size: var(--pl-text-sm); }
 .editor-advanced > .field { margin-top: var(--pl-space-4); }
 .editor-advanced .editor-item-tools { margin-top: var(--pl-space-3); }
-.editor-grid-primary .editor-amount { grid-column: 1 / -1; }
+/* Cantidad · precio · importe en una sola línea también en móvil: el importe no necesita etiqueta propia. */
+.editor-grid-primary { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) auto; }
+.editor-grid-primary .editor-amount { grid-column: auto; min-width: 88px; }
+@media (max-width: 767px) {
+  .editor-grid-primary .editor-amount > span:first-child { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .editor-grid-primary .editor-amount { align-self: end; }
+}
 .editor .search-clear { min-width: var(--pl-touch); min-height: var(--pl-touch); }
 @media (min-width: 768px) {
   .budget-comparison-pickers, .comparison-text-pair { grid-template-columns: repeat(2,minmax(0,1fr)); }
   .comparison-fields dd { grid-template-columns: repeat(2,minmax(0,1fr)); }
-  .editor-grid-primary .editor-amount { grid-column: auto; }
 }
