@@ -59,7 +59,7 @@ export function BudgetWorkspace({budget,versions,onNavigate,onEdit,canEdit,addin
           const fecha=estado==="approved" && v.approved_at?`aprobada el ${dateLabel(v.approved_at)}`:estado==="draft"?`editada el ${dateLabel(v.updated_at)}`:estado==="issued"?`cerrada el ${dateLabel(v.updated_at)}`:dateLabel(v.updated_at);
           return <button key={v.id} type="button" className="version-pill" data-state={estado} data-actual={actual||undefined} aria-pressed={v.id===shown.id} onClick={()=>showVersion(v)}>
           {actual?<span className="pulse-dot" aria-hidden="true"/>:<span className="version-mark" data-state={estado} aria-hidden="true">{estado==="approved" && <Check size={10} strokeWidth={3}/>}</span>}
-          <span className="version-text"><span>V{v.number}<small>· {label}</small>{actual && <em className="version-actual">Actual</em>}</span><small className="version-date">{fecha}</small></span>
+          <span className="version-text"><span>V{v.number}<small>· {label}</small></span><small className="version-date">{actual && <em className="version-actual">Actual</em>}{fecha}</small></span>
         </button>;})}
       </div>
 

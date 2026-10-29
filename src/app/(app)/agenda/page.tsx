@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
-import { CalendarDays, ChevronLeft, ChevronRight, Plus, X } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Plus, X, SlidersHorizontal } from "lucide-react";
+import { Modal } from "@/components/ui/modal";
 import { useWorkspace } from "@/components/workspace-provider";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -26,6 +27,8 @@ export default function AgendaPage() {
   const lunes = lunesDe(dia);
   const mes = primerDiaMes(dia);
   const [carga, setCarga] = useState<"trade" | "assignee">("trade");
+  const [filtrosAbiertos, setFiltrosAbiertos] = useState(false);
+  const firstName = actor.name.split(/[\s·]+/)[0] ?? "";
   const [adding, setAdding] = useState(false);
   const [nuevaParam, setNuevaParam] = useQueryState<"1" | "">("nueva", "");
   useEffect(() => { if (nuevaParam === "1") { setAdding(true); setNuevaParam(""); } }, [nuevaParam, setNuevaParam]);
@@ -44,6 +47,11 @@ export default function AgendaPage() {
   const listaOficios = useMemo(() => oficios(data.tasks), [data.tasks]);
   const listaPersonas = useMemo(() => personas(data.tasks), [data.tasks]);
   const diaVisible = vista === "semana" ? (diasDeSemana(lunes).includes(dia) ? dia : lunes) : dia;
+  // En la semana, además del día elegido se listan los demás días con tareas: la semana se lee sin tocar cada día.
+  const otrosDias = vista === "semana" ? diasDeSemana(lunes).filter(d => d !== diaVisible && (porDias.get(d) ?? []).length > 0) : [];
+  const pendientesSemana = diasDeSemana(lunes).reduce((n, d) => n + (porDias.get(d) ?? []).filter(t => t.status === "pending").length, 0);
+  const miasPosible = listaPersonas.includes(firstName);
+  const textoFiltros = [filtros.oficio || "Todos los oficios", filtros.persona || "todas las personas"].join(" · ");
   const tareasDelDia = vista === "semana" ? (porDias.get(diaVisible) ?? []) : (delMes.get(diaVisible) ?? []);
   // El diálogo lee la tarea viva del espacio, para que al completarla desde dentro se refresque.
   const tareaAbierta = abierta ? data.tasks.find(t => t.id === abierta.id) ?? null : null;
@@ -76,7 +84,7 @@ export default function AgendaPage() {
   const Lista = ({ tareas, vacio, conFecha = false }: { tareas: TareaAgenda[]; vacio: string; conFecha?: boolean }) => (
     tareas.length === 0
       ? <p className="muted text-sm" style={{ padding: "8px 0" }}>{vacio}</p>
-      : <div>{tareas.map(t => <TaskRow key={t.id} task={t} projectName={t.project.name} canToggle={canToggle} pending={pending === t.id} showDate={conFecha} onToggle={toggle} onOpen={setAbierta} />)}</div>
+      : <div>{tareas.map(t => <TaskRow key={t.id} task={t} projectName={t.project.name} canToggle={canToggle} pending={pending === t.id} showDate={conFecha} compact onToggle={toggle} onOpen={setAbierta} />)}</div>
   );
 
   return (
@@ -87,7 +95,7 @@ export default function AgendaPage() {
           <h1 className="h1">Agenda de oficios.</h1>
           {canCreate && <Button variant={adding ? "secondary" : "primary"} className="btn-new" aria-expanded={adding} onClick={() => { setAdding(v => !v); setForm(f => ({ ...f, due_date: diaVisible, project_id: f.project_id || data.projects.find(p => p.status === "active")?.id || data.projects[0]?.id || "" })); }}>{adding ? <X size={17} strokeWidth={1.8} aria-hidden="true" /> : <Plus size={17} strokeWidth={1.8} aria-hidden="true" />}{adding ? "Cerrar" : "Nueva tarea"}</Button>}
         </div>
-        <p className="subtitle">{loading ? "Cargando…" : "Quién está en qué proyecto cada día. La disponibilidad por trabajador y las horas llegarán con el dominio."}</p>
+        <p className="subtitle">{loading ? "Cargando…" : `${pendientesSemana} ${pendientesSemana === 1 ? "tarea pendiente" : "tareas pendientes"} esta semana · quién está en qué proyecto cada día`}</p>
       </div>
 
       {adding && canCreate && (
@@ -118,7 +126,17 @@ export default function AgendaPage() {
         </div>
       </div>
 
-      <div className="filters">
+      <div className="filters-compact" role="group" aria-label="Filtros">
+        <button type="button" className="chip" aria-pressed={Boolean(filtros.oficio || filtros.persona)} aria-haspopup="dialog" onClick={() => setFiltrosAbiertos(true)}><SlidersHorizontal size={14} strokeWidth={1.7} aria-hidden="true" />{textoFiltros}</button>
+        {miasPosible && <button type="button" className="chip" aria-pressed={filtros.persona === firstName} onClick={() => setFiltros({ ...filtros, persona: filtros.persona === firstName ? "" : firstName })}>Solo las mías</button>}
+      </div>
+      <Modal open={filtrosAbiertos} onClose={() => setFiltrosAbiertos(false)} title="Filtrar la agenda" footer={<><Button variant="ghost" onClick={() => { setFiltros({ oficio: "", persona: "" }); }} disabled={!filtros.oficio && !filtros.persona}>Quitar filtros</Button><Button variant="primary" onClick={() => setFiltrosAbiertos(false)}>Listo</Button></>}>
+        <div className="form" style={{ maxWidth: "none" }}>
+          <div className="field"><span>Oficio</span><Select label="Filtrar por oficio" value={filtros.oficio} onChange={v => setFiltros({ ...filtros, oficio: v })} options={[{ value: "", label: "Todos los oficios" }, ...listaOficios.map(o => ({ value: o, label: o }))]} /></div>
+          <div className="field"><span>Persona</span><Select label="Filtrar por persona" value={filtros.persona} onChange={v => setFiltros({ ...filtros, persona: v })} options={[{ value: "", label: "Todas las personas" }, ...listaPersonas.map(p => ({ value: p, label: p }))]} /></div>
+        </div>
+      </Modal>
+      <div className="filters filters-wide">
         <Select size="sm" label="Filtrar por oficio" value={filtros.oficio} onChange={v => setFiltros({ ...filtros, oficio: v })} options={[{ value: "", label: "Todos los oficios" }, ...listaOficios.map(o => ({ value: o, label: o }))]} />
         <Select size="sm" label="Filtrar por persona" value={filtros.persona} onChange={v => setFiltros({ ...filtros, persona: v })} options={[{ value: "", label: "Todas las personas" }, ...listaPersonas.map(p => ({ value: p, label: p }))]} />
         {(filtros.oficio || filtros.persona) && <Button variant="ghost" onClick={() => setFiltros({ oficio: "", persona: "" })}>Quitar filtros</Button>}
@@ -156,13 +174,20 @@ export default function AgendaPage() {
             </div>
           )}
 
-          <div className="section-label" style={{ marginTop: 16 }}><span className={diaVisible === hoy ? "warning" : undefined}>{etiquetaDia(diaVisible, true)}</span><span className="pl-mono">{tareasDelDia.length}</span></div>
+          <div className="section-label" style={{ marginTop: 16 }}><span className={diaVisible === hoy ? "warning" : undefined}>{etiquetaDia(diaVisible, true)}{diaVisible === hoy ? " · hoy" : ""}</span><span className="pl-mono">{tareasDelDia.length}</span></div>
           <Lista tareas={tareasDelDia} vacio="Sin tareas este día." />
+          {otrosDias.map(d => <div key={d}><div className="section-label"><span className={d === hoy ? "warning" : undefined}>{etiquetaDia(d, true)}{d === hoy ? " · hoy" : ""}</span><span className="pl-mono">{(porDias.get(d) ?? []).length}</span></div><Lista tareas={porDias.get(d) ?? []} vacio="" /></div>)}
         </section>
 
         <aside className="zone" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-          <div>
-            <div className="section-label" style={{ marginTop: 0 }}><span>Carga de la semana</span><span className="pl-mono">{cargas.reduce((s, c) => s + c.pendientes, 0)} pend.</span></div>
+          {atrasadas.length > 0 && (
+            <div>
+              <div className="section-label" style={{ marginTop: 0 }}><span className="danger">Pendientes de semanas anteriores</span><span className="pl-mono">{atrasadas.length}</span></div>
+              <Lista tareas={atrasadas} vacio="" conFecha />
+            </div>
+          )}
+          <details className="home-disclosure"><summary>Carga de la semana · {cargas.reduce((s, c) => s + c.pendientes, 0)} pend.</summary>
+          <div style={{ marginTop: 10 }}>
             <div className="view-toggle" role="group" aria-label="Agrupar la carga" style={{ marginBottom: 10 }}>
               <button type="button" aria-pressed={carga === "trade"} onClick={() => setCarga("trade")}>Por oficio</button>
               <button type="button" aria-pressed={carga === "assignee"} onClick={() => setCarga("assignee")}>Por persona</button>
@@ -176,13 +201,7 @@ export default function AgendaPage() {
                 </div>
               ))}
             </div>
-          </div>
-          {atrasadas.length > 0 && (
-            <div>
-              <div className="section-label" style={{ marginTop: 0 }}><span className="danger">Pendientes de semanas anteriores</span><span className="pl-mono">{atrasadas.length}</span></div>
-              <Lista tareas={atrasadas} vacio="" conFecha />
-            </div>
-          )}
+          </div></details>
         </aside>
       </div>
 

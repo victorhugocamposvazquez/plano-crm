@@ -1573,6 +1573,12 @@ p {
   font-size: var(--pl-text-xs);
 }
 
+/* Agenda en móvil: los dos selectores se recogen en un chip que dice qué filtra y abre un diálogo (lienzo «Usabilidad Plano»). */
+.filters-compact { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; }
+.filters-compact::-webkit-scrollbar { display: none; }
+.filters-compact .chip { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; }
+.filters.filters-wide { display: none; }
+@media (min-width: 768px) { .filters-compact { display: none; } .filters.filters-wide { display: flex; } }
 .filters {
   display: flex;
   flex-wrap: wrap;
