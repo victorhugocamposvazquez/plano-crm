@@ -89,19 +89,20 @@ button.overview-card:hover { border-color: var(--pl-strong-line); }
 .version-pill { flex: 0 0 auto; display: inline-flex; align-items: center; gap: var(--pl-space-2); min-height: 40px; padding: 0 var(--pl-space-3); border: var(--pl-hairline) solid var(--pl-line); border-radius: var(--pl-radius-control); background: var(--pl-surface); color: var(--pl-ink); font: inherit; font-size: var(--pl-text-md); font-weight: var(--pl-weight-medium); cursor: pointer; white-space: nowrap; }
 .version-pill[aria-pressed="true"] { border: var(--pl-hairline-active) solid var(--pl-ink); background: var(--pl-soft); }
 .version-pill small { font-size: var(--pl-text-sm); font-weight: var(--pl-weight-regular); color: var(--pl-muted); }
-.version-pill[data-state="approved"] small { color: var(--pl-success); }
+.version-pill[data-state="approved"] small { color: var(--pl-ink); }
+.version-pill[data-actual] small { color: var(--pl-success); }
 .version-pill[data-state="draft"] small { color: var(--pl-warning); }
 .version-pill[data-state="issued"] small { color: var(--pl-info); }
-/* La actual: pulso azul (en curso) y la palabra «Actual»; el verde queda solo para «aprobada». Debajo, la fecha. */
-.version-pill { min-height: 48px; padding: 0 var(--pl-space-3); align-items: center; }
-.version-pill .pulse-dot { margin: 0 4px 0 2px; background: var(--pl-info); }
-.version-pill .pulse-dot::after { border-color: var(--pl-info); }
+/* El verde es de la versión actual (pulso y etiqueta «Actual», decisión de Hugo); «aprobada» se marca en tono neutro. Debajo, la fecha. */
+.version-pill { flex: 1 1 0; min-width: 0; min-height: 48px; padding: 0 var(--pl-space-3); align-items: center; }
+.version-text > span { flex-wrap: wrap; }
+.version-pill .pulse-dot { margin: 0 4px 0 2px; }
 .version-text { display: flex; flex-direction: column; gap: 1px; line-height: 1.2; }
 .version-text > span { display: inline-flex; align-items: center; gap: 4px; }
-.version-actual { margin-left: 4px; padding: 1px 6px; border-radius: var(--pl-radius-full); background: var(--pl-info-bg); color: var(--pl-info); font-style: normal; font-size: 10px; font-weight: var(--pl-weight-semibold); letter-spacing: 0.06em; text-transform: uppercase; }
-.version-date { font-size: var(--pl-text-xs); font-weight: var(--pl-weight-regular); color: var(--pl-muted); }
+.version-actual { margin-right: 6px; padding: 1px 6px; border-radius: var(--pl-radius-full); background: var(--pl-success-bg); color: var(--pl-success); font-style: normal; font-size: 10px; font-weight: var(--pl-weight-semibold); letter-spacing: 0.06em; text-transform: uppercase; }
+.version-date { display: inline-flex; align-items: center; flex-wrap: wrap; font-size: var(--pl-text-xs); font-weight: var(--pl-weight-regular); color: var(--pl-muted); }
 .version-mark { width: 16px; height: 16px; border-radius: var(--pl-radius-full); display: inline-flex; align-items: center; justify-content: center; flex: 0 0 auto; background: var(--pl-raised); }
-.version-mark[data-state="approved"] { background: var(--pl-success-bg); color: var(--pl-success); }
+.version-mark[data-state="approved"] { background: var(--pl-raised); color: var(--pl-ink); }
 .version-mark[data-state="draft"] { width: 8px; height: 8px; margin: 0 4px; background: var(--pl-warning); }
 .version-mark[data-state="issued"] { width: 8px; height: 8px; margin: 0 4px; background: var(--pl-info); }
 .budget-total-head { display: grid; grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "eyebrow tools" "figure tools" "base tools" "meta tools"; column-gap: var(--pl-space-4); row-gap: 2px; align-items: start; }
