@@ -1,7 +1,7 @@
 "use client";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Menu, FileText, BookOpen, Users, Package, FolderOpen, Wallet, ChevronRight, UserRound, Palette, FolderDown } from "lucide-react";
+import { Menu, FileText, BookOpen, Users, Package, FolderOpen, Wallet, ChevronRight, UserRound, Palette, FolderDown, ShieldCheck } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
 import { AccountDialog } from "@/components/account-dialog";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -22,6 +22,16 @@ const entradas = [
 export default function MasPage() {
   const { actor, data, mode } = useWorkspace();
   const [account, setAccount] = useState(false);
+  const [superadmin, setSuperadmin] = useState(false);
+  useEffect(() => {
+    setSuperadmin(false);
+    if (mode !== "supabase") return;
+    const controller = new AbortController();
+    fetch("/sistema/acceso", { cache: "no-store", signal: controller.signal }).then(async response => {
+      if (response.ok && !controller.signal.aborted) setSuperadmin((await response.json()).allowed === true);
+    }).catch(() => {});
+    return () => controller.abort();
+  }, [mode, actor.id]);
   const initials = actor.name.split(/[\s·]+/).filter(Boolean).slice(0, 2).map(w => w[0]?.toUpperCase()).join("");
 
   return (
@@ -47,6 +57,8 @@ export default function MasPage() {
           </Link>
         ); })}
       </nav>
+
+      {superadmin && <Link prefetch={false} href="/sistema" className="more-item"><ShieldCheck size={19} aria-hidden="true"/><span><strong>Supervisión del sistema</strong><small className="muted">Documentación, estado del producto y registro de cambios</small></span><ChevronRight size={16} aria-hidden="true"/></Link>}
 
       <div className="account-row zone" style={{ padding: "12px 16px" }}>
         <span className="text-sm">Tema de la interfaz</span>
