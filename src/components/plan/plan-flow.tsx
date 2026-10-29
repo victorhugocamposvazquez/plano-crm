@@ -11,7 +11,7 @@ import { pdfExtractionSchema, colorCss } from "@/lib/captura/pdf-extraction";
 import { samplePlan } from "@/lib/captura/sample-plan";
 import { can, money, lineTotal, type Project, type BudgetItem } from "@/lib/domain";
 import { formatSize } from "@/lib/documentos";
-import { borradorNuevo, cargarBorrador, guardarBorrador, borrarBorrador, añadirPlano, quitarPlano, usos, nombreUso, paginaDe, planoParaMedir, mismaHoja, medidaDe, escalaDe, escala, planosSinEscala, colores, cuentaComoPared, puntoCercano, paredes as calcularParedes, resumenParedes, trabajos, articulosMedibles, sugerirArticulo, cantidadTrabajo, asegurarIds, propuesta as calcularPropuesta, coincidencias, fusionar, numero, type Borrador, type Paso, type PlanoCargado, type Decision } from "@/lib/plano-flujo";
+import { borradorNuevo, cargarBorrador, guardarBorrador, borrarBorrador, añadirPlano, quitarPlano, usos, nombreUso, paginaDe, planoParaMedir, mismaHoja, comparteEscala, confirmarEscalaCompartida, cambiarPagina, medidaDe, escalaDe, escala, planosSinEscala, colores, cuentaComoPared, puntoCercano, paredes as calcularParedes, resumenParedes, trabajos, articulosMedibles, sugerirArticulo, cantidadTrabajo, huecosTrabajo, asegurarIds, propuesta as calcularPropuesta, coincidencias, fusionar, numero, type Borrador, type Paso, type PlanoCargado, type Decision } from "@/lib/plano-flujo";
 
 const pasos: { n: Paso; titulo: string; corto: string }[] = [
   { n: 1, titulo: "Tus planos", corto: "Planos" }, { n: 2, titulo: "Dale una medida", corto: "Medida" }, { n: 3, titulo: "Confirma las paredes", corto: "Paredes" },
@@ -22,7 +22,7 @@ type Vista = { medida: boolean };
 
 /**
  * Flujo «Presupuestar desde un plano». Un expediente trae varios planos de la misma vivienda: cada uno dice
- * para qué sirve, comparten una medida cuando son la misma hoja y cada trabajo toma su cantidad del plano que
+ * para qué sirve, comparten una medida tras confirmar que tienen la misma escala y cada trabajo toma su cantidad del plano que
  * le toca. Cinco pasos con palabras de obra; la X siempre arriba; el borrador se guarda en este navegador.
  */
 export function PlanFlow({ project, budgetId }: { project: Project; budgetId: string | null }) {
@@ -67,7 +67,10 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
   useEffect(() => { if (b.paso !== 4) return; setB(prev => { let cambiado = false; const t = { ...prev.trabajos }; for (const tr of trabajos) if (!t[tr.id].articleId) { const a = sugerirArticulo(data.articles, tr); if (a) { t[tr.id] = { ...t[tr.id], articleId: a.id }; cambiado = true; } } return cambiado ? { ...prev, trabajos: t } : prev; }); }, [b.paso, data.articles]);
 
   const set = (patch: Partial<Borrador>) => setB(prev => ({ ...prev, ...patch }));
-  const actualizarPlano = (id: string, patch: Partial<PlanoCargado>) => setB(prev => ({ ...prev, planos: prev.planos.map(p => (p.id === id ? { ...p, ...patch } : p)) }));
+  const actualizarPlano = (id: string, patch: Partial<PlanoCargado>) => setB(prev => {
+    const siguiente = patch.page === undefined ? prev : cambiarPagina(prev, id, patch.page);
+    return { ...siguiente, planos: siguiente.planos.map(p => p.id === id ? { ...p, ...patch } : p) };
+  });
   const ir = (paso: Paso) => { set({ paso }); window.scrollTo({ top: 0 }); };
 
   async function subir(e: ChangeEvent<HTMLInputElement>) {
@@ -104,19 +107,19 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
     if (!planoMedida) return;
     const page = paginaDe(planoMedida);
     const q = puntoCercano(page, p, Math.max(page.width, page.height) / 60);
-    const propia = base && base.id !== planoMedida.id && !mismaHoja(base, planoMedida);
+    const propia = base && base.id !== planoMedida.id;
     setB(prev => {
-      if (propia) { const m = prev.planos.find(x => x.id === planoMedida.id)?.medida ?? { start: null, end: null, metros: prev.medida.metros }; const nueva = !m.start || (m.start && m.end) ? { ...m, start: q, end: null } : { ...m, end: q }; return { ...prev, planos: prev.planos.map(x => (x.id === planoMedida.id ? { ...x, medida: nueva } : x)) }; }
+      if (propia) { const m = prev.planos.find(x => x.id === planoMedida.id)?.medida ?? { start: null, end: null, metros: prev.medida.metros }; const nueva = !m.start || (m.start && m.end) ? { ...m, start: q, end: null } : { ...m, end: q }; return { ...prev, planos: prev.planos.map(x => (x.id === planoMedida.id ? { ...x, medida: nueva, escalaConfirmada: undefined } : x)) }; }
       const m = prev.medida; const nueva = !m.start || (m.start && m.end) ? { ...m, start: q, end: null, planoId: planoMedida.id } : { ...m, end: q };
       return { ...prev, medida: nueva };
     });
   }
-  const medidaEnPantalla = (() => { if (!planoMedida) return null; const propia = base && base.id !== planoMedida.id && !mismaHoja(base, planoMedida); return propia ? (planoMedida.medida ?? { start: null, end: null, metros: "" }) : b.medida; })();
-  const metrosEnPantalla = (v: string) => { if (!planoMedida) return; const propia = base && base.id !== planoMedida.id && !mismaHoja(base, planoMedida); if (propia) actualizarPlano(planoMedida.id, { medida: { ...(planoMedida.medida ?? { start: null, end: null, metros: "" }), metros: v } }); else set({ medida: { ...b.medida, metros: v } }); };
+  const medidaEnPantalla = (() => { if (!planoMedida) return null; const propia = base && base.id !== planoMedida.id; return propia ? (planoMedida.medida ?? { start: null, end: null, metros: "" }) : b.medida; })();
+  const metrosEnPantalla = (v: string) => { if (!planoMedida) return; const propia = base && base.id !== planoMedida.id; if (propia) actualizarPlano(planoMedida.id, { medida: { ...(planoMedida.medida ?? { start: null, end: null, metros: "" }), metros: v }, escalaConfirmada: undefined }); else set({ medida: { ...b.medida, metros: v } }); };
   function reiniciarMedida() {
     if (!planoMedida) return;
-    const propia = base && base.id !== planoMedida.id && !mismaHoja(base, planoMedida);
-    if (propia) actualizarPlano(planoMedida.id, { medida: { start: null, end: null, metros: planoMedida.medida?.metros ?? "" } });
+    const propia = base && base.id !== planoMedida.id;
+    if (propia) actualizarPlano(planoMedida.id, { medida: { start: null, end: null, metros: planoMedida.medida?.metros ?? "" }, escalaConfirmada: undefined });
     else set({ medida: { ...b.medida, start: null, end: null } });
   }
   const alternarPared = (id: string) => setB(prev => ({ ...prev, noParedes: prev.noParedes.includes(id) ? prev.noParedes.filter(x => x !== id) : [...prev.noParedes, id] }));
@@ -129,7 +132,7 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
   const sumaNuevos = nuevos.reduce((s, i) => s + lineTotal(i), 0);
 
   async function añadir() {
-    if (!puede || busy || guardando || !nuevos.length) return;
+    if (!puede || busy || guardando || !nuevos.length || pares.some(p => !decisiones[p.nuevo.id]) || (resultado && !("error" in resultado) && resultado.pendientes > 0)) return;
     setGuardando(true);
     try {
       let ws = data; let objetivo = budget;
@@ -140,6 +143,8 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
       if (!borrador) { const baseV = suyas().find(v => v.status === "issued") ?? suyas().find(v => v.id === objetivo!.approved_version_id) ?? suyas()[0]; if (!baseV) throw new Error("El presupuesto no tiene ninguna revisión."); ws = await send({ type: "budget.revise", version_id: baseV.id, reason: "Partidas añadidas desde los planos" }); borrador = suyas().find(v => v.status === "draft"); }
       if (!borrador) throw new Error("No se ha podido abrir un borrador.");
       const paresAhora = coincidencias(borrador.items, nuevos);
+      if (paresAhora.some(p => !decisiones[p.nuevo.id] || !pares.some(visto => visto.nuevo.id === p.nuevo.id && visto.existente.id === p.existente.id)))
+        throw new Error("El presupuesto ha cambiado. Revisa las coincidencias antes de añadir partidas.");
       await send({ type: "budget.save", version_id: borrador.id, expected_revision: borrador.draft_revision, items: fusionar(borrador.items, nuevos, decisiones, paresAhora), notes: borrador.notes });
       borrarBorrador(project.id);
       notify(`${nuevos.length} partida${nuevos.length === 1 ? "" : "s"} de los planos añadida${nuevos.length === 1 ? "" : "s"} a la V${borrador.number}.`);
@@ -154,12 +159,12 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
   const actual = pasos.find(p => p.n === b.paso)!;
   const vista: Vista = { medida: Boolean(b.medida.start && b.medida.end) };
 
-  if (!puede) return <div className="empty"><strong>Tu perfil puede ver el presupuesto, pero no añadir partidas.</strong><Link href={salida} className="btn btn-secondary">Volver a la ficha</Link></div>;
+  if (!puede) return <div className="empty"><strong>Tu perfil puede ver el presupuesto, pero no añadir partidas.</strong><Link prefetch={false} href={salida} className="btn btn-secondary">Volver a la ficha</Link></div>;
 
   return (
     <div className="flow">
       <header className="flow-head">
-        <Link href={salida} className="flow-back" title="Volver al proyecto"><ArrowLeft size={15} strokeWidth={1.8} aria-hidden="true" /><span>{project.name}</span></Link>
+        <Link prefetch={false} href={salida} className="flow-back" title="Volver al proyecto"><ArrowLeft size={15} strokeWidth={1.8} aria-hidden="true" /><span>{project.name}</span></Link>
         <div className="flow-head-text"><span className="eyebrow">{cabeceraDestino}</span><span className="muted text-xs flow-head-save">Se guarda solo en este navegador</span></div>
         <button type="button" className="btn btn-icon" aria-label="Salir y volver al proyecto" title="Salir · el borrador se guarda" onClick={salir}><X size={19} strokeWidth={1.6} aria-hidden="true" /></button>
       </header>
@@ -219,18 +224,21 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
           <div className="plan-stage"><PlanSvg page={paginaDe(planoMedida)} medida={medidaEnPantalla ?? undefined} onPick={marcar} label={`${planoMedida.nombre}: toca dos puntos para marcar una medida conocida`} /></div>
           <div className="flow-side">
             {b.planos.length > 1 && <Select label="Medir en" value={planoMedida.id} onChange={v => setMidiendo(v)} options={b.planos.map(p => ({ value: p.id, label: `${p.nombre} · ${nombreUso(p.uso)}` }))} />}
-            <p className="muted">Toca los dos extremos de una cota que conozcas y escribe cuánto mide. Con una basta: los planos de la misma hoja la comparten.</p>
+            <p className="muted">Toca los dos extremos de una cota que conozcas y escribe cuánto mide. Puedes usar una sola medida si confirmas que los demás planos están a la misma escala. El mismo tamaño de papel no lo garantiza.</p>
             <div className="panel"><div className="panel-body" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               <span className="eyebrow">{!medidaEnPantalla?.start ? "1. Toca el primer extremo" : !medidaEnPantalla.end ? "2. Toca el segundo extremo" : "Esa distancia mide"}</span>
               <label className="field-inline"><input className="input pl-mono" inputMode="decimal" value={medidaEnPantalla?.metros ?? ""} onChange={e => metrosEnPantalla(e.target.value)} placeholder="4,20" aria-label="Metros" style={{ fontSize: 24, maxWidth: 140 }} /><span className="muted">metros</span></label>
               {escalaDe(b, planoMedida) && <span className="muted text-sm"><Ruler size={13} strokeWidth={1.8} aria-hidden="true" /> Escala lista: 1 m son {cantidad(1 / escalaDe(b, planoMedida)!)} unidades del dibujo.</span>}
             </div></div>
             {b.planos.length > 1 && vista.medida && (
-              <ul className="info-list">{b.planos.map(p => { const k = escalaDe(b, p); const comparte = k && medidaDe(b, p) === b.medida && p.id !== b.medida.planoId; return (
-                <li key={p.id} className="info-row" style={{ cursor: "default" }}><span style={{ minWidth: 0, flex: 1 }}><strong>{p.nombre}</strong><small className="muted">{p.id === b.medida.planoId ? "Aquí se ha medido" : comparte ? "Misma hoja · comparte la medida" : k ? "Con su propia medida" : "Otra hoja · necesita su medida"}</small></span>{!k && <Button variant="secondary" onClick={() => setMidiendo(p.id)}>Medir este</Button>}{k ? <Check size={16} strokeWidth={2} aria-hidden="true" style={{ color: "var(--pl-success)" }} /> : null}</li>
+              <ul className="info-list">{b.planos.map(p => { const k = escalaDe(b, p); const comparte = comparteEscala(b, p); return (
+                <li key={p.id} className="info-row plan-scale-row"><span><strong>{p.nombre}</strong><small className="muted">{p.id === b.medida.planoId ? "Aquí se ha medido" : comparte ? "Misma escala confirmada" : k ? "Con su propia medida" : "Escala pendiente"}</small>
+                  {p.id !== b.medida.planoId && <label className="legend-row"><input type="checkbox" aria-label={`Confirmo la misma escala para ${p.nombre} que ${base?.nombre}`} checked={comparte} onChange={e => setB(prev => confirmarEscalaCompartida(prev, p.id, e.target.checked))} />Confirmo la misma escala que {base?.nombre}</label>}
+                  {!k && p.id !== b.medida.planoId && <small className="muted">{base && mismaHoja(base, p) ? "Mismo papel; comprueba la escala escrita o una medida conocida." : "Comprueba la escala o toma una medida propia."}</small>}
+                </span>{p.id !== b.medida.planoId && <Button variant="secondary" onClick={() => setMidiendo(p.id)}>Medir este</Button>}{k ? <Check size={16} strokeWidth={2} aria-hidden="true" style={{ color: "var(--pl-success)" }} /> : null}</li>
               ); })}</ul>
             )}
-            <p className="muted text-sm">¿No hay cotas? Marca un hueco de puerta: suelen medir 0,80 m. Luego podrás corregirlo.</p>
+            <p className="muted text-sm">Usa una distancia conocida o medida en la visita. El ancho de una puerta varía: no lo supongas para fijar la escala.</p>
             <footer className="flow-foot">
               <Button variant="ghost" onClick={reiniciarMedida}><RotateCcw size={15} strokeWidth={1.8} aria-hidden="true" />Marcar otra medida</Button>
               <Button variant="primary" disabled={!escala(b) || sinEscala.length > 0} onClick={() => { setPlanoVisto(conParedes[0]?.id ?? null); ir(3); }}>{sinEscala.length ? `Faltan medidas: ${sinEscala.length}` : <>Siguiente: confirma las paredes<ArrowRight size={16} strokeWidth={1.8} aria-hidden="true" /></>}</Button>
@@ -243,7 +251,7 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
         <div className="flow-body flow-split">
           <div>
             {conParedes.length > 1 && <div className="plan-tabs" role="tablist" aria-label="Plano">{conParedes.map(p => <button key={p.id} type="button" role="tab" className="chip" aria-selected={planoParedes?.id === p.id} onClick={() => setPlanoVisto(p.id)}>{nombreUso(p.uso)} · {p.nombre}</button>)}</div>}
-            {planoParedes ? <div className="plan-stage"><PlanSvg page={paginaDe(planoParedes)} paredes={ps.filter(w => w.planoId === planoParedes.id)} seleccionada={seleccionada} medida={medidaDe(b, planoParedes) ?? undefined} onPared={id => setSeleccionada(id)} label={`${planoParedes.nombre} con las paredes encontradas`} /></div> : <div className="empty"><strong>Ningún plano de demolición u obra nueva</strong><span className="muted text-sm">Vuelve a «Tus planos» y marca cuál es cuál.</span></div>}
+            {planoParedes ? <div className="plan-stage"><PlanSvg page={paginaDe(planoParedes)} paredes={ps.filter(w => w.planoId === planoParedes.id)} seleccionada={seleccionada} medida={comparteEscala(b, planoParedes) ? undefined : medidaDe(b, planoParedes) ?? undefined} onPared={id => setSeleccionada(id)} label={`${planoParedes.nombre} con las paredes encontradas`} /></div> : <div className="empty"><strong>Ningún plano de demolición u obra nueva</strong><span className="muted text-sm">Vuelve a «Tus planos» y marca cuál es cuál.</span></div>}
           </div>
           <div className="flow-side">
             {planoParedes && (
@@ -280,18 +288,19 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
         <div className="flow-body">
           <p className="muted">Marca los trabajos. Las cantidades salen de los planos; el precio, de tu catálogo. Todo se puede cambiar después en el presupuesto.</p>
           <div className="facts-2">
-            <label className="field"><span className="field-label">Altura de las paredes</span><span className="field-inline"><input className="input pl-mono" inputMode="decimal" value={b.altura} onChange={e => set({ altura: e.target.value })} aria-label="Altura en metros" /><span className="muted">m</span></span><small className="muted">2,60 es la habitual en vivienda.</small></label>
-            <label className="field"><span className="field-label">Huecos que no cuentan</span><span className="field-inline"><input className="input pl-mono" inputMode="decimal" value={b.huecos} onChange={e => set({ huecos: e.target.value })} aria-label="Huecos en metros cuadrados" /><span className="muted">m²</span></span><small className="muted">Puertas y ventanas en esas paredes. Una puerta, unos 1,7 m².</small></label>
+            <label className="field"><span className="field-label">Altura de las paredes</span><span className="field-inline"><input className="input pl-mono" inputMode="decimal" value={b.altura} onChange={e => set({ altura: e.target.value })} aria-label="Altura en metros" /><span className="muted">m</span></span><small className="muted">Confirma la altura medida; el valor inicial es solo una referencia.</small></label>
+            <label className="field"><span className="field-label">Huecos en paredes nuevas</span><span className="field-inline"><input className="input pl-mono" inputMode="decimal" value={b.huecos} onChange={e => set({ huecos: e.target.value })} aria-label="Huecos en paredes nuevas en metros cuadrados" /><span className="muted">m²</span></span><small className="muted">Superficie de puertas y ventanas de una cara. Se descuenta también al pintar las dos caras.</small></label>
+            <label className="field"><span className="field-label">Huecos en paredes de demolición</span><span className="field-inline"><input className="input pl-mono" inputMode="decimal" value={b.huecosDemolicion ?? b.huecos} onChange={e => set({ huecosDemolicion: e.target.value })} aria-label="Huecos en paredes de demolición en metros cuadrados" /><span className="muted">m²</span></span><small className="muted">Solo se descuentan de las paredes que se tiran.</small></label>
           </div>
           {trabajos.map(t => {
             const cfg = b.trabajos[t.id]; const hay = ps.some(p => !p.descartada && p.estado === t.aplicaA);
             const article = data.articles.find(a => a.id === cfg.articleId) ?? null;
-            const q = hay ? cantidadTrabajo(t, ps, numero(b.altura), numero(b.huecos), article?.unit ?? "m²") : 0;
+            const q = hay ? cantidadTrabajo(t, ps, numero(b.altura), huecosTrabajo(b, t), article?.unit ?? "m²") : 0;
             const origen = [...new Set(ps.filter(p => !p.descartada && p.estado === t.aplicaA).map(p => p.plano))];
             return (
               <div key={t.id} className="work-card" data-activo={cfg.activo && hay} data-disabled={!hay || undefined}>
                 <label className="work-head"><input type="checkbox" checked={cfg.activo && hay} disabled={!hay} onChange={e => set({ trabajos: { ...b.trabajos, [t.id]: { ...cfg, activo: e.target.checked } } })} /><span style={{ flex: 1 }}><strong>{t.titulo}</strong><small className="muted">{hay ? `${t.detalle} Sale de: ${origen.join(", ")}.` : `No hay paredes de «${t.aplicaA === "tira" ? "demolición" : "obra nueva"}».`}</small></span>{hay && <span className="pl-mono">{cantidad(q)} {article?.unit ?? "m²"}</span>}</label>
-                {hay && cfg.activo && <div className="work-body"><Select label="Artículo del catálogo" value={cfg.articleId ?? ""} onChange={v => set({ trabajos: { ...b.trabajos, [t.id]: { ...cfg, articleId: v } } })} options={medibles.map(a => ({ value: a.id, label: `${a.name} · ${money(a.unit_price)}/${a.unit}` }))} placeholder="Elegir artículo…" />{!article && <small className="muted">Sin artículo la partida queda pendiente; podrás ponerlo en el presupuesto.</small>}</div>}
+                {hay && cfg.activo && <div className="work-body"><Select label="Artículo del catálogo" value={cfg.articleId ?? ""} onChange={v => set({ trabajos: { ...b.trabajos, [t.id]: { ...cfg, articleId: v } } })} options={medibles.map(a => ({ value: a.id, label: `${a.name} · ${money(a.unit_price)}/${a.unit}` }))} placeholder="Elegir artículo…" />{!article && <small className="muted">Selecciona un artículo para calcular y añadir este trabajo, o desmárcalo si queda fuera del encargo.</small>}</div>}
               </div>
             );
           })}
@@ -321,11 +330,13 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
                 <div key={par.nuevo.id} className="panel notice-panel"><div className="panel-body" style={{ display: "flex", flexDirection: "column", gap: 8 }}>
                   <strong>Ya tenías «{par.existente.description}» ({cantidad(par.existente.quantity)} {par.existente.unit})</strong>
                   <span className="muted text-sm">¿La sustituimos por la de los planos ({cantidad(par.nuevo.quantity)} {par.nuevo.unit}) o la dejamos y añadimos esta aparte?</span>
-                  <span className="seg" role="radiogroup" aria-label="Qué hacer con la partida repetida">{(["sustituir", "añadir"] as const).map(d => <button key={d} type="button" role="radio" aria-checked={(decisiones[par.nuevo.id] ?? "sustituir") === d} onClick={() => setDecisiones(prev => ({ ...prev, [par.nuevo.id]: d }))}>{d === "sustituir" ? "Sustituir" : "Añadir aparte"}</button>)}</span>
+                  <span className="seg" role="radiogroup" aria-label="Qué hacer con la partida repetida">{(["sustituir", "añadir"] as const).map(d => <button key={d} type="button" role="radio" aria-checked={decisiones[par.nuevo.id] === d} onClick={() => setDecisiones(prev => ({ ...prev, [par.nuevo.id]: d }))}>{d === "sustituir" ? "Sustituir" : "Añadir aparte"}</button>)}</span>
                 </div></div>
               ))}
-              <div className="proposal-total"><span className="muted">{pares.length ? "Partidas de los planos · base sin IVA" : "Se añaden · base sin IVA"}</span><span className="pl-mono">+{money(sumaNuevos)}</span></div>
+              <div className="proposal-total"><span className="muted">Partidas calculadas · base sin IVA</span><span className="pl-mono">{money(sumaNuevos)}</span></div>
+              {pares.some(p => !decisiones[p.nuevo.id]) ? <p className="muted text-sm">Elige qué hacer con cada coincidencia antes de añadir las partidas.</p> : <p className="muted text-sm">Cambio en la base del presupuesto: {money(finales.reduce((s, i) => s + lineTotal(i), 0) - existentes.reduce((s, i) => s + lineTotal(i), 0))}. Incluye las sustituciones elegidas.</p>}
               {resultado.lineas.some(l => l.avisos.length) && <p className="muted text-sm"><Sparkles size={13} strokeWidth={1.8} aria-hidden="true" /> {resultado.lineas.flatMap(l => l.avisos)[0]}</p>}
+              {resultado.pendientes > 0 && <p role="alert" className="muted text-sm">Completa las partidas pendientes o vuelve a los trabajos y desmarca los que queden fuera del encargo.</p>}
               <p className="muted text-sm">Después se editan como cualquier partida. El presupuesto quedará con {finales.length} partida{finales.length === 1 ? "" : "s"}.</p>
             </>
           )}
@@ -333,7 +344,7 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
             <Button variant="ghost" onClick={() => ir(4)}><ArrowLeft size={15} strokeWidth={1.8} aria-hidden="true" />Volver a los trabajos</Button>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
               <Button variant="secondary" onClick={salir}>Guardar y seguir luego</Button>
-              <Button variant="primary" disabled={!nuevos.length || guardando || busy} onClick={añadir}>{guardando ? "Añadiendo…" : `Añadir ${nuevos.length} partida${nuevos.length === 1 ? "" : "s"} ${destino ? `a la V${destino.number}` : "al presupuesto"}`}</Button>
+              <Button variant="primary" disabled={!nuevos.length || guardando || busy || pares.some(p => !decisiones[p.nuevo.id]) || Boolean(resultado && !("error" in resultado) && resultado.pendientes > 0)} onClick={añadir}>{guardando ? "Añadiendo…" : `Añadir ${nuevos.length} partida${nuevos.length === 1 ? "" : "s"} ${destino ? `a la V${destino.number}` : "al presupuesto"}`}</Button>
             </div>
           </footer>
         </div>
