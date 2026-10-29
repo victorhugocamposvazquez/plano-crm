@@ -38,8 +38,8 @@ export function TaskDialog({ task, onClose }: { task: Task | null; onClose: () =
     catch (e) { notify(e instanceof Error ? e.message : error); }
     finally { setPending(false); }
   }
-  const toggle = () => task && canToggle && ejecutar(() => send({ type: "task.toggle", id: task.id, status: task.status === "done" ? "pending" : "done" }), "No se ha podido actualizar la tarea.");
-  const posponer = (dias: number) => task && canEdit && ejecutar(() => send({ type: "task.update", id: task.id, due_date: sumarDias(task.due_date, dias) }), "No se ha podido mover la tarea.", () => notify(`Tarea movida al ${dateLabel(sumarDias(task.due_date, dias))}`));
+  const toggle = () => task && canToggle && ejecutar(() => send({ type: "task.toggle", id: task.id, status: task.status === "done" ? "pending" : "done" }), "No se ha podido actualizar la tarea.", () => notify(task.status === "done" ? `Reabierta: ${task.title}` : `Completada: ${task.title}`, { label: "Deshacer", run: () => send({ type: "task.toggle", id: task.id, status: task.status }) }));
+  const posponer = (dias: number) => task && canEdit && ejecutar(() => send({ type: "task.update", id: task.id, due_date: sumarDias(task.due_date, dias) }), "No se ha podido mover la tarea.", () => notify(`Tarea movida al ${dateLabel(sumarDias(task.due_date, dias))}`, { label: "Deshacer", run: () => send({ type: "task.update", id: task.id, due_date: task.due_date }) }));
   const eliminar = () => task && canDelete && ejecutar(() => send({ type: "task.delete", id: task.id }), "No se ha podido eliminar la tarea.", () => { notify(`Tarea eliminada: ${task.title}`); onClose(); });
   function guardar(event: FormEvent) {
     event.preventDefault();

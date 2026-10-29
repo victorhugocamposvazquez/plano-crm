@@ -180,7 +180,7 @@ export default function CatalogoPage() {
         {query && <button type="button" className="search-clear" aria-label="Borrar búsqueda" onClick={() => setQuery("")}><X size={15} strokeWidth={1.8} aria-hidden="true" /></button>}
       </label>
 
-      {!loading && found.length === 0 && <div className="empty"><strong>{query ? `Nada coincide con «${query}»` : "El catálogo está vacío"}</strong><span className="muted text-sm">{query ? "Prueba con parte de la descripción o el capítulo." : "Añade los artículos con sus precios para poder estimar y presupuestar."}</span></div>}
+      {!loading && found.length === 0 && <div className="empty"><strong>{query ? `Nada coincide con «${query}»` : "El catálogo está vacío"}</strong><span className="muted text-sm">{query ? "Prueba con parte de la descripción o el capítulo." : "Los artículos con su precio son la base de estimaciones y presupuestos."}</span>{!query && allowed && <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><Button variant="primary" onClick={() => abrirAlta(false)}>Añadir el primer artículo</Button><Button variant="secondary" onClick={() => setImportParam("1")}>Importar CSV</Button></div>}</div>}
 
       {[...groups.entries()].map(([chapter, list]) => (
         <div key={chapter}>

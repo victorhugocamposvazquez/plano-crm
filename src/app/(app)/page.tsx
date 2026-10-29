@@ -28,7 +28,7 @@ export default function HoyPage() {
     setPendingId(task.id);
     try {
       await send({ type: "task.toggle", id: task.id, status: task.status === "done" ? "pending" : "done" });
-      notify(task.status === "done" ? `Reabierta: ${task.title}` : `Completada: ${task.title}`);
+      notify(task.status === "done" ? `Reabierta: ${task.title}` : `Completada: ${task.title}`, { label: "Deshacer", run: () => send({ type: "task.toggle", id: task.id, status: task.status }) });
     } catch (e) {
       notify(e instanceof Error ? e.message : "No se ha podido actualizar la tarea.");
     } finally {
@@ -39,9 +39,9 @@ export default function HoyPage() {
   const [abierta, setAbierta] = useState<Task | null>(null);
   const tareaAbierta = abierta ? data.tasks.find(t => t.id === abierta.id) ?? null : null;
 
-  const TaskList = ({ tasks, empty }: { tasks: AgendaTask[]; empty: string }) => (
+  const TaskList = ({ tasks, empty, accion }: { tasks: AgendaTask[]; empty: string; accion?: React.ReactNode }) => (
     tasks.length === 0
-      ? <p className="muted text-sm" style={{ padding: "10px 0" }}>{empty}</p>
+      ? <p className="muted text-sm empty-line" style={{ padding: "10px 0" }}>{empty}{accion}</p>
       : <div>{tasks.map(task => <TaskRow key={task.id} task={task} projectName={task.project.name} canToggle={canToggle} pending={pendingId === task.id} showDate={task.due_date !== today} compact onToggle={toggle} onOpen={setAbierta} />)}</div>
   );
 
@@ -106,7 +106,7 @@ export default function HoyPage() {
             </>
           )}
           <div className="section-label"><span>Hoy</span><span className="pl-mono">{agenda.today.length}</span></div>
-          <TaskList tasks={agenda.today} empty={agenda.overdue.length ? "Nada más previsto para hoy." : "Sin tareas previstas para hoy."} />
+          <TaskList tasks={agenda.today} empty={agenda.overdue.length ? "Nada más previsto para hoy." : "Sin tareas previstas para hoy."} accion={can(actor.role, "task.create") ? <Link href="/agenda?nueva=1" className="link-inline">Planificar una tarea</Link> : undefined} />
           {agenda.doneToday.length > 0 && (
             <>
               <details className="home-disclosure"><summary>Hechas hoy ({agenda.doneToday.length})</summary><div className="section-label"><span>Hechas hoy</span><span className="pl-mono">{agenda.doneToday.length}</span></div>

@@ -6,7 +6,9 @@ import { supabaseConfigured } from "@/lib/supabase/browser";
 import { readLocalFile, saveLocalFile } from "@/lib/local-files";
 
 const key = "plano.workspace.v1";
-type Context = { data: Workspace; actor: Actor; mode: "demo" | "supabase"; loading: boolean; error: string; notice: string; busy: boolean; refresh: () => Promise<void>; send: (command: Command) => Promise<Workspace>; upload: (file: File, projectId: string, category: Document["category"]) => Promise<Document>; fileUrl: (document: Document) => Promise<string>; notify: (message: string) => void };
+type Context = { data: Workspace; actor: Actor; mode: "demo" | "supabase"; loading: boolean; error: string; notice: string; busy: boolean; refresh: () => Promise<void>; send: (command: Command) => Promise<Workspace>; upload: (file: File, projectId: string, category: Document["category"]) => Promise<Document>; fileUrl: (document: Document) => Promise<string>; notify: (message: string, action?: NoticeAction) => void; noticeAction: NoticeAction | null; dismissNotice: () => void };
+/** Acción opcional de un aviso: «Deshacer» para lo reversible (completar una tarea, moverla de día, quitar un filtro). */
+export type NoticeAction = { label: string; run: () => unknown };
 const WorkspaceContext = createContext<Context | null>(null);
 function savedDemo(): Workspace {
   const raw = localStorage.getItem(key);
@@ -19,11 +21,12 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const mode = supabaseConfigured() ? "supabase" : "demo";
   const [data, setData] = useState<Workspace>(() => ({ organization_id: "", organization_name: "PLANO", projects: [], articles: [], budgets: [], versions: [], tasks: [], purchases: [], documents: [], messages: [], activities: [], certifications: [] }));
   const [actor,setActor] = useState<Actor>(demoActor);
-  const [loading,setLoading] = useState(true), [error,setError] = useState(""), [notice,setNotice] = useState(""), [busy,setBusy] = useState(false);
+  const [loading,setLoading] = useState(true), [error,setError] = useState(""), [notice,setNotice] = useState(""), [noticeAction,setNoticeAction] = useState<NoticeAction | null>(null), [busy,setBusy] = useState(false);
   const lock = useRef(false);
   const pendingRequest = useRef<{ body: string; id: string } | null>(null);
-  const notify = useCallback((message: string) => setNotice(message), []);
-  useEffect(() => { if (!notice) return; const timer = setTimeout(() => setNotice(""), 5500); return () => clearTimeout(timer); }, [notice]);
+  const notify = useCallback((message: string, action?: NoticeAction) => { setNotice(message); setNoticeAction(action ?? null); }, []);
+  const dismissNotice = useCallback(() => { setNotice(""); setNoticeAction(null); }, []);
+  useEffect(() => { if (!notice) return; const timer = setTimeout(() => { setNotice(""); setNoticeAction(null); }, noticeAction ? 7000 : 5500); return () => clearTimeout(timer); }, [notice, noticeAction]);
   const refresh = useCallback(async () => {
     try {
       if (mode === "demo") { const next = savedDemo(); if (!localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify(next)); setData(next); }
@@ -82,6 +85,6 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     if (mode === "demo") { const file = await readLocalFile(document.storage_path); if (!file) throw new Error("El archivo ya no está disponible en este navegador."); return URL.createObjectURL(file); }
     const response = await fetch(`/api/documents/${document.id}`); const body = await response.json(); if (!response.ok) throw new Error(body.error); return body.url as string;
   }
-  return <WorkspaceContext.Provider value={{ data, actor, mode, loading, error, notice, busy, refresh, send, upload, fileUrl, notify }}>{children}</WorkspaceContext.Provider>;
+  return <WorkspaceContext.Provider value={{ data, actor, mode, loading, error, notice, noticeAction, dismissNotice, busy, refresh, send, upload, fileUrl, notify }}>{children}</WorkspaceContext.Provider>;
 }
 export function useWorkspace() { const value = useContext(WorkspaceContext); if (!value) throw new Error("WorkspaceProvider missing"); return value; }

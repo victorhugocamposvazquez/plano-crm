@@ -4,13 +4,13 @@ import Link from "next/link";
 import { Users, Search, X, ArrowUpRight, MapPin } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
 import { ProjectStatus } from "@/components/ui/status";
-import { money } from "@/lib/domain";
+import { money, can } from "@/lib/domain";
 import { clientes, buscarClientes } from "@/lib/resumen";
 import { useQueryState } from "@/lib/use-query-state";
 
 /** Clientes tal y como aparecen en los proyectos: todavía no hay ficha de cliente propia en el dominio. */
 export default function ClientesPage() {
-  const { data, loading } = useWorkspace();
+  const { data, loading, actor } = useWorkspace();
   const [queryParam, setQueryParam] = useQueryState<string>("q", "");
   const [query, setQuery] = useState(queryParam);
   useEffect(() => { const t = setTimeout(() => { if (query !== queryParam) setQueryParam(query); }, 300); return () => clearTimeout(t); }, [query, queryParam, setQueryParam]);
@@ -32,7 +32,7 @@ export default function ClientesPage() {
         {query && <button type="button" className="search-clear" aria-label="Borrar búsqueda" onClick={() => setQuery("")}><X size={15} strokeWidth={1.8} aria-hidden="true" /></button>}
       </label>
 
-      {!loading && visibles.length === 0 && <div className="empty"><strong>{query ? `Nada coincide con «${query}»` : "Todavía no hay clientes"}</strong><span className="muted text-sm">{query ? "Prueba con parte del nombre o de la calle." : "Aparecen al dar de alta el primer proyecto."}</span></div>}
+      {!loading && visibles.length === 0 && <div className="empty"><strong>{query ? `Nada coincide con «${query}»` : "Todavía no hay clientes"}</strong><span className="muted text-sm">{query ? "Prueba con parte del nombre o de la calle." : "Cada cliente aparece aquí con su primer proyecto."}</span>{!query && can(actor.role, "project.create") && <Link href="/proyectos?nuevo=1" className="btn btn-primary">Nuevo proyecto</Link>}</div>}
 
       <div className="client-list">
         {visibles.map(c => (

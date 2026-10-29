@@ -6,6 +6,7 @@ import { useWorkspace } from "@/components/workspace-provider";
 import { AccountDialog } from "@/components/account-dialog";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { roleNames } from "@/lib/domain";
+import { veSeccion } from "@/lib/navegacion";
 
 const entradas = [
   { href: "/presupuestos", label: "Presupuestos", hint: "Todos los presupuestos, por estado", icon: FileText },
@@ -49,7 +50,7 @@ export default function MasPage() {
       </button>
 
       <nav className="more-list" aria-label="Secciones">
-        {entradas.map(e => { const Icon = e.icon; return (
+        {entradas.filter(e => veSeccion(actor.role, e.href)).map(e => { const Icon = e.icon; return (
           <Link key={e.href} href={e.href} className="more-item">
             <span className="more-icon"><Icon size={19} strokeWidth={1.55} aria-hidden="true" /></span>
             <span style={{ minWidth: 0, flex: 1 }}><strong>{e.label}</strong><small className="muted">{e.hint}</small></span>
