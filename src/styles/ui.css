@@ -3291,6 +3291,8 @@ p {
 .chat-top-names strong { font-size: var(--pl-text-sm); font-weight: var(--pl-weight-medium); }
 .chat-top-names small { font-size: var(--pl-text-xs); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .chat-top-tools { display: inline-flex; gap: 2px; flex: 0 0 auto; }
+.chat-top-tools { align-items: center; }
+.chat-top-tools .composer-tool { width: var(--pl-touch); height: var(--pl-touch); border-radius: var(--pl-radius-icon-button); color: var(--pl-ink); }
 .chat-top-tools .composer-tool[aria-pressed="true"] { background: var(--pl-raised); color: var(--pl-ink); }
 .chat-top-back { display: inline-flex; align-items: center; gap: 6px; padding: 6px 8px; border: 0; border-radius: var(--pl-radius-control); background: transparent; color: var(--pl-ink); font: inherit; font-size: var(--pl-text-sm); cursor: pointer; }
 .avatar-stack { display: inline-flex; }

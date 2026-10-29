@@ -179,6 +179,6 @@ export default function ObraPage() {
     {section==="purchases" && <PurchasesPanel projectId={project.id} purchases={purchases}/>}
     <TaskDialog task={abierta?data.tasks.find(t=>t.id===abierta.id) ?? null:null} onClose={()=>setAbierta(null)}/>
     {editable && <BudgetEditor open={editando} onClose={()=>navigate({editar:null})} project={project} version={editable} guiaInicial={editable.items.length===0}/>}
-    <Drawer open={chatAbierto} onClose={()=>navigate({chat:null})} title={project.name} subtitle={`Chat del proyecto · ${project.code}`}><ChatPanel projectId={project.id} messages={messages}/></Drawer>
+    <Drawer open={chatAbierto} onClose={()=>navigate({chat:null})} title={project.name} subtitle={[project.location,project.code].filter(Boolean).join(" · ")}><ChatPanel projectId={project.id} messages={messages}/></Drawer>
   </div>;
 }

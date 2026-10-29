@@ -27,7 +27,7 @@ const pickerCerrado: Picker = { open: false, query: "", cat: null, active: 0 };
 type Peek = Exclude<VistaChat, { kind: "buscar" } | { kind: "ayuda" } | { kind: "aviso" }>;
 
 /**
- * Conversación del proyecto. Cabecera con participantes, buscador e información (lo compartido);
+ * Conversación del proyecto. Cabecera con participantes, la lupa siempre visible e información (lo compartido);
  * burbujas por autor con reacciones, edición y borrado; adjuntos con previsualización; «#» para mencionar
  * algo del proyecto por categoría y accesos rápidos / «/» para consultar (presupuesto, tareas, compras…)
  * en un modal encima del chat: lo mismo que se vería en la ficha, sin salir de la conversación.
@@ -234,8 +234,9 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
           <button type="button" className="chat-top-people" onClick={() => setVista("info")} title="Participantes y elementos compartidos"><AvatarStack /><span className="chat-top-names"><strong>{gente.length} participante{gente.length === 1 ? "" : "s"}</strong><small className="muted">{nombres}</small></span></button>
         )}
         <span className="chat-top-tools">
+          {/* La lupa siempre a la vista, en la conversación y en la información: abre la búsqueda por palabra. */}
+          <button type="button" className="composer-tool" aria-label="Buscar en la conversación" title="Buscar en la conversación" aria-pressed={buscando && vista === "chat"} onClick={() => { if (buscando && vista === "chat") { setBuscando(false); setConsulta(""); return; } setVista("chat"); setBuscando(true); }}><Search size={18} strokeWidth={1.7} aria-hidden="true" /></button>
           <Menu label="Más opciones del chat" align="end" items={[
-            { id: "buscar", label: "Buscar en la conversación", hint: "Por palabra, sin acentos", icon: <Search size={16} strokeWidth={1.7} />, onSelect: () => { setVista("chat"); setBuscando(true); } },
             { id: "info", label: "Fotos, documentos y participantes", hint: "Todo lo compartido aquí", icon: <Info size={16} strokeWidth={1.7} />, onSelect: () => setVista("info") },
             { id: "mencionar", label: "Mencionar algo del proyecto", hint: "Presupuesto, documento, tarea…", icon: <Hash size={16} strokeWidth={1.7} />, onSelect: () => { setVista("chat"); setPicker({ open: true, query: "", cat: null, active: 0 }); setBody(b => `${b}${b && !b.endsWith(" ") ? " " : ""}#`); setTimeout(() => textarea.current?.focus(), 0); } },
             { id: "consultar", label: "Consultar escribiendo", hint: "Escribe / y elige", icon: <Slash size={16} strokeWidth={1.7} />, onSelect: () => { setVista("chat"); setBody("/"); setTimeout(() => textarea.current?.focus(), 0); } },
@@ -411,7 +412,7 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
             <ul className="help-plain">
               <li>El clip adjunta fotos o PDF: quedan en Documentos del proyecto y se abren en grande con un toque.</li>
               <li>Pasa por un mensaje para reaccionar, editarlo o borrarlo. <kbd>Enter</kbd> envía, <kbd>Mayús</kbd>+<kbd>Enter</kbd> hace salto de línea.</li>
-              <li>La lupa busca en la conversación; el icono de información reúne participantes, fotos, documentos y lo mencionado.</li>
+              <li>La lupa, siempre junto al menú <kbd>···</kbd>, busca en la conversación; «Fotos, documentos y participantes» reúne lo compartido y lo mencionado.</li>
             </ul>
           </section>
         </div>
