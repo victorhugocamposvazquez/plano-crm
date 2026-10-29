@@ -10,6 +10,7 @@ import { PlanSvg } from "@/components/plan/plan-svg";
 import { pdfExtractionSchema, colorCss } from "@/lib/captura/pdf-extraction";
 import { samplePlan } from "@/lib/captura/sample-plan";
 import { can, money, lineTotal, type Project, type BudgetItem, type Document } from "@/lib/domain";
+import { budgetHistory } from "@/lib/budget-history";
 import { formatSize } from "@/lib/documentos";
 import { borradorNuevo, cargarBorrador, guardarBorrador, borrarBorrador, añadirPlano, quitarPlano, usos, nombreUso, paginaDe, planoParaMedir, mismaHoja, comparteEscala, confirmarEscalaCompartida, cambiarPagina, medidaDe, escalaDe, escala, planosSinEscala, colores, cuentaComoPared, puntoCercano, paredes as calcularParedes, resumenParedes, trabajos, articulosMedibles, sugerirArticulo, cantidadTrabajo, huecosTrabajo, asegurarIds, propuesta as calcularPropuesta, coincidencias, fusionar, numero, type Borrador, type Paso, type PlanoCargado, type Decision } from "@/lib/plano-flujo";
 
@@ -47,7 +48,7 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
   const budgets = useMemo(() => data.budgets.filter(x => x.project_id === project.id).sort((x, y) => x.created_at.localeCompare(y.created_at)), [data.budgets, project.id]);
   const budget = budgets.find(x => x.id === b.budgetId) ?? budgets[0];
   const versions = useMemo(() => (budget ? data.versions.filter(v => v.budget_id === budget.id).sort((x, y) => y.number - x.number) : []), [data.versions, budget]);
-  const abierta = versions.find(v => v.status === "draft" || v.status === "issued");
+  const abierta = budget ? budgetHistory(budget, versions).working : undefined;
   const aprobada = versions.find(v => v.id === budget?.approved_version_id);
   const destino = abierta ?? aprobada;
   const existentes: BudgetItem[] = destino?.items ?? [];
@@ -170,7 +171,7 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
       if (!objetivo) throw new Error("No se ha podido abrir el presupuesto.");
       const suyas = () => ws.versions.filter(v => v.budget_id === objetivo!.id).sort((x, y) => y.number - x.number);
       let borrador = suyas().find(v => v.status === "draft");
-      if (!borrador) { const baseV = suyas().find(v => v.status === "issued") ?? suyas().find(v => v.id === objetivo!.approved_version_id) ?? suyas()[0]; if (!baseV) throw new Error("El presupuesto no tiene ninguna revisión."); ws = await send({ type: "budget.revise", version_id: baseV.id, reason: "Partidas añadidas desde los planos" }); borrador = suyas().find(v => v.status === "draft"); }
+      if (!borrador) { const baseV = budgetHistory(objetivo, suyas()).current; if (!baseV) throw new Error("El presupuesto no tiene ninguna revisión."); ws = await send({ type: "budget.revise", version_id: baseV.id, reason: "Partidas añadidas desde los planos" }); borrador = suyas().find(v => v.status === "draft"); }
       if (!borrador) throw new Error("No se ha podido abrir un borrador.");
       const paresAhora = coincidencias(borrador.items, nuevos);
       if (paresAhora.some(p => !decisiones[p.nuevo.id] || !pares.some(visto => visto.nuevo.id === p.nuevo.id && visto.existente.id === p.existente.id)))

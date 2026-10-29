@@ -1,28 +1,27 @@
 "use client";
 import { useState } from "react";
-import { Lock, Stamp, GitBranch, Diff, Printer } from "lucide-react";
+import { Lock, Stamp, GitBranch, Printer } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
 import { Button, LinkButton } from "@/components/ui/button";
 import { useWorkspace } from "@/components/workspace-provider";
-import { can, money, totals, compareVersions, lineTotal, type Budget, type BudgetVersion } from "@/lib/domain";
-import { accionesPresupuesto, describirCambio } from "@/lib/presupuesto";
+import { can, money, totals, type Budget, type BudgetVersion } from "@/lib/domain";
+import { accionesPresupuesto } from "@/lib/presupuesto";
 
 const signed = (cents: number) => `${cents < 0 ? "−" : "+"}${money(Math.abs(cents))}`;
 
 /**
  * Acciones del presupuesto según su estado: cerrar la revisión, aprobarla para obra con referencia,
- * abrir una nueva revisión y ver el comparador completo. Cada una confirma en un diálogo sobre la ficha.
+ * abrir una nueva revisión. El comparador tiene su vista propia. Cada una confirma en un diálogo sobre la ficha.
  */
-export function BudgetActions({ budget, approved, working, shown, onEdit }: { budget: Budget; approved?: BudgetVersion; working?: BudgetVersion; shown?: BudgetVersion; onEdit: () => void }) {
+export function BudgetActions({ budget, approved, working, shown, onEdit, onRevisionCreated }: { budget: Budget; approved?: BudgetVersion; working?: BudgetVersion; shown?: BudgetVersion; onEdit: () => void; onRevisionCreated?: (version: BudgetVersion) => void }) {
   const { actor, busy, send, notify } = useWorkspace();
   const permisos = { guardar: can(actor.role, "budget.save"), aprobar: can(actor.role, "budget.approve") };
   const acciones = accionesPresupuesto(approved, working, permisos);
-  const [dialogo, setDialogo] = useState<"" | "cerrar" | "aprobar" | "revisar" | "cambios">("");
+  const [dialogo, setDialogo] = useState<"" | "cerrar" | "aprobar" | "revisar">("");
   const [texto, setTexto] = useState("");
   const [pending, setPending] = useState(false);
   const base = working ?? approved;
-  const cambios = approved && working ? compareVersions(approved, working) : [];
-  const delta = cambios.reduce((s, c) => s + c.delta, 0);
+  const delta = approved && working ? totals(working.items).base - totals(approved.items).base : 0;
 
   function cerrarDialogo() { setDialogo(""); setTexto(""); }
 
@@ -32,7 +31,7 @@ export function BudgetActions({ budget, approved, working, shown, onEdit }: { bu
     try {
       if (dialogo === "cerrar" && working) { await send({ type: "budget.issue", version_id: working.id, expected_revision: working.draft_revision }); notify(`V${working.number} cerrada · lista para aprobar`); }
       if (dialogo === "aprobar" && working) { await send({ type: "budget.approve", version_id: working.id, reference: texto.trim() }); notify(`V${working.number} aprobada para obra`); }
-      if (dialogo === "revisar" && base) { await send({ type: "budget.revise", version_id: base.id, reason: texto.trim() }); notify(`Nueva revisión abierta desde V${base.number}`); }
+      if (dialogo === "revisar" && base) { const ws = await send({ type: "budget.revise", version_id: base.id, reason: texto.trim() }); const draft = ws.versions.find(v => v.budget_id === budget.id && v.status === "draft"); if (draft) onRevisionCreated?.(draft); notify(`Nueva revisión abierta desde V${base.number}`); }
       cerrarDialogo();
     } catch (e) {
       notify(e instanceof Error ? e.message : "No se ha podido completar la acción.");
@@ -48,10 +47,9 @@ export function BudgetActions({ budget, approved, working, shown, onEdit }: { bu
     <>
       <div className="actions-row">
         {imprimible && <LinkButton href={`/imprimir/presupuesto/${imprimible.id}`} variant="secondary" target="_blank" rel="noopener"><Printer size={16} strokeWidth={1.7} aria-hidden="true" />{imprimible.status === "draft" ? `Imprimir borrador V${imprimible.number}` : `PDF de la V${imprimible.number}`}</LinkButton>}
-        {approved && working && <Button variant="secondary" onClick={() => setDialogo("cambios")}><Diff size={16} strokeWidth={1.7} aria-hidden="true" />Ver cambios completos</Button>}
-        {acciones.includes("editar") && <Button variant="secondary" onClick={onEdit}>Editar partidas</Button>}
+        {acciones.includes("editar") && <Button variant="primary" onClick={onEdit}>Editar presupuesto</Button>}
         {acciones.includes("revisar") && <Button variant="secondary" onClick={() => setDialogo("revisar")}><GitBranch size={16} strokeWidth={1.7} aria-hidden="true" />Nueva revisión</Button>}
-        {acciones.includes("cerrar") && working && <Button variant="primary" onClick={() => setDialogo("cerrar")}><Lock size={16} strokeWidth={1.7} aria-hidden="true" />Cerrar V{working.number}</Button>}
+        {acciones.includes("cerrar") && working && <Button variant="secondary" onClick={() => setDialogo("cerrar")}><Lock size={16} strokeWidth={1.7} aria-hidden="true" />Cerrar V{working.number}</Button>}
         {acciones.includes("aprobar") && working && <Button variant="primary" onClick={() => setDialogo("aprobar")}><Stamp size={16} strokeWidth={1.7} aria-hidden="true" />Aprobar V{working.number} para obra</Button>}
         {working?.status === "issued" && !acciones.includes("aprobar") && <span className="muted text-xs" style={{ alignSelf: "center" }}>Cerrada · la aprueba oficina o administración.</span>}
       </div>
@@ -72,25 +70,7 @@ export function BudgetActions({ budget, approved, working, shown, onEdit }: { bu
         <label className="field" style={{ marginTop: 12 }}><span>Motivo del cambio</span><input type="text" value={texto} onChange={e => setTexto(e.target.value)} placeholder="Cambio de pavimento · el cliente añade el baño pequeño" autoFocus maxLength={500} /></label>
       </Modal>
 
-      <Modal open={dialogo === "cambios"} onClose={cerrarDialogo} title={`Cambios de la V${working?.number ?? ""} respecto a la V${approved?.number ?? ""}`} footer={<Button variant="secondary" onClick={cerrarDialogo}>Cerrar</Button>}>
-        {cambios.length === 0 ? <p className="muted text-sm">Sin diferencias: la V{working?.number} es igual que la aprobada.</p> : (
-          <div className="changes">
-            {cambios.map(c => (
-              <article key={c.id} className="change" data-kind={c.kind}>
-                <header><strong>{(c.after ?? c.before)?.description}</strong><span className="pl-mono" style={{ color: c.delta > 0 ? "var(--pl-warning)" : c.delta < 0 ? "var(--pl-success)" : "var(--pl-muted)" }}>{c.delta ? signed(c.delta) : "±0"}</span></header>
-                <ul>{describirCambio(c).map((t, i) => <li key={i}>{t}</li>)}</ul>
-                {c.kind === "changed" && c.after && <small className="muted">Ahora: {c.after.quantity} {c.after.unit} × {money(c.after.unit_price)}{c.after.adjustment_percent ? ` · ajuste ${c.after.adjustment_percent} %` : ""} = {money(lineTotal(c.after))}</small>}
-              </article>
-            ))}
-            <div className="totals" style={{ marginTop: 4 }}>
-              <span><small>V{approved?.number} aprobada</small><strong className="pl-mono">{approved ? money(totals(approved.items).base) : "—"}</strong></span>
-              <span><small>V{working?.number}</small><strong className="pl-mono">{working ? money(totals(working.items).base) : "—"}</strong></span>
-              <span><small>Diferencia en base</small><strong className="pl-mono">{signed(delta)}</strong></span>
-            </div>
-          </div>
-        )}
-        <p className="muted text-xs" style={{ marginTop: 10 }}>Presupuesto «{budget.title}» · importes en base sin IVA.</p>
-      </Modal>
+
     </>
   );
 }

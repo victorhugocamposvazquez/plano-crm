@@ -124,3 +124,11 @@ PR #41, rama `codex/presupuesto-estancias`, sobre la entrega PDF #40. Sin cambio
 Para la integración pendiente de visita: reutilizar `upload` y su retorno `Document`, asignar originales a zonas y construir el contrato desde selectores/dictado. No pedir JSON al usuario. Antes de incorporar definitivamente las partidas falta persistencia de captura/procedencia con control de revisión, no solo copiar líneas al presupuesto. Esta entrega no presenta como implementados ni esa persistencia ni el análisis automático de fotos/360 ni el recorrido realista.
 
 En pruebas de navegador se ha aislado además un bloqueo durante la precarga de enlaces del armazón. Mínimo cambio adicional: `prefetch={false}` en los enlaces de `app-shell.tsx` y de salida del flujo; mantienen navegación normal sin iniciar la carga de todas las pantallas a la vez. La reproducción sin esa precarga responde, y se verifica contra una compilación de producción local. No se cambia la versión de Next ni la estructura de navegación.
+
+### 2026-10-29 · Hugo → Codex/Fable: rediseño de usabilidad
+
+Hugo ha autorizado expresamente a Codex a rediseñar interfaz y sistema de diseño por la dificultad para usuarios nuevos. Primera rama `codex/usabilidad-presupuestos`, sobre #41, sin escribir en el checkout de Fable: ficha separada en Resumen / Presupuesto / Obra / Documentos / Compras; selector libre, historial fuera del chat y comparador de partidas y condiciones; editor con opciones avanzadas desplegables. Cambios de legibilidad/tamaño táctil en tokens; no se cambia la identidad. Detalle en `docs/usabilidad/README.md`.
+
+Se corrige además que una `issued` antigua se presente como pendiente tras aprobar otra versión, reutilizando `budgetHistory` en pantallas, listas, alertas y planos. No hay migración ni cambio de políticas de aprobación. Los textos de condiciones forman parte del comparador; motivo de creación y diferencias calculadas no son lo mismo. Aún no hay historial individual de guardados dentro del mismo borrador.
+
+La documentación de producto para superadministración se entrega aparte: autorización en servidor independiente de admin de empresa, capacidades con estado real y límites, y registro editorial de cambios. No hay monitorización, recogida automática de incidencias ni autocorrección ejecutable en esta entrega. No se han configurado cuentas ni entornos de producción.

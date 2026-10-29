@@ -6,6 +6,7 @@ import { useWorkspace } from "@/components/workspace-provider";
 import { Status, type Tone } from "@/components/ui/status";
 import { TaskRow } from "@/components/project/task-row";
 import { TaskDialog } from "@/components/project/task-dialog";
+import { budgetHistory } from "@/lib/budget-history";
 import { Onboarding } from "@/components/onboarding";
 import { queToca, etapas } from "@/lib/siguiente-paso";
 import { can, dateLabel, type Task } from "@/lib/domain";
@@ -16,7 +17,7 @@ export default function HoyPage() {
   const today = localDate();
   const agenda = useMemo(() => buildAgenda(data, today), [data, today]);
   const alerts = useMemo(() => buildAlerts(data, today), [data, today]);
-  const toca = useMemo(() => queToca(data, today).slice(0, 6), [data, today]);
+  const toca = useMemo(() => queToca(data, today).slice(0, 3), [data, today]);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const canToggle = can(actor.role, "task.toggle");
   const firstName = actor.name.split(/[\s·]+/)[0] ?? "";
@@ -57,11 +58,11 @@ export default function HoyPage() {
 
       <Onboarding />
 
-      <div className="summary">
+      <details className="home-disclosure"><summary>Resumen de la empresa</summary><div className="summary">
         <Link href="/proyectos?f=active"><strong>{data.projects.filter(p => p.status === "active").length}</strong><small>proyectos en obra</small></Link>
-        <Link href="/presupuestos?f=review"><strong>{data.versions.filter(v => v.status === "draft" || v.status === "issued").length}</strong><small>presupuestos en revisión</small></Link>
+        <Link href="/presupuestos?f=review"><strong>{data.budgets.filter(b => budgetHistory(b, data.versions).working).length}</strong><small>presupuestos en revisión</small></Link>
         <Link href="/compras?f=ordered"><strong>{data.purchases.filter(p => p.status === "ordered").length}</strong><small>pedidos sin recibir</small></Link>
-      </div>
+      </div></details>
 
       <div className="detail">
         <section style={{ display: "flex", flexDirection: "column", gap: 4 }}>
@@ -88,16 +89,16 @@ export default function HoyPage() {
           <TaskList tasks={agenda.today} empty={agenda.overdue.length ? "Nada más previsto para hoy." : "Sin tareas previstas para hoy."} />
           {agenda.doneToday.length > 0 && (
             <>
-              <div className="section-label"><span>Hechas hoy</span><span className="pl-mono">{agenda.doneToday.length}</span></div>
-              <TaskList tasks={agenda.doneToday} empty="" />
+              <details className="home-disclosure"><summary>Hechas hoy ({agenda.doneToday.length})</summary><div className="section-label"><span>Hechas hoy</span><span className="pl-mono">{agenda.doneToday.length}</span></div>
+              <TaskList tasks={agenda.doneToday} empty="" /></details>
             </>
           )}
-          <div className="section-label"><span>Próximos 7 días</span><span className="pl-mono">{agenda.upcoming.length}</span></div>
-          <TaskList tasks={agenda.upcoming} empty="Semana despejada por ahora." />
+          <details className="home-disclosure"><summary>Próximos 7 días ({agenda.upcoming.length})</summary><div className="section-label"><span>Próximos 7 días</span><span className="pl-mono">{agenda.upcoming.length}</span></div>
+          <TaskList tasks={agenda.upcoming} empty="Semana despejada por ahora." /></details>
           {!canToggle && <p className="muted text-xs" style={{ marginTop: 8 }}>Tu perfil puede consultar la agenda pero no marcar tareas.</p>}
         </section>
 
-        <aside className="zone" style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+        <details className="zone home-disclosure"><summary>Avisos y actividad ({alerts.length})</summary>
           <div>
             <div className="section-label" style={{ marginTop: 0 }}><span>Atención</span><span className="pl-mono">{String(alerts.length).padStart(2, "0")}</span></div>
             <div className="panel">
@@ -123,7 +124,7 @@ export default function HoyPage() {
             })}
             {data.activities.length === 0 && <p className="muted text-sm">Aún no hay actividad.</p>}
           </div>
-        </aside>
+        </details>
       </div>
       <TaskDialog task={tareaAbierta} onClose={() => setAbierta(null)} />
     </div>

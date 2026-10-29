@@ -9,14 +9,14 @@ import { etapas, type SiguientePaso, type TipoAccion } from "@/lib/siguiente-pas
  * verde, el siguiente paso y su acción principal. En móvil solo se etiqueta la fase actual («Fase 2 de 5»).
  * La acción la ejecuta la ficha, que tiene los diálogos y los comandos a mano.
  */
-export function NextStep({ paso, busy, onAccion }: { paso: SiguientePaso; busy?: boolean; onAccion: (tipo: TipoAccion) => void }) {
+export function NextStep({ paso, busy, allowed = true, compact = false, onAccion }: { paso: SiguientePaso; busy?: boolean; allowed?: boolean; compact?: boolean; onAccion: (tipo: TipoAccion) => void }) {
   const indice = etapas.findIndex(e => e.id === paso.etapa);
   const terminado = paso.accion === "ninguna";
   const progreso = terminado ? 1 : indice / (etapas.length - 1);
   const actual = etapas[indice];
   return (
     <section className="next-step zone" data-urgencia={paso.urgencia} aria-label="Siguiente paso">
-      <div className="stepper-wrap">
+      {!compact && <div className="stepper-wrap">
         <ol className="stepper" aria-label="Fase del proyecto" style={{ "--steps": etapas.length, "--progress": progreso } as CSSProperties}>
           {etapas.map((e, i) => {
             const state = terminado || i < indice ? "done" : i === indice ? "current" : "todo";
@@ -29,14 +29,15 @@ export function NextStep({ paso, busy, onAccion }: { paso: SiguientePaso; busy?:
           })}
         </ol>
         <span className="stepper-current">Fase {indice + 1} de {etapas.length} · <strong>{actual?.label}</strong></span>
-      </div>
+      </div>}
       <div className="next-step-body">
         <div style={{ minWidth: 0 }}>
           <small className="next-step-kicker">{terminado ? "Cerrado" : "Siguiente paso"}</small>
           <strong className="next-step-title">{paso.titulo}</strong>
           <span className="next-step-detail muted">{paso.detalle}</span>
         </div>
-        {!terminado && <Button variant="primary" onClick={() => onAccion(paso.accion)} disabled={busy} className="next-step-action">{paso.label}<ArrowRight size={16} strokeWidth={1.8} aria-hidden="true" /></Button>}
+        {!terminado && allowed && <Button variant="primary" onClick={() => onAccion(paso.accion)} disabled={busy} className="next-step-action">{paso.label}<ArrowRight size={16} strokeWidth={1.8} aria-hidden="true" /></Button>}
+        {!terminado && !allowed && <p className="muted text-sm">El perfil responsable debe completar este paso.</p>}
       </div>
     </section>
   );

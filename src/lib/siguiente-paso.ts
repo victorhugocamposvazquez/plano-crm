@@ -1,3 +1,4 @@
+import { budgetHistory } from "./budget-history";
 import { totals, type Project, type Task, type Workspace } from "./domain";
 
 /**
@@ -12,13 +13,16 @@ export const etapas: { id: Etapa; label: string }[] = [
 ];
 
 export type TipoAccion = "presupuesto" | "editar" | "cerrar" | "aprobar" | "planificar" | "tareas" | "iniciar-obra" | "tarea" | "certificar" | "finalizar" | "ninguna";
-export type SiguientePaso = { etapa: Etapa; titulo: string; detalle: string; accion: TipoAccion; label: string; tarea?: Task; urgencia: 0 | 1 | 2 };
+export type SiguientePaso = { etapa: Etapa; titulo: string; detalle: string; accion: TipoAccion; label: string; tarea?: Task; urgencia: 0 | 1 | 2; budget_id?: string };
 
 export function siguientePaso(data: Workspace, project: Project, hoy = new Date().toISOString().slice(0, 10)): SiguientePaso {
   const budgets = data.budgets.filter(b => b.project_id === project.id);
   const versions = data.versions.filter(v => budgets.some(b => b.id === v.budget_id));
-  const approved = versions.find(v => budgets.some(b => b.approved_version_id === v.id));
-  const working = versions.find(v => v.status === "draft" || v.status === "issued");
+  const histories = budgets.map(b => budgetHistory(b, versions));
+  const pending = histories.filter(h => h.working).sort((a,b) => Number(Boolean(a.approved)) - Number(Boolean(b.approved)) || b.working!.updated_at.localeCompare(a.working!.updated_at));
+  const working = pending[0]?.working;
+  // La aprobada de otro ámbito no es la referencia que esta revisión va a sustituir.
+  const approved = working ? pending[0].approved : histories.find(h => h.approved)?.approved;
   const conPartidas = versions.some(v => v.items.length > 0);
   const tasks = data.tasks.filter(t => t.project_id === project.id);
   const pendientes = tasks.filter(t => t.status === "pending").sort((a, b) => a.due_date.localeCompare(b.due_date));
@@ -30,17 +34,17 @@ export function siguientePaso(data: Workspace, project: Project, hoy = new Date(
   // Si la empresa ya está planificando o en obra, manda la obra aunque el presupuesto siga en revisión.
   const enObra = project.status === "planning" || project.status === "active";
 
-  if (!conPartidas && !enObra) {
+  if ((!conPartidas || (working?.items.length === 0 && !approved)) && !enObra) {
     if (!budgets.length) return { etapa: "visita", titulo: "Todavía no hay presupuesto", detalle: "Ábrelo aquí con el catálogo o estímalo a pie de obra en la visita.", accion: "presupuesto", label: "Abrir presupuesto", urgencia: 1 };
-    return { etapa: "presupuesto", titulo: `La V${working?.number ?? 1} está vacía`, detalle: "Añade las partidas del catálogo con la guía por capítulos.", accion: "editar", label: "Añadir partidas", urgencia: 1 };
+    return { etapa: "presupuesto", titulo: `La V${working?.number ?? 1} está vacía`, detalle: "Añade las partidas del catálogo con la guía por capítulos.", accion: "editar", budget_id: working?.budget_id ?? budgets[0]?.id, label: "Añadir partidas", urgencia: 1 };
   }
 
   if (!approved && !enObra) {
-    if (working?.status === "draft") return { etapa: "presupuesto", titulo: `Cerrar la V${working.number} y enviarla al cliente`, detalle: `${totals(working.items).base / 100 > 0 ? "" : ""}Revisa partidas y condiciones; al cerrarla queda lista para el PDF y la aprobación.`, accion: "cerrar", label: `Cerrar V${working.number}`, urgencia: 1 };
-    if (working?.status === "issued") return { etapa: "aprobacion", titulo: `V${working.number} enviada · pendiente de aprobación`, detalle: "Cuando el cliente acepte, apruébala para obra con la referencia (correo, firma, señal).", accion: "aprobar", label: `Aprobar V${working.number}`, urgencia: 2 };
+    if (working?.status === "draft") return { etapa: "presupuesto", titulo: `Cerrar la V${working.number} y enviarla al cliente`, detalle: `${totals(working.items).base / 100 > 0 ? "" : ""}Revisa partidas y condiciones; al cerrarla queda lista para el PDF y la aprobación.`, accion: "cerrar", budget_id: working.budget_id, label: `Cerrar V${working.number}`, urgencia: 1 };
+    if (working?.status === "issued") return { etapa: "aprobacion", titulo: `V${working.number} enviada · pendiente de aprobación`, detalle: "Cuando el cliente acepte, apruébala para obra con la referencia (correo, firma, señal).", accion: "aprobar", budget_id: working.budget_id, label: `Aprobar V${working.number}`, urgencia: 2 };
   }
 
-  if (approved && working?.status === "issued" && !enObra) return { etapa: "aprobacion", titulo: `V${working.number} cerrada con cambios · pendiente de aprobar`, detalle: `Sustituirá a la V${approved.number} aprobada cuando el cliente acepte.`, accion: "aprobar", label: `Aprobar V${working.number}`, urgencia: 2 };
+  if (approved && working?.status === "issued" && !enObra) return { etapa: "aprobacion", titulo: `V${working.number} cerrada con cambios · pendiente de aprobar`, detalle: `Sustituirá a la V${approved.number} aprobada cuando el cliente acepte.`, accion: "aprobar", budget_id: working.budget_id, label: `Aprobar V${working.number}`, urgencia: 2 };
 
   if (approved && (project.status === "lead" || project.status === "estimating")) return { etapa: "aprobacion", titulo: "Presupuesto aprobado · planifica la obra", detalle: "Pasa el proyecto a planificación y reparte las tareas por oficio y fecha.", accion: "planificar", label: "Pasar a planificación", urgencia: 1 };
 
@@ -57,7 +61,7 @@ export function siguientePaso(data: Workspace, project: Project, hoy = new Date(
     return { etapa: "entrega", titulo: "Obra terminada y certificada", detalle: "Marca el proyecto como finalizado para cerrarlo.", accion: "finalizar", label: "Finalizar proyecto", urgencia: 0 };
   }
 
-  return { etapa: "presupuesto", titulo: "Presupuesto en marcha", detalle: "Revisa la revisión en curso desde la pestaña Presupuesto.", accion: "editar", label: "Ver presupuesto", urgencia: 0 };
+  return { etapa: "presupuesto", titulo: "Presupuesto en marcha", detalle: "Revisa la revisión en curso desde la pestaña Presupuesto.", accion: "editar", budget_id: working?.budget_id ?? budgets[0]?.id, label: "Ver presupuesto", urgencia: 0 };
 }
 
 /** Los proyectos con algo que hacer, los más urgentes primero y los finalizados fuera. */

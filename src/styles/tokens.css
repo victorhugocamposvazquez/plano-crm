@@ -33,9 +33,9 @@
   --pl-font-brand: "Archivo Variable", Archivo, "Inter Variable", sans-serif;
   --pl-font-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  --pl-text-xs: 11px;
-  --pl-text-sm: 12px;
-  --pl-text-md: 13px;
+  --pl-text-xs: 12px;
+  --pl-text-sm: 13px;
+  --pl-text-md: 14px;
   --pl-text-base: 16px;
   --pl-text-ui: 15px;
   --pl-text-h3: 17px;
@@ -85,8 +85,8 @@
   --pl-touch: 44px;
   --pl-control-height: 46px;
   --pl-button-height: 44px;
-  --pl-button-height-desktop: 38px;
-  --pl-icon-button: 34px;
+  --pl-button-height-desktop: 44px;
+  --pl-icon-button: 44px;
   --pl-row-project: 90px;
   --pl-row-project-desktop: 60px;
   --pl-row-dense: 56px;
