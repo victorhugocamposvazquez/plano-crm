@@ -24,7 +24,7 @@ Si dos versiones antiguas no comparten ninguna identidad, se informa de esa limi
 
 ## Fechas de los cambios
 
-Las versiones existentes no guardan la fecha individual de cada cambio de partida. La interfaz distingue la fecha de guardado de la versión de ese dato no registrado. No se reconstruyen fechas a partir del orden de las filas o de un motivo escrito. La persistencia de ediciones por partida será una entrega separada; las fechas anteriores no se podrán inventar al activarla.
+Las versiones existentes no guardan la fecha individual de cada cambio de partida. La interfaz distingue la fecha de guardado de la versión de ese dato no registrado. No se reconstruyen fechas a partir del orden de las filas o de un motivo escrito. La persistencia de futuras ediciones por partida se incorpora en la entrega separada [Fechas de partidas](fechas-partidas.md); las fechas anteriores no se pueden inventar al activarla.
 
 ## Comprobación
 

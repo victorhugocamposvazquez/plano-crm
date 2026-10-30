@@ -13,13 +13,16 @@ export const itemSchema = z.object({
 });
 export type BudgetItem = z.infer<typeof itemSchema>;
 export type BudgetVersion = { id: string; organization_id: string; budget_id: string; number: number; status: "draft" | "issued" | "approved" | "superseded"; draft_revision: number; items: BudgetItem[]; notes: string; change_reason: string; created_by_name: string; created_at: string; updated_at: string; approved_at: string | null; approval_reference: string | null };
+/** Cada guardado conserva cambios y fecha de servidor; las copias de versión no son ediciones. */
+export type BudgetItemEdit = { item_id: string; version_id: string; draft_revision: number; kind: ItemChange["kind"]; fields: string[]; occurred_at: string; actor_name: string };
+export type BudgetItemEvent = BudgetItemEdit & { id: string; organization_id: string; budget_id: string; actor_id: string; before_item?: BudgetItem; after_item?: BudgetItem };
 export type Task = { id: string; organization_id: string; project_id: string; title: string; trade: string; assignee: string; due_date: string; status: "pending" | "done"; weight: number };
 export type Purchase = { id: string; organization_id: string; project_id: string; name: string; supplier: string; quantity: number; received_quantity: number; delivered_quantity: number; unit: string; status: "planned" | "ordered" | "received" | "delivered" };
 export type Document = { id: string; organization_id: string; project_id: string; name: string; category: "plan" | "contract" | "technical" | "before" | "during" | "after" | "other"; storage_path: string; mime_type: string; size_bytes: number; created_at: string };
 export type Message = { id: string; organization_id: string; project_id: string; body: string; author_name: string; created_at: string; edited_at?: string | null; deleted_at?: string | null; reactions?: Record<string, string[]> | null };
 export type Activity = { id: string; organization_id: string; project_id: string | null; text: string; actor_name: string; created_at: string };
 export type Certification = { id: string; organization_id: string; project_id: string; budget_version_id: string; title: string; amount: number; status: "draft"; created_at: string };
-export type Workspace = { organization_id: string; organization_name: string; projects: Project[]; articles: Article[]; budgets: Budget[]; versions: BudgetVersion[]; tasks: Task[]; purchases: Purchase[]; documents: Document[]; messages: Message[]; activities: Activity[]; certifications: Certification[] };
+export type Workspace = { organization_id: string; organization_name: string; projects: Project[]; articles: Article[]; budgets: Budget[]; versions: BudgetVersion[]; tasks: Task[]; purchases: Purchase[]; documents: Document[]; messages: Message[]; activities: Activity[]; certifications: Certification[]; budget_item_events?: BudgetItemEvent[] };
 
 const text = z.string().trim().min(1).max(500);
 export const commandSchema = z.discriminatedUnion("type", [
@@ -126,6 +129,12 @@ export function applyCommand(previous: Workspace, input: Command, actor: Actor, 
       const { v } = version(command.version_id);
       if (v.status !== "draft") throw new Error("Esta revisión está cerrada. Crea una nueva versión.");
       if (v.draft_revision !== command.expected_revision) throw new Error("Otra persona ha actualizado el borrador. Recarga antes de guardar.");
+      const edits = compareVersions(v, { ...v, items: command.items });
+      if (edits.length) state.budget_item_events = [...(state.budget_item_events ?? []), ...edits.map(change => ({
+        id: uuid(), organization_id: org, budget_id: v.budget_id, version_id: v.id,
+        item_id: change.id, draft_revision: v.draft_revision + 1, kind: change.kind, fields: change.kind === "changed" ? change.fields : [...trackedFields],
+        before_item: change.before, after_item: change.after, occurred_at: now, actor_id: actor.id, actor_name: actor.name,
+      }))];
       v.items = command.items; v.notes = command.notes; v.draft_revision++; v.updated_at = now; activity = `Borrador V${v.number} guardado`; break;
     }
     case "budget.issue": {

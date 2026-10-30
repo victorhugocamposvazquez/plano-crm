@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { BudgetActions } from "./budget-actions";
 import { BudgetVersionIdentity } from "./budget-version-identity";
-import { BudgetComparison } from "./budget-comparison";
+import { BudgetComparisonPanel } from "./budget-comparison-panel";
 export { BudgetComparison } from "./budget-comparison";
 import { budgetHistory, compareBudgetHistory, versionLabel, versionState, versionTimestamp } from "@/lib/budget-history";
 import { partidasPorCapitulo, totalCapitulo } from "@/lib/presupuesto";
@@ -127,9 +127,8 @@ export function BudgetWorkspace({budget,versions,onNavigate,onEdit,canEdit,addin
       <div><h2>Qué cambió entre versiones</h2><p className="muted">Elige las dos versiones. Se comparan las partidas y las condiciones guardadas.</p></div>
       {history.versions.length<2?<p className="workspace-callout">Necesitas al menos dos versiones para comparar cambios.</p>:<>
         <div className="budget-comparison-pickers">{([{key:"desde",label:"Desde",value:from},{key:"hasta",label:"Hasta",value:to}] as const).map(p=><label className="field" key={p.key}><span>{p.label}</span><select className="workspace-select" value={p.value?.id ?? ""} onChange={e=>onNavigate({desde:p.key==="desde"?e.target.value:from?.id,hasta:p.key==="hasta"?e.target.value:to?.id})}>{history.versions.map(v=><option key={v.id} value={v.id}>{v.id===current?.id?"Actual · ":""}V{v.number} · {versionState(v,approved?.id)} · {versionTimestamp(v.created_at)}</option>)}</select></label>)}</div>
-        {from && to && from.id!==to.id?<BudgetComparison before={from} after={to}/>:<p className="workspace-callout">Elige dos versiones distintas para ver sus diferencias.</p>}
+        {from && to && from.id!==to.id?<BudgetComparisonPanel before={from} after={to}/>:<p className="workspace-callout">Elige dos versiones distintas para ver sus diferencias.</p>}
       </>}
     </section>}
   </section>;
 }
-

@@ -11,8 +11,8 @@ export type Capability = {
   evidence: Evidence[];
 };
 
-export const documentationDate = "2026-10-29";
-export const workBranch = "codex/presupuesto-lectura-clara";
+export const documentationDate = "2026-10-30";
+export const workBranch = "codex/fechas-cambios-partidas";
 const repository = "https://github.com/victorhugocamposvazquez/plano-crm";
 export const statusLabels: Record<CapabilityStatus, string> = {
   available: "Implementado",
@@ -25,6 +25,13 @@ export function evidenceUrl(path: string, deployedCommit: string | null = null) 
 }
 
 export const capabilities: Capability[] = [
+  {
+    id: "fechas-partidas", name: "Fechas y autor de las ediciones de partidas", status: "partial",
+    summary: "Registro transaccional de altas, cambios y bajas, con última edición individual en el comparador.",
+    available: ["Fecha y autor verificados por el servidor; los eventos conservan valores anteriores y posteriores.", "Consulta privada por empresa y versión, sin alterar aprobados ni duplicar reintentos."],
+    pending: ["Aplicar la migración revisada en producción para registrar futuras ediciones.", "Pantalla del registro completo de guardados; el comparador muestra la última edición en la versión consultada.", "Los datos antiguos sin registro individual no permiten reconstruir una fecha exacta."],
+    evidence: [{ label: "Fechas y activación", path: "docs/usabilidad/fechas-partidas.md" }, { label: "Migración", path: "supabase/migrations/202610300001_budget_item_events.sql" }],
+  },
   {
     id: "supervision", name: "Documentación y supervisión del producto", status: "partial",
     summary: "Zona privada con capacidades, límites, fuentes y registro de cambios de software.",

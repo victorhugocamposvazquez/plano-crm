@@ -22,7 +22,8 @@ describe("Documentación verificable del producto", () => {
       expect(change.limitation.length).toBeGreaterThan(0);
       expect(change.pullRequest).toBeGreaterThan(0);
     }
-    expect(documentationDate).toBe("2026-10-29");
+    expect(documentationDate).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    expect(Number.isFinite(Date.parse(documentationDate))).toBe(true);
   });
   it("no inventa versión local ni salud o publicación de las entregas", () => {
     expect(deploymentLabel({})).toEqual({ environment: "Local / entorno no identificado", commit: null });

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { compareBudgetHistory, changedText, versionTimestamp } from "@/lib/budget-history";
-import { fieldNames, lineTotal, money, totals, type BudgetItem, type BudgetVersion, type ItemChange } from "@/lib/domain";
+import { fieldNames, lineTotal, money, totals, type BudgetItem, type BudgetItemEdit, type BudgetVersion, type ItemChange } from "@/lib/domain";
 
 const number = (value: number) => new Intl.NumberFormat("es-ES", { maximumFractionDigits: 3 }).format(value);
 const tone = (value: number) => value > 0 ? "up" : value < 0 ? "down" : undefined;
@@ -59,7 +59,12 @@ function Snapshot({ item, other, fields, side }: { item?: BudgetItem; other?: Bu
 }
 
 /** Expone versiones e impacto con la misma base fiscal; no atribuye causas no registradas. */
-export function BudgetComparison({ before, after }: { before: BudgetVersion; after: BudgetVersion }) {
+export function BudgetComparison({ before, after, edits = [], editStatus = "ready" }: { before: BudgetVersion; after: BudgetVersion; edits?: BudgetItemEdit[]; editStatus?: "ready" | "loading" | "unavailable" | "error" }) {
+  const latest = new Map<string, BudgetItemEdit>();
+  for (const edit of edits) {
+    const current = latest.get(edit.item_id);
+    if (edit.version_id === after.id && edit.draft_revision <= after.draft_revision && (!current || edit.draft_revision > current.draft_revision)) latest.set(edit.item_id, edit);
+  }
   const comparison = compareBudgetHistory(before, after), { changes, delta, counts } = comparison;
   const chronological = before.number < after.number;
   const beforeLabel = `${chronological ? "Antes" : "Referencia"} · V${before.number}`;
@@ -91,7 +96,7 @@ export function BudgetComparison({ before, after }: { before: BudgetVersion; aft
         return <article key={change.id} className="comparison-change" aria-label={`Cambios en ${item.description}`}>
           <header><span className="comparison-overline">{kind}</span><h4>{item.description}</h4><p>{explanation(change)}</p></header>
           <footer className="comparison-impact" data-tone={tone(difference)}><span>Impacto en el total</span><strong>{impact(difference)}{difference !== 0 && " · con IVA"}</strong></footer>
-          <p className="comparison-date">V{after.number} guardada <time dateTime={after.updated_at}>{versionTimestamp(after.updated_at)}</time>.<br/>Fecha individual del cambio: no registrada.</p>
+          <ItemEditDate edit={latest.get(change.id)} version={after} status={editStatus}/>
           <details className="comparison-calculation"><summary>Ver V{before.number} y V{after.number} en detalle</summary><Pair beforeLabel={beforeLabel} afterLabel={afterLabel} longText={fields.some(field => field === "description" || field === "chapter")} before={<Snapshot item={change.before} other={change.after} fields={fields} side="before"/>} after={<Snapshot item={change.after} other={change.before} fields={fields} side="after"/>}/><details className="comparison-calculation"><summary>Cálculo e impuestos</summary><Pair beforeLabel={beforeLabel} afterLabel={afterLabel} before={<ItemCalculation item={change.before}/>} after={<ItemCalculation item={change.after}/>}/></details></details>
         </article>;
       })}
@@ -116,4 +121,11 @@ function ItemCalculation({ item }: { item?: BudgetItem }) {
     <div><dt>IVA de la partida</dt><dd>{fieldValue(item, "vat_rate")}</dd></div><div><dt>¿Suma al presupuesto?</dt><dd>{fieldValue(item, "inclusion")}</dd></div>
     <div><dt>IVA que suma al total</dt><dd className="pl-mono">{money(contribution(item).tax)}</dd></div>
   </dl>;
+}
+
+function ItemEditDate({ edit, version, status }: { edit?: BudgetItemEdit; version: BudgetVersion; status: "ready" | "loading" | "unavailable" | "error" }) {
+  if (status === "loading") return <p className="comparison-date" role="status">Consultando la fecha de edición…</p>;
+  if (status === "error") return <p className="comparison-date" role="status">No se ha podido consultar la fecha de esta partida. Vuelve a abrir la comparación para reintentar.</p>;
+  if (edit) return <p className="comparison-date">Última edición de esta partida en V{version.number}: <time dateTime={edit.occurred_at}>{versionTimestamp(edit.occurred_at)}</time> · {edit.actor_name}</p>;
+  return <p className="comparison-date">V{version.number} guardada <time dateTime={version.updated_at}>{versionTimestamp(version.updated_at)}</time>.<br/>{status === "unavailable" ? "Registro por partida pendiente de activar." : "Fecha individual del cambio: no registrada en este histórico."}</p>;
 }
