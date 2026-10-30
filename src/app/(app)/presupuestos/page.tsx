@@ -4,12 +4,11 @@ import Link from "next/link";
 import { FileText, ArrowUpRight } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
 import { Tabs } from "@/components/ui/tabs";
-import { Status, type Tone } from "@/components/ui/status";
-import { money, dateLabel } from "@/lib/domain";
-import { filasPresupuesto, filtrarPresupuestos, filtrosPresupuesto, estadoPresupuesto, type FiltroPresupuesto, type FilaPresupuesto } from "@/lib/resumen";
+import { money, totals } from "@/lib/domain";
+import { filasPresupuesto, filtrarPresupuestos, filtrosPresupuesto, type FiltroPresupuesto, type FilaPresupuesto } from "@/lib/resumen";
 import { useQueryState } from "@/lib/use-query-state";
+import { BudgetVersionIdentity } from "@/components/project/budget-version-identity";
 
-const tono: Record<FilaPresupuesto["estado"], Tone> = { empty: "muted", draft: "ink", issued: "warning", approved: "success", changes: "blue" };
 const signed = (cents: number) => `${cents < 0 ? "−" : "+"}${money(Math.abs(cents))}`;
 
 /** Todos los presupuestos de la empresa, un renglón por ámbito; cada uno abre su ficha con la revisión seleccionada. */
@@ -35,16 +34,16 @@ export default function PresupuestosPage() {
 
       <div style={{ borderTop: visibles.length ? "var(--pl-hairline) solid var(--pl-line)" : undefined }}>
         {visibles.map(f => (
-          <Link key={f.budget.id} href={`/proyectos/${f.project.id}?s=budget&p=${f.budget.id}`} className="row-budget">
+          <Link key={f.budget.id} href={`/proyectos/${f.project.id}?s=budget&p=${f.budget.id}&v=${f.latest.id}`} className="row-budget budget-list-row">
             <span style={{ minWidth: 0 }}>
               <strong>{f.project.name}{data.budgets.filter(b => b.project_id === f.project.id).length > 1 ? ` · ${f.budget.title}` : ""}</strong>
-              <small>{[f.project.client_name, f.project.location, `V${f.latest.number} · ${dateLabel(f.updated_at)}`].filter(Boolean).join(" · ")}</small>
-              <span className="row-budget-status"><Status label={estadoPresupuesto[f.estado]} tone={tono[f.estado]} /></span>
+              <small>{[f.project.client_name, f.project.location].filter(Boolean).join(" · ")}</small>
+              <BudgetVersionIdentity version={f.latest} currentId={f.latest.id} approvedId={f.approved?.id}/>
             </span>
             <span className="row-budget-amounts">
-              {f.approved && <span><small>Aprobado</small><strong className="pl-mono">{money(f.approvedTotal)}</strong></span>}
-              {f.working && f.working.items.length > 0 && <span><small>{f.approved ? `V${f.working.number} · diferencia` : "En revisión"}</small><strong className="pl-mono" style={f.approved ? { color: f.deltaTotal >= 0 ? "var(--pl-warning)" : "var(--pl-success)" } : undefined}>{f.approved ? signed(f.deltaTotal) : money(f.workingTotal)}</strong></span>}
-              {f.estado === "empty" && <span><small>Sin partidas</small><strong className="pl-mono muted">—</strong></span>}
+              <span><small>Actual · V{f.latest.number} · con IVA</small><strong className="pl-mono">{f.latest.items.length?money(totals(f.latest.items).total):"Sin partidas"}</strong></span>
+              {f.approved && f.approved.id!==f.latest.id && <span><small>Para obra · V{f.approved.number} · con IVA</small><strong className="pl-mono">{money(f.approvedTotal)}</strong></span>}
+              {f.approved && f.working && <small>Diferencia: {signed(f.deltaTotal)} con IVA</small>}
             </span>
             <ArrowUpRight size={16} strokeWidth={1.6} aria-hidden="true" className="muted" />
           </Link>

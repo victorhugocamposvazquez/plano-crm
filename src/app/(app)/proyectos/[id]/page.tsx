@@ -10,19 +10,20 @@ import { useQueryPatch } from "@/lib/use-query-state";
 import { useWorkspace } from "@/components/workspace-provider";
 import { Tabs } from "@/components/ui/tabs";
 import { Button, LinkButton } from "@/components/ui/button";
-import { Pill, Meter, progressTone, type Tone } from "@/components/ui/status";
+import { Meter, progressTone, type Tone } from "@/components/ui/status";
 import { localDate } from "@/lib/hoy";
 import { DocumentsPanel } from "@/components/project/documents-panel";
 import { ChatPanel } from "@/components/project/chat-panel";
 import { PurchasesPanel } from "@/components/project/purchases-panel";
 import { BudgetEditor } from "@/components/project/budget-editor";
 import { BudgetWorkspace } from "@/components/project/budget-workspace";
+import { BudgetVersionIdentity } from "@/components/project/budget-version-identity";
 import { ProjectMenu } from "@/components/project/project-menu";
 import { NextStep } from "@/components/project/next-step";
 import { AddToBudget } from "@/components/plan/add-to-budget";
 import { BudgetDoors } from "@/components/plan/budget-doors";
 import { cargarBorrador } from "@/lib/plano-flujo";
-import { budgetHistory } from "@/lib/budget-history";
+import { budgetHistory, versionTimestamp } from "@/lib/budget-history";
 import { siguientePaso, type TipoAccion } from "@/lib/siguiente-paso";
 import { projectProgress, projectStatus, money, totals, dateLabel, kindNames, can, type Task, type Command } from "@/lib/domain";
 import "@/styles/project-workspace.css";
@@ -141,7 +142,7 @@ export default function ObraPage() {
       {paso && <NextStep paso={paso} busy={busy} allowed={puedePaso} compact onAccion={accionPaso}/>}
       <div className="project-overview-grid">
         {enObra
-          ? <button type="button" className="workspace-card overview-card" onClick={()=>selectSection("work")} aria-label={`Obra: ${progress} % · ${doneTasks.length} de ${tasks.length} tareas hechas. Ver tareas y avance`}>
+          ? <button type="button" className="workspace-card overview-card overview-card-work" onClick={()=>selectSection("work")} aria-label={`Obra: ${progress} % · ${doneTasks.length} de ${tasks.length} tareas hechas. Ver tareas y avance`}>
               <span className="overview-kicker"><span>Obra</span><span className="status" data-tone={faseTone(project.status)}>{projectStatus[project.status]}</span></span>
               <strong className="overview-figure pl-mono">{progress} %</strong>
               <Meter value={progress} label={`Avance de ${project.name}`} tone={meterTone}/>
@@ -151,12 +152,13 @@ export default function ObraPage() {
               <span className="overview-kicker"><span id="para-presupuestar">Para poder presupuestar</span><span className="muted">{requisitos.filter(r=>r.done).length} de {requisitos.length}</span></span>
               <ul className="overview-checklist">{requisitos.map(r=><li key={r.id} data-done={r.done}><span className="overview-check" aria-hidden="true">{r.done && <Check size={12} strokeWidth={2.6}/>}</span><span><span>{r.label}</span><small className="muted">{r.hint}</small></span></li>)}</ul>
             </section>}
-        <button type="button" className="workspace-card overview-card" onClick={()=>selectSection("budget")} aria-label={current?`Presupuesto: ${money(totals(current.items).total)} con IVA. Ver presupuesto y versiones`:"Presupuesto: todavía no hay. Ver opciones para presupuestar"}>
-          <span className="overview-kicker"><span>Presupuesto</span>{budgets.length>1 && <span className="muted">{budgets.length} presupuestos</span>}</span>
+        <button type="button" className="workspace-card overview-card overview-card-budget" onClick={()=>selectSection("budget")} aria-label={current?`Presupuesto: ${money(totals(current.items).total)} con IVA. Ver presupuesto y versiones`:"Presupuesto: todavía no hay. Ver opciones para presupuestar"}>
+          <span className="overview-kicker"><span>Presupuesto actual</span>{budgets.length>1 && <span className="muted">{budgets.length} presupuestos</span>}</span>
           {current ? <>
+            <BudgetVersionIdentity version={current} currentId={current.id} approvedId={approved?.id} showUpdated/>
             <strong className="overview-figure pl-mono">{money(totals(current.items).total)}<small>con IVA</small></strong>
-            <span className="overview-versions">{approved && <Pill label={`V${approved.number} aprobada`} tone="success"/>}{working && <Pill label={`V${working.number} ${working.status==="draft"?"borrador":"cerrada"}`} tone="warning"/>}{!approved && !working && <Pill label={`V${current.number}`} tone="muted"/>}</span>
-            <span className="muted text-sm">{approved && working?`V${working.number} ${signed(totals(working.items).total-totals(approved.items).total)} frente a V${approved.number}`:working?"Pendiente de cerrar y enviar":approved?"Aprobada para obra":budget?.title}</span>
+            {approved && working && <span className="budget-approved-reference"><span>Para ejecutar la obra se usa</span><strong>V{approved.number} · Aprobada para obra</strong><span><span className="pl-mono">{money(totals(approved.items).total)}</span> con IVA</span>{approved.approved_at && <span>Aprobada <time dateTime={approved.approved_at}>{versionTimestamp(approved.approved_at)}</time></span>}<span>La V{working.number} supone {signed(totals(working.items).total-totals(approved.items).total)} con IVA respecto a V{approved.number}.</span></span>}
+            {!approved && <span className="budget-current-note">Todavía no hay una versión aprobada para obra.</span>}
           </> : <>
             <span className="overview-empty">Todavía no hay presupuesto</span>
             <span className="link-inline">Ver opciones para presupuestar</span>

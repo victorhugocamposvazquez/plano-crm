@@ -1,0 +1,20 @@
+.version-identity { display: grid; gap: var(--pl-space-2); min-width: 0; text-align: left; line-height: var(--pl-leading-base); }
+.version-identity-line { display: flex; align-items: center; flex-wrap: wrap; gap: var(--pl-space-3); font-size: var(--pl-text-ui); }
+.version-identity-current { display: inline-flex; align-items: center; gap: var(--pl-space-2); padding: 2px var(--pl-space-2); border-radius: var(--pl-radius-full); background: var(--pl-success-bg); color: var(--pl-success); font-size: var(--pl-text-sm); font-weight: var(--pl-weight-semibold); }
+.version-identity-current .pulse-dot { margin-inline: var(--pl-space-1); }
+.version-identity-previous { color: var(--pl-muted); font-size: var(--pl-text-sm); font-weight: var(--pl-weight-regular); }
+.version-identity-state { font-size: var(--pl-text-sm); color: var(--pl-ink); font-weight: var(--pl-weight-medium); }
+.version-identity-date { font-size: var(--pl-text-sm); color: var(--pl-muted); font-weight: var(--pl-weight-regular); overflow-wrap: anywhere; }
+.budget-approved-reference { display: grid; gap: var(--pl-space-2); padding-top: var(--pl-space-4); border-top: var(--pl-hairline) solid var(--pl-line); font-size: var(--pl-text-sm); color: var(--pl-ink); }
+.budget-approved-reference > span:first-child { color: var(--pl-muted); }
+.budget-approved-reference .pl-mono { font-size: var(--pl-text-ui); }
+.budget-current-note { font-size: var(--pl-text-sm); color: var(--pl-muted); }
+.budget-list-row { padding-block: var(--pl-space-5); align-items: start; gap: var(--pl-space-5); }
+.budget-list-row .version-identity { margin-top: var(--pl-space-4); }
+.budget-list-row .row-budget-amounts { display: grid; gap: var(--pl-space-4); min-width: 0; }
+.peek-version-choice { height: auto; min-width: 216px; white-space: normal; padding: var(--pl-space-3); }
+@media (max-width: 599px) {
+  .budget-list-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
+  .budget-list-row > .row-budget-amounts { grid-column: 1 / -1; grid-row: 2; text-align: left; }
+  .budget-list-row > svg { grid-column: 2; grid-row: 1; }
+}

@@ -4,6 +4,8 @@ import { FileText, Image as ImageIcon, Film, Upload, ArrowUpRight } from "lucide
 import { useWorkspace } from "@/components/workspace-provider";
 import { Status } from "@/components/ui/status";
 import { Select } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Modal } from "@/components/ui/modal";
 import { can, dateLabel, type Document, type Project } from "@/lib/domain";
 import { categoryNames, categoryOrder, acceptedTypes, maxBytes, formatSize, isImage, isVideo, checklist, groupByCategory, type Category } from "@/lib/documentos";
 
@@ -16,19 +18,22 @@ export function DocumentsPanel({ project, documents }: { project: Project; docum
   const [category, setCategory] = useState<Category>("plan");
   const [uploading, setUploading] = useState<string | null>(null);
   const [opening, setOpening] = useState<string | null>(null);
+  const [attaching, setAttaching] = useState(false);
   const rows = useMemo(() => checklist(project.kind, documents), [project.kind, documents]);
   const groups = useMemo(() => groupByCategory(documents), [documents]);
 
   async function onFiles(event: ChangeEvent<HTMLInputElement>) {
     const files = Array.from(event.target.files ?? []);
     event.target.value = "";
+    let added = 0;
     for (const file of files) {
       if (file.size > maxBytes) { notify(`${file.name} supera los 50 MB.`); continue; }
       setUploading(file.name);
-      try { await upload(file, project.id, category); notify(`Adjuntado: ${file.name}`); }
+      try { await upload(file, project.id, category); added++; notify(`Adjuntado: ${file.name}`); }
       catch (e) { notify(e instanceof Error ? e.message : `No se ha podido subir ${file.name}.`); }
       finally { setUploading(null); }
     }
+    if (added === files.length && added > 0) setAttaching(false);
   }
 
   async function open(doc: Document) {
@@ -45,37 +50,13 @@ export function DocumentsPanel({ project, documents }: { project: Project; docum
   }
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
-      <div>
-        <div className="section-label" style={{ marginTop: 0 }}><span>Documentación del expediente</span><span className="pl-mono">{rows.filter(r => r.state === "attached").length}/{rows.length}</span></div>
-        <div className="panel">
-          {rows.map((row, i) => (
-            <div key={row.category} className="panel-row" style={i === 0 ? { borderTop: 0 } : undefined}>
-              <span style={{ minWidth: 0 }}>{row.label}<small className="muted text-xs" style={{ display: "block", marginTop: 2 }}>{row.count ? `${row.count} archivo${row.count === 1 ? "" : "s"} · pendiente de revisión` : "Nada adjuntado todavía"}</small></span>
-              <Status label={row.state === "attached" ? "Adjuntado" : "Pendiente"} tone={row.state === "attached" ? "ink" : "warning"} />
-            </div>
-          ))}
-        </div>
-      </div>
+    <section className="project-documents" aria-label="Archivos del proyecto">
+      <header className="workspace-section-heading"><div><h2>Archivos del proyecto</h2><p className="muted text-sm">{documents.length ? `${documents.length} archivo${documents.length === 1 ? "" : "s"} compartido${documents.length === 1 ? "" : "s"} con el equipo` : "Planos, fotos y documentos en un mismo lugar"}</p></div>{allowed && <Button variant="primary" onClick={() => setAttaching(true)} aria-haspopup="dialog"><Upload {...iconProps}/>Adjuntar</Button>}</header>
 
-      {allowed && (
-        <div className="uploader">
-          <div className="field" style={{ flex: 1, minWidth: 200 }}>
-            <span>Guardar como</span>
-            <Select label="Categoría del documento" value={category} onChange={setCategory} options={categoryOrder.map(c => ({ value: c, label: categoryNames[c] }))} />
-          </div>
-          <label className="btn btn-primary" style={{ cursor: busy || uploading ? "default" : "pointer", opacity: busy || uploading ? 0.6 : 1 }}>
-            <Upload {...iconProps} />{uploading ? `Subiendo ${uploading}…` : "Adjuntar"}
-            <input type="file" accept={acceptedTypes} multiple disabled={busy || Boolean(uploading)} onChange={onFiles} style={{ position: "absolute", width: 1, height: 1, opacity: 0 }} />
-          </label>
-          <span className="muted text-xs" style={{ flexBasis: "100%" }}>PDF, JPG, PNG, WebP o MP4 · hasta 50 MB por archivo.</span>
-        </div>
-      )}
-
-      {documents.length === 0 && <div className="empty"><strong>Aún no hay documentos</strong><span className="muted text-sm">Elige arriba qué es (plano, contrato, fotos de antes…) y toca Adjuntar. Lo ve todo el equipo del proyecto.</span></div>}
+      {documents.length === 0 && <div className="documents-empty"><FileText size={28} strokeWidth={1.3} aria-hidden="true"/><strong>Aún no hay archivos</strong><p className="muted">{allowed ? "Pulsa Adjuntar, elige qué vas a subir y selecciona los archivos." : "Los archivos que adjunte el equipo aparecerán aquí."}</p></div>}
 
       {[...groups.entries()].map(([cat, list]) => (
-        <div key={cat}>
+        <section key={cat} className="document-group" aria-label={categoryNames[cat]}>
           <div className="section-label"><span>{categoryNames[cat]}</span><span className="pl-mono">{list.length}</span></div>
           <div style={{ borderTop: "var(--pl-hairline) solid var(--pl-line)" }}>
             {list.map(doc => (
@@ -86,8 +67,18 @@ export function DocumentsPanel({ project, documents }: { project: Project; docum
               </button>
             ))}
           </div>
-        </div>
+        </section>
       ))}
-    </div>
+      <details className="document-checklist"><summary><span>Documentación del expediente<small className="muted">Qué está adjuntado y qué falta</small></span><span className="document-checklist-count">{rows.filter(r => r.state === "attached").length} de {rows.length}</span></summary>
+        <p className="muted text-sm">Tener archivos adjuntos no significa que estén revisados o aprobados.</p>
+        <div>{rows.map(row => <div key={row.category} className="document-checklist-row"><span>{row.label}<small className="muted">{row.count ? `${row.count} archivo${row.count === 1 ? "" : "s"}` : "Nada adjuntado todavía"}</small></span><Status label={row.state === "attached" ? "Adjuntado" : "Pendiente"} tone={row.state === "attached" ? "ink" : "warning"}/></div>)}</div>
+      </details>
+      {allowed && <Modal open={attaching} onClose={() => setAttaching(false)} title="Adjuntar archivos"><div className="document-upload-form">
+        <p className="muted text-sm">Se guardan en este proyecto y los ve su equipo.</p>
+        <div className="field"><span>¿Qué vas a adjuntar?</span><Select label="Categoría del documento" value={category} onChange={setCategory} options={categoryOrder.map(c => ({ value: c, label: categoryNames[c] }))}/></div>
+        <label className="document-file-picker"><span><Upload {...iconProps}/>{uploading ? `Subiendo ${uploading}…` : "Seleccionar archivos"}</span><input aria-label="Seleccionar archivos" type="file" accept={acceptedTypes} multiple disabled={busy || Boolean(uploading)} onChange={onFiles}/></label>
+        <p className="muted text-sm" role="status">{uploading ? `Subiendo ${uploading}. Puedes cerrar esta ventana; la subida continuará.` : "PDF, JPG, PNG, WebP o MP4 · hasta 50 MB por archivo."}</p>
+      </div></Modal>}
+    </section>
   );
 }

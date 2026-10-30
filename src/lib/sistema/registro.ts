@@ -12,7 +12,7 @@ export type Capability = {
 };
 
 export const documentationDate = "2026-10-29";
-export const workBranch = "codex/supervision-sistema";
+export const workBranch = "codex/presupuesto-lectura-clara";
 const repository = "https://github.com/victorhugocamposvazquez/plano-crm";
 export const statusLabels: Record<CapabilityStatus, string> = {
   available: "Implementado",
@@ -36,15 +36,15 @@ export const capabilities: Capability[] = [
     id: "presupuestos", name: "Presupuestos y versiones", status: "available",
     summary: "Partidas con precios, ajustes, revisión, cierre y aprobación para obra.",
     available: ["Cálculo en céntimos e IVA; comparación entre versiones.", "Versiones aprobadas protegidas y control de cambios concurrentes al guardar."],
-    pending: ["El rediseño de consulta y comparación de versiones de esta rama está pendiente de integración y publicación."],
+    pending: ["Validar la consulta y comparación con personas nuevas y completar el historial de ediciones dentro de un borrador."],
     evidence: [{ label: "Reglas y permisos", path: "src/lib/domain.ts" }, { label: "Pruebas de versiones y cálculo", path: "tests/domain.test.ts" }],
   },
   {
     id: "usabilidad", name: "Usabilidad y consulta de versiones", status: "partial",
-    summary: "Primera entrega implementada y comprobada; integración y validación con usuarios pendientes.",
+    summary: "Ficha y consulta de versiones integradas; nueva pasada de lectura y documentos en preparación.",
     available: ["Componente de presupuesto con selector de cualquier versión e historial accesible fuera del chat.", "Comparador de partidas, importes y notas/condiciones con antes y después.", "Lectura por capítulos desplegables para reducir información visible de golpe."],
-    pending: ["Integrar la entrega #42 y continuar con captura, documentos y el resto de pantallas.", "Validar comprensión con usuarios nuevos antes de considerar resuelto el uso del CRM."],
-    evidence: [{ label: "Historial y comparación", path: "src/lib/budget-history.ts" }, { label: "Espacio de presupuesto simplificado", path: "src/components/project/budget-workspace.tsx" }],
+    pending: ["Integrar las mejoras de lectura, resumen móvil y documentos de esta rama; continuar con el resto de pantallas.", "Validar comprensión con usuarios nuevos antes de considerar resuelto el uso del CRM."],
+    evidence: [{ label: "Historial y comparación", path: "src/lib/budget-history.ts" }, { label: "Espacio de presupuesto simplificado", path: "src/components/project/budget-workspace.tsx" }, { label: "Mejoras de lectura y documentos", path: "docs/usabilidad/lectura-clara.md" }],
   },
   {
     id: "pdf", name: "Presupuesto desde planos PDF", status: "partial",
@@ -89,6 +89,12 @@ export type ProductChange = {
 };
 /** Se registran cambios existentes en git, sin inferir si están fusionados o desplegados. */
 export const productChanges: ProductChange[] = [
+  {
+    id: "lectura-clara", date: "2026-10-29", title: "Distinguir la versión actual, la aprobada y sus cambios",
+    impact: "Fechas visibles, Actual y Para obra separados por texto y comparación con impacto con IVA. Los ejemplos conservan la identidad de las partidas. Documentos y preferencias de apariencia más claros.",
+    limitation: "Entrega comprobada en vista previa; pendiente de integración y de pruebas de comprensión con personas nuevas.",
+    commit: "f2aecfc", pullRequest: 63,
+  },
   {
     id: "supervision-sistema", date: "2026-10-29", title: "Documentar el producto y su evolución en una zona privada",
     impact: "Capacidades, límites, fuentes y cambios consultables con autorización de supervisión en servidor.",
