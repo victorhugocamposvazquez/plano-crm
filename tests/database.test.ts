@@ -220,3 +220,52 @@ describe("Editar y eliminar tareas en PostgreSQL",()=>{
     expect((await db.query<{text:string}>("select text from activities order by created_at desc limit 1")).rows[0].text).toMatch(/Tarea eliminada/);
   });
 });
+
+describe("Fechas verificables de las ediciones de partidas",()=>{
+  it("conserva altas, modificaciones y bajas con fecha y autor del servidor",async()=>{
+    const {versionId}=await budget();
+    await command({type:"budget.save",version_id:versionId,expected_revision:0,items:[firstItem],notes:"",occurred_at:"1900-01-01",actor_name:"Falso"});
+    await command({type:"budget.save",version_id:versionId,expected_revision:1,items:[{...firstItem,quantity:20}],notes:""},manager);
+    await command({type:"budget.save",version_id:versionId,expected_revision:2,items:[],notes:""});
+    const events=(await db.query<{kind:string;fields:string[];occurred_at:Date;actor_name:string;before_item:BudgetItem|null;after_item:BudgetItem|null}>("select * from budget_item_events order by draft_revision")).rows;
+    expect(events.map(e=>e.kind)).toEqual(["added","changed","removed"]);
+    expect(events[1].fields).toEqual(["quantity"]);expect(events[1].actor_name).toBe("Usuario manager");
+    expect(events[0].actor_name).toBe("Usuario admin");expect(new Date(events[0].occurred_at).getUTCFullYear()).toBeGreaterThan(2025);
+    expect(events[1].before_item?.quantity).toBe(firstItem.quantity);expect(events[1].after_item?.quantity).toBe(20);
+    const latest=await asUser(viewer,()=>db.query("select * from budget_item_change_dates($1)",[versionId]));
+    expect(latest.rows).toHaveLength(1);expect(latest.rows[0]).toMatchObject({kind:"removed",draft_revision:3});
+    const snapshot=await asUser(viewer,()=>db.query("select * from budget_item_change_dates($1,2)",[versionId]));
+    expect(snapshot.rows[0]).toMatchObject({kind:"changed",draft_revision:2});
+  });
+  it("no fecha como edición copiar una versión, reordenar o guardar solo condiciones",async()=>{
+    const {versionId}=await approved();
+    const count=async()=>Number((await db.query<{n:string}>("select count(*) as n from budget_item_events")).rows[0].n);
+    const initial=await count();await command({type:"budget.revise",version_id:versionId,reason:"Revisión"});
+    const next=(await db.query<{id:string}>("select id from budget_versions where status='draft'")).rows[0].id;
+    await command({type:"budget.save",version_id:next,expected_revision:0,items:[firstItem],notes:"Condiciones diferentes"});
+    expect(await count()).toBe(initial);
+    const extra={...firstItem,id:demoId(101)};
+    await command({type:"budget.save",version_id:next,expected_revision:1,items:[firstItem,extra],notes:""});
+    await command({type:"budget.save",version_id:next,expected_revision:2,items:[extra,firstItem],notes:""});
+    expect(await count()).toBe(initial+1);
+  });
+  it("rechaza manipular el registro y no permite leerlo desde otra organización",async()=>{
+    const {versionId}=await approved();
+    expect((await asUser(outsider,()=>db.query("select * from budget_item_change_dates($1)",[versionId]))).rows).toHaveLength(0);
+    await expect(asUser(admin,()=>db.exec("update budget_item_events set actor_name='Falso'"))).rejects.toThrow(/permission denied/);
+    await expect(asUser(admin,()=>db.exec("delete from budget_item_events"))).rejects.toThrow(/permission denied/);
+    await expect(asUser(admin,()=>db.exec("insert into budget_item_events default values"))).rejects.toThrow(/permission denied/);
+  });
+  it("los reintentos, conflictos y cambios rechazados no producen fechas nuevas",async()=>{
+    const {versionId}=await budget(),key=demoId(888);
+    const input={type:"budget.save",version_id:versionId,expected_revision:0,items:[firstItem],notes:""};
+    const run=()=>asUser(admin,()=>db.query("select public.execute_command($1,$2::jsonb,$3)",[org,JSON.stringify(input),key]));
+    await run();await run();
+    await expect(command({...input,items:[{...firstItem,quantity:30}]})).rejects.toThrow(/actualizado/);
+    expect((await db.query("select * from budget_item_events")).rows).toHaveLength(1);
+    await command({type:"budget.issue",version_id:versionId,expected_revision:1});
+    await command({type:"budget.approve",version_id:versionId,reference:"Aceptación"});
+    await expect(command({...input,expected_revision:1,items:[]})).rejects.toThrow();
+    expect((await db.query("select * from budget_item_events")).rows).toHaveLength(1);
+  });
+});

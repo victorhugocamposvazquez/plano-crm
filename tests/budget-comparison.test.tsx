@@ -19,6 +19,20 @@ describe("Comparación comprensible y fechas verificables",()=>{
     expect(html).toContain("10/10/2026");expect(html).toContain("20/10/2026");
     expect(html).toContain("Fecha individual del cambio: no registrada");expect(html).not.toContain("<del");
   });
+  it("muestra la última edición real y su autor, aunque la versión se guardara otro día",()=>{
+    const {before,after}=versions();after.items[0].quantity=12;after.draft_revision=2;
+    const edit={item_id:after.items[0].id,version_id:after.id,draft_revision:2,kind:"changed" as const,fields:["quantity"],occurred_at:"2026-10-20T10:15:00Z",actor_name:"Oficina"};
+    const html=renderToStaticMarkup(<BudgetComparison before={before} after={after} edits={[edit,{...edit,draft_revision:1,occurred_at:"2026-10-20T09:15:00Z"},{...edit,draft_revision:3,occurred_at:"2026-10-22T09:15:00Z",actor_name:"Edición posterior"}]}/>);
+    expect(html).toContain("Última edición de esta partida en V2");expect(html).toContain('dateTime="2026-10-20T10:15:00Z"');expect(html).toContain("Oficina");
+    expect(html).not.toContain("Fecha individual del cambio: no registrada");expect(html).not.toContain("Edición posterior");
+    const unrelated=renderToStaticMarkup(<BudgetComparison before={before} after={after} edits={[{...edit,version_id:before.id}]}/>);
+    expect(unrelated).toContain("no registrada en este histórico");
+  });
+  it("distingue un fallo de lectura de la ausencia de registro",()=>{
+    const {before,after}=versions();after.items[0].quantity=12;
+    const html=renderToStaticMarkup(<BudgetComparison before={before} after={after} editStatus="error"/>);
+    expect(html).toContain("No se ha podido consultar la fecha");expect(html).not.toContain("no registrada");
+  });
   it("explica un cambio solo de IVA aunque no cambie la base",()=>{
     const {before,after}=versions();after.items[0].vat_rate=10;
     const html=renderToStaticMarkup(<BudgetComparison before={before} after={after}/>);
