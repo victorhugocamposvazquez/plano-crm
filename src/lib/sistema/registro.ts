@@ -97,6 +97,12 @@ export type ProductChange = {
 /** Se registran cambios existentes en git, sin inferir si están fusionados o desplegados. */
 export const productChanges: ProductChange[] = [
   {
+    id: "fechas-partidas", date: "2026-10-30", title: "Registrar fechas y autor de cambios de partidas",
+    impact: "Registro transaccional de altas, modificaciones y bajas; última edición individual visible en el comparador.",
+    limitation: "Migración preparada, pendiente de activar en producción; las fechas individuales antiguas no registradas no se reconstruyen.",
+    commit: "4589c6a", pullRequest: 64,
+  },
+  {
     id: "lectura-clara", date: "2026-10-29", title: "Distinguir la versión actual, la aprobada y sus cambios",
     impact: "Fechas visibles, Actual y Para obra separados por texto y comparación con impacto con IVA. Los ejemplos conservan la identidad de las partidas. Documentos y preferencias de apariencia más claros.",
     limitation: "Entrega comprobada en vista previa; pendiente de integración y de pruebas de comprensión con personas nuevas.",
