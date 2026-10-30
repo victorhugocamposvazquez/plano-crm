@@ -90,8 +90,8 @@ export type ProductChange = {
 /** Se registran cambios existentes en git, sin inferir si están fusionados o desplegados. */
 export const productChanges: ProductChange[] = [
   {
-    id: "lectura-clara", date: "2026-10-29", title: "Despejar presupuestos, resumen móvil y documentos",
-    impact: "Total y acciones separados del desglose, capítulos con más espacio y archivos antes de requisitos. Tema y letra se restauran al abrir.",
+    id: "lectura-clara", date: "2026-10-29", title: "Distinguir la versión actual, la aprobada y sus cambios",
+    impact: "Fechas visibles, Actual y Para obra separados por texto y comparación con impacto con IVA. Los ejemplos conservan la identidad de las partidas. Documentos y preferencias de apariencia más claros.",
     limitation: "Entrega comprobada en vista previa; pendiente de integración y de pruebas de comprensión con personas nuevas.",
     commit: "f2aecfc", pullRequest: 63,
   },

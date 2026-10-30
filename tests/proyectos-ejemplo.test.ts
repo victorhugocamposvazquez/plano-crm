@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { cargarEjemplos, previsualizar, articulosQueFaltan } from "@/lib/proyectos-ejemplo";
 import { createDemo, demoActor } from "@/lib/demo";
-import { applyCommand, type Workspace, type Command } from "@/lib/domain";
+import { applyCommand, compareVersions, type Workspace, type Command } from "@/lib/domain";
 
 /** Un espacio de trabajo recién estrenado: organización sin proyectos ni catálogo. */
 const vacio = (): Workspace => ({ ...createDemo(), projects: [], articles: [], budgets: [], versions: [], tasks: [], purchases: [], documents: [], messages: [], activities: [], certifications: [] });
@@ -33,6 +33,11 @@ describe("Proyectos de ejemplo", () => {
     expect(versiones[0].items).toHaveLength(6);
     expect(versiones[1].items).toHaveLength(7);
     expect(versiones[1].notes).toMatch(/pavimento/);
+    const changes=compareVersions(versiones[0],versiones[1]);
+    expect(changes.filter(change=>change.kind==="changed")).toHaveLength(3);
+    expect(changes.filter(change=>change.kind==="added")).toHaveLength(1);
+    expect(changes.filter(change=>change.kind==="removed")).toHaveLength(0);
+    expect(versiones[1].items.slice(0,6).map(item=>item.id)).toEqual(versiones[0].items.map(item=>item.id));
 
     expect(ws.tasks).toHaveLength(8);
     expect(ws.tasks.filter(t => t.status === "done")).toHaveLength(3);

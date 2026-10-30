@@ -333,3 +333,9 @@ Nueva pasada autorizada por Hugo después de #62: se conserva Workspace/Grafito 
 - Documentos da prioridad a los archivos y a «Adjuntar». Categoría y selector de archivos se abren en un diálogo; la lista de requisitos se consulta en un desplegable que conserva el contador de categorías adjuntadas. Adjuntar no equivale a revisar ni aprobar.
 
 Alcance y comprobación: `docs/usabilidad/lectura-clara.md`. No cambia las reglas económicas, la aprobación ni los permisos.
+
+### Corrección tras revisión de Hugo: versiones fechadas y roles explícitos
+
+Se conserva la estructura de lectura de Fable: capítulos abiertos y filas de partidas. Se retira el bloque amplio de resumen y la agrupación nueva de acciones de escritorio. Las fechas no se ocultan para reducir densidad. `BudgetVersionIdentity` muestra versión, Actual o Para obra, estado y fecha de creación; la edición se etiqueta aparte. En presupuestos, Actual conserva el verde y la referencia para obra se expresa con texto neutro. Resumen, botones de versiones, historial, listado y consulta desde chat comparten este significado.
+
+El comparador presenta totales y fechas por versión, explicación de cada cambio e impacto con IVA. El detalle Antes/Después se abre desde un control con texto; no se basa en tachados. Especificación y límites: `docs/usabilidad/versiones-claras.md`. Esta sección sustituye las decisiones anteriores que ocultaban las fechas de la fila de versiones o mezclaban aprobación y revisión actual en el resumen.

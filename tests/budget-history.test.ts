@@ -65,7 +65,7 @@ describe("Historial y revisión actual del presupuesto",()=>{
     next.items=[{...next.items[0],quantity:10,unit_price:10000,adjustment_percent:20,vat_rate:21}];
     for(const [before,after] of [[first,next],[next,first]]) {
       const html=renderToStaticMarkup(createElement(BudgetComparison,{before,after}));
-      expect(html).toContain("recargo 20 %");expect(html).toContain("IVA 21 %");expect(html).toContain("Importe sin IVA:");expect(html).toContain("1200,00");
+      expect(html).toContain("Recargo del 20 %");expect(html).toContain("21 %");expect(html).toContain("Importe sin IVA");expect(html).toContain("1200,00");
     }
   });
 });

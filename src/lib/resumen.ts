@@ -27,13 +27,13 @@ export function filasPresupuesto(data: Workspace): FilaPresupuesto[] {
     const project = data.projects.find(p => p.id === budget.project_id);
     const versions = data.versions.filter(v => v.budget_id === budget.id).sort((a, b) => b.number - a.number);
     if (!project || !versions.length) continue;
-    const { approved, working } = budgetHistory(budget, versions);
+    const { approved, working, current } = budgetHistory(budget, versions);
     const approvedBase = approved ? totals(approved.items).base : 0;
     const workingBase = working ? totals(working.items).base : 0;
     const approvedTotal = approved ? totals(approved.items).total : 0;
     const workingTotal = working ? totals(working.items).total : 0;
     const estado: FilaPresupuesto["estado"] = approved && working ? "changes" : approved ? "approved" : working?.status === "issued" ? "issued" : working && working.items.length ? "draft" : "empty";
-    out.push({ project, budget, approved, working, latest: versions[0], approvedBase, workingBase, approvedTotal, workingTotal, delta: approved && working ? workingBase - approvedBase : 0, deltaTotal: approved && working ? workingTotal - approvedTotal : 0, updated_at: versions.map(v => v.updated_at).sort().at(-1) ?? budget.created_at, estado });
+    out.push({ project, budget, approved, working, latest: current ?? versions[0], approvedBase, workingBase, approvedTotal, workingTotal, delta: approved && working ? workingBase - approvedBase : 0, deltaTotal: approved && working ? workingTotal - approvedTotal : 0, updated_at: versions.map(v => v.updated_at).sort().at(-1) ?? budget.created_at, estado });
   }
   return out.sort((a, b) => b.updated_at.localeCompare(a.updated_at));
 }

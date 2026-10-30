@@ -3,7 +3,6 @@ import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useParams, useSearchParams } from "next/navigation";
 import { MessageSquare, Plus, Check } from "lucide-react";
 import { Drawer } from "@/components/ui/drawer";
-import { Modal } from "@/components/ui/modal";
 import { BackLink } from "@/components/ui/back-link";
 import { TaskRow } from "@/components/project/task-row";
 import { TaskDialog } from "@/components/project/task-dialog";
@@ -11,18 +10,20 @@ import { useQueryPatch } from "@/lib/use-query-state";
 import { useWorkspace } from "@/components/workspace-provider";
 import { Tabs } from "@/components/ui/tabs";
 import { Button, LinkButton } from "@/components/ui/button";
-import { Pill, Meter, progressTone, type Tone } from "@/components/ui/status";
+import { Meter, progressTone, type Tone } from "@/components/ui/status";
 import { localDate } from "@/lib/hoy";
 import { DocumentsPanel } from "@/components/project/documents-panel";
 import { ChatPanel } from "@/components/project/chat-panel";
 import { PurchasesPanel } from "@/components/project/purchases-panel";
 import { BudgetEditor } from "@/components/project/budget-editor";
 import { BudgetWorkspace } from "@/components/project/budget-workspace";
+import { BudgetVersionIdentity } from "@/components/project/budget-version-identity";
 import { ProjectMenu } from "@/components/project/project-menu";
 import { NextStep } from "@/components/project/next-step";
 import { AddToBudget } from "@/components/plan/add-to-budget";
+import { BudgetDoors } from "@/components/plan/budget-doors";
 import { cargarBorrador } from "@/lib/plano-flujo";
-import { budgetHistory } from "@/lib/budget-history";
+import { budgetHistory, versionTimestamp } from "@/lib/budget-history";
 import { siguientePaso, type TipoAccion } from "@/lib/siguiente-paso";
 import { projectProgress, projectStatus, money, totals, dateLabel, kindNames, can, type Task, type Command } from "@/lib/domain";
 import "@/styles/project-workspace.css";
@@ -45,7 +46,6 @@ export default function ObraPage() {
   const [abierta,setAbierta]=useState<Task|null>(null),[pendingTask,setPendingTask]=useState<string|null>(null);
   const [solicitud,setSolicitud]=useState<"tarea"|"certificacion"|"estado"|null>(null);
   const [creatingBudget,setCreatingBudget]=useState(false),[borradorPlano,setBorradorPlano]=useState(false);
-  const [addingWork,setAddingWork]=useState(false);
   const project=data.projects.find(p=>p.id===id),canBudget=can(actor.role,"budget.create"),canToggle=can(actor.role,"task.toggle");
   const budgets=useMemo(()=>data.budgets.filter(b=>b.project_id===id).sort((a,b)=>a.created_at.localeCompare(b.created_at)),[data.budgets,id]);
   const budget=budgets.find(b=>b.id===budgetId) ?? budgets[0];
@@ -131,7 +131,7 @@ export default function ObraPage() {
       </div>
       <button type="button" className="pill project-phase" data-tone={faseTone(project.status)} aria-haspopup="dialog" title={puedeFase?"Cambiar de fase":"Fase del proyecto"} disabled={!puedeFase} onClick={()=>setSolicitud("estado")}>{projectStatus[project.status]}</button>
       <div className="head-actions">
-        {canBudget && <Button variant="secondary" className="project-add-launcher" onClick={()=>setAddingWork(true)} aria-haspopup="dialog"><Plus size={17} aria-hidden="true"/>Añadir trabajos</Button>}
+        {canBudget && <BudgetDoors planoHref={planoHref} fotosHref={fotosHref} onManual={aMano}/>}
         <Button variant="secondary" className="chat-launcher" onClick={()=>navigate({chat:"1"})} aria-haspopup="dialog" aria-expanded={chatAbierto} aria-label="Chat del proyecto"><MessageSquare size={17} aria-hidden="true"/><span className="chat-launcher-text">Chat</span></Button>
         <ProjectMenu project={project} approvedVersion={approved} puedeEstimar={canBudget} onChat={()=>navigate({chat:"1"})} solicitud={solicitud} onAtendida={()=>setSolicitud(null)} planoHref={planoHref} fotosHref={fotosHref} onManual={aMano} borrador={editable}/>
       </div>
@@ -153,11 +153,12 @@ export default function ObraPage() {
               <ul className="overview-checklist">{requisitos.map(r=><li key={r.id} data-done={r.done}><span className="overview-check" aria-hidden="true">{r.done && <Check size={12} strokeWidth={2.6}/>}</span><span><span>{r.label}</span><small className="muted">{r.hint}</small></span></li>)}</ul>
             </section>}
         <button type="button" className="workspace-card overview-card overview-card-budget" onClick={()=>selectSection("budget")} aria-label={current?`Presupuesto: ${money(totals(current.items).total)} con IVA. Ver presupuesto y versiones`:"Presupuesto: todavía no hay. Ver opciones para presupuestar"}>
-          <span className="overview-kicker"><span>Presupuesto</span>{budgets.length>1 && <span className="muted">{budgets.length} presupuestos</span>}</span>
+          <span className="overview-kicker"><span>Presupuesto actual</span>{budgets.length>1 && <span className="muted">{budgets.length} presupuestos</span>}</span>
           {current ? <>
+            <BudgetVersionIdentity version={current} currentId={current.id} approvedId={approved?.id} showUpdated/>
             <strong className="overview-figure pl-mono">{money(totals(current.items).total)}<small>con IVA</small></strong>
-            <span className="overview-versions">{approved && <Pill label={`V${approved.number} aprobada`} tone="success"/>}{working && <Pill label={`V${working.number} ${working.status==="draft"?"borrador":"cerrada"}`} tone="warning"/>}{!approved && !working && <Pill label={`V${current.number}`} tone="muted"/>}</span>
-            <span className="muted text-sm">{approved && working?`V${working.number} ${signed(totals(working.items).total-totals(approved.items).total)} frente a V${approved.number}`:working?"Pendiente de cerrar y enviar":approved?"Aprobada para obra":budget?.title}</span>
+            {approved && working && <span className="budget-approved-reference"><span>Para ejecutar la obra se usa</span><strong>V{approved.number} · Aprobada para obra</strong><span><span className="pl-mono">{money(totals(approved.items).total)}</span> con IVA</span>{approved.approved_at && <span>Aprobada <time dateTime={approved.approved_at}>{versionTimestamp(approved.approved_at)}</time></span>}<span>La V{working.number} supone {signed(totals(working.items).total-totals(approved.items).total)} con IVA respecto a V{approved.number}.</span></span>}
+            {!approved && <span className="budget-current-note">Todavía no hay una versión aprobada para obra.</span>}
           </> : <>
             <span className="overview-empty">Todavía no hay presupuesto</span>
             <span className="link-inline">Ver opciones para presupuestar</span>
@@ -179,7 +180,6 @@ export default function ObraPage() {
     {section==="documents" && <DocumentsPanel project={project} documents={documents}/>}
     {section==="purchases" && <PurchasesPanel projectId={project.id} purchases={purchases}/>}
     <TaskDialog task={abierta?data.tasks.find(t=>t.id===abierta.id) ?? null:null} onClose={()=>setAbierta(null)}/>
-    {canBudget && <Modal open={addingWork} onClose={()=>setAddingWork(false)} title="Añadir trabajos al presupuesto"><AddToBudget planoHref={planoHref} visitaHref={fotosHref} haPresupuesto={budgets.length>0} borradorPlano={borradorPlano} onManual={()=>{setAddingWork(false);aMano();}}/></Modal>}
     {editable && <BudgetEditor open={editando} onClose={()=>navigate({editar:null})} project={project} version={editable} guiaInicial={editable.items.length===0}/>}
     <Drawer open={chatAbierto} onClose={()=>navigate({chat:null})} title={project.name} subtitle={[project.location,project.code].filter(Boolean).join(" · ")}><ChatPanel projectId={project.id} messages={messages}/></Drawer>
   </div>;

@@ -73,6 +73,8 @@ export async function cargarEjemplos(deps: Deps): Promise<Resultado> {
           const budget = ws.budgets.filter(x => x.project_id === creado.id).sort((a, c) => c.created_at.localeCompare(a.created_at))[0];
           if (!budget) throw new Error("no se ha creado el presupuesto");
           let anterior: string | null = null;
+          // La misma partida debe conservar su identidad entre V1 y V2.
+          const itemIds = new Map<string,string>();
           for (const v of demo.versions.filter(v => v.budget_id === b.id).sort((a, c) => a.number - c.number)) {
             let borrador = ws.versions.find(x => x.budget_id === budget.id && x.status === "draft");
             if (!borrador && anterior) {
@@ -80,7 +82,10 @@ export async function cargarEjemplos(deps: Deps): Promise<Resultado> {
               borrador = ws.versions.find(x => x.budget_id === budget.id && x.status === "draft");
             }
             if (!borrador) throw new Error(`no se ha abierto la V${v.number}`);
-            const items: BudgetItem[] = v.items.map(i => ({ ...i, id: uuid() }));
+            const items: BudgetItem[] = v.items.map(i => {
+              if(!itemIds.has(i.id))itemIds.set(i.id,uuid());
+              return { ...i, id: itemIds.get(i.id)! };
+            });
             ws = await deps.send({ type: "budget.save", version_id: borrador.id, expected_revision: borrador.draft_revision, items, notes: v.notes });
             if (v.status !== "draft") {
               const guardada = ws.versions.find(x => x.id === borrador.id);

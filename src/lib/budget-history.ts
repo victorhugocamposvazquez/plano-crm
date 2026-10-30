@@ -15,6 +15,21 @@ export function versionLabel(version:BudgetVersion, history:ReturnType<typeof bu
   return version.status==="issued"?"Terminada · anterior":"Borrador anterior";
 }
 
+/** Fecha estable de creación; no se confunde con la última edición del borrador. */
+export function versionTimestamp(value:string) {
+  const date=new Date(value);
+  if(!Number.isFinite(date.getTime()))return "Fecha no disponible";
+  return new Intl.DateTimeFormat("es-ES",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit",timeZone:"Europe/Madrid"}).format(date);
+}
+
+/** La aprobación la determina el presupuesto, no el color ni el estado histórico de una fila. */
+export function versionState(version:BudgetVersion,approvedId:string|null|undefined) {
+  if(version.id===approvedId)return "Aprobada para obra";
+  if(version.status==="draft")return "Borrador · no aprobado";
+  if(version.status==="issued")return "Terminada · pendiente de aprobar";
+  return "Versión anterior";
+}
+
 /** El motivo explica la intención; las diferencias se calculan sobre las partidas y condiciones realmente guardadas. */
 export function compareBudgetHistory(before:BudgetVersion,after:BudgetVersion) {
   if(before.budget_id!==after.budget_id)throw new Error("Solo se pueden comparar versiones del mismo presupuesto.");

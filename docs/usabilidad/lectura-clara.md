@@ -2,7 +2,9 @@
 
 Hugo ha pedido seguir mejorando la facilidad de uso porque algunas zonas seguían apelmazadas tras la integración de #62. Rama `codex/presupuesto-lectura-clara`, base `main` d91acc2. Se modifica interfaz por su autorización expresa, sin escribir en el checkout de Fable.
 
-## Qué cambia
+> La revisión posterior solicitada por Hugo está en [Versiones claras](versiones-claras.md). Recupera la estructura de Fable, las fechas siempre visibles y las acciones originales. Ese documento describe la interfaz final; los párrafos siguientes documentan la primera pasada.
+
+## Primera pasada
 
 La cabecera del presupuesto ya no presenta fechas, base, IVA, autor y acciones como una misma línea de lectura. Primero muestra la versión, el título, el total con IVA y la diferencia frente a la aprobada; después las acciones «Historial» y «Comparar», con texto. El desglose y los datos de la versión se consultan aparte. «Creada por» describe el campo existente: no se conoce el autor de la última edición.
 

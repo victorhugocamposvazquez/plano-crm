@@ -2,26 +2,21 @@
 import Link from "next/link";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
-import { ArrowLeft, ArrowRight, FileText, Check, GitCompareArrows, History, Plus } from "lucide-react";
+import { ArrowLeft, ArrowRight, FileText, GitCompareArrows, History, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { BudgetActions } from "./budget-actions";
-import { budgetHistory, compareBudgetHistory, versionLabel, changedText } from "@/lib/budget-history";
+import { BudgetVersionIdentity } from "./budget-version-identity";
+import { BudgetComparison } from "./budget-comparison";
+export { BudgetComparison } from "./budget-comparison";
+import { budgetHistory, compareBudgetHistory, versionLabel, versionState, versionTimestamp } from "@/lib/budget-history";
 import { partidasPorCapitulo, totalCapitulo } from "@/lib/presupuesto";
-import { money, totals, dateLabel, lineTotal, fieldNames, type Budget, type BudgetVersion, type BudgetItem } from "@/lib/domain";
+import { money, totals, lineTotal, type Budget, type BudgetVersion } from "@/lib/domain";
 
 type Patch=(patch:Record<string,string|null|undefined>)=>void;
 const signed=(value:number)=>value===0?money(0):`${value<0?"−":"+"}${money(Math.abs(value))}`;
 const number=(value:number)=>new Intl.NumberFormat("es-ES",{maximumFractionDigits:3}).format(value);
 type View="items"|"versions"|"changes";
-type Estado="approved"|"draft"|"issued"|"old";
-/** Estado corto de cada versión para la fila de versiones: una palabra, y el color solo acompaña. */
-function estadoVersion(v:BudgetVersion,history:ReturnType<typeof budgetHistory>):{estado:Estado;label:string} {
-  if(v.id===history.approved?.id)return {estado:"approved",label:"aprobada"};
-  if(v.id===history.working?.id)return v.status==="draft"?{estado:"draft",label:"borrador"}:{estado:"issued",label:"terminada"};
-  return {estado:"old",label:v.status==="superseded" || v.status==="approved"?"anterior":v.status==="issued"?"terminada antes":"borrador anterior"};
-}
-
 /** Capítulos que el usuario ha plegado en este presupuesto; nacen abiertos y la app recuerda cuáles cerró. */
 function useCapitulosCerrados(budgetId:string) {
   const key=`plano.capitulos-cerrados.${budgetId}`;
@@ -66,19 +61,16 @@ export function BudgetWorkspace({budget,versions,onNavigate,onEdit,canEdit,addin
   return <section className="budget-workspace" aria-label={`Presupuesto ${budget.title}`}>
     {view==="items" && <div className="budget-view" data-view="items" role="region" aria-label={`Partidas de V${shown.number}`}>
       <div className="budget-version-bar"><span className="budget-section-label">Versiones</span><div ref={versionRow} className="version-row" role="group" aria-label="Versiones del presupuesto">
-        {ascendente.map(v=>{const {estado,label}=estadoVersion(v,history),actual=v.id===current?.id;
-          return <button key={v.id} type="button" className="version-pill" data-state={estado} data-actual={actual||undefined} aria-pressed={v.id===shown.id} onClick={()=>showVersion(v)}>
-          {actual?<span className="pulse-dot" aria-hidden="true"/>:<span className="version-mark" data-state={estado} aria-hidden="true">{estado==="approved" && <Check size={10} strokeWidth={3}/>}</span>}
-          <span className="version-text"><span>V{v.number}{actual && <em className="version-actual">Actual</em>}</span><small>{label}</small></span>
-        </button>;})}
+        {ascendente.map(v=><button key={v.id} type="button" className="version-pill" data-actual={v.id===current?.id||undefined} aria-pressed={v.id===shown.id} onClick={()=>showVersion(v)}><BudgetVersionIdentity version={v} currentId={current?.id} approvedId={approved?.id}/></button>)}
       </div></div>
 
-      <div className="budget-summary">
+      <div className="budget-summary budget-summary-plain">
         <header className="budget-total-head">
-          <div className="budget-summary-title"><span className="budget-section-label">V{shown.number} · {versionLabel(shown,history)}</span><h2>{budget.title}</h2></div>
+          <div className="budget-summary-title"><span className="budget-section-label">V{shown.number} · {currentView?"Actual":"Versión anterior"} · {versionState(shown,approved?.id)}</span><h2>{budget.title}</h2><span className="version-identity-date">Última edición <time dateTime={shown.updated_at}>{versionTimestamp(shown.updated_at)}</time></span></div>
           <strong className="budget-total-figure"><span className="pl-mono">{money(t.total)}</span><small>con IVA</small></strong>
-          {deltaAprobada!==null && approved && working && <button type="button" className="budget-difference" onClick={()=>compare(approved,working)}><span className="pl-mono">{signed(deltaAprobada)}</span> frente a la V{approved.number} aprobada<ArrowRight size={15} aria-hidden="true"/></button>}
+          {deltaAprobada!==null && approved && working && <button type="button" className="budget-difference" onClick={()=>compare(approved,working)}>V{working.number}: {signed(deltaAprobada)} con IVA respecto a V{approved.number}<ArrowRight size={15} aria-hidden="true"/></button>}
         </header>
+        {currentView && <div className="budget-approved-reference">{approved ? <><span>Para ejecutar la obra se usa</span><strong>V{approved.number} · Aprobada para obra</strong><span><span className="pl-mono">{money(totals(approved.items).total)}</span> con IVA{approved.approved_at && <> · aprobada <time dateTime={approved.approved_at}>{versionTimestamp(approved.approved_at)}</time></>}</span></> : <span>Todavía no hay una versión aprobada para ejecutar la obra.</span>}</div>}
         <div className="budget-summary-actions">
           <div className="budget-reading-nav">
             <Button variant="ghost" aria-label="Historial de versiones" onClick={()=>onNavigate({vista:"versions"})}><History size={17} strokeWidth={1.6} aria-hidden="true"/>Historial</Button>
@@ -92,9 +84,9 @@ export function BudgetWorkspace({budget,versions,onNavigate,onEdit,canEdit,addin
         <details className="budget-summary-details"><summary>Desglose y datos de esta versión</summary><dl className="workspace-facts">
           <div><dt>Importe sin IVA</dt><dd className="pl-mono">{money(t.base)}</dd></div>
           <div><dt>IVA</dt><dd className="pl-mono">{money(t.tax)}</dd></div>
-          <div><dt>Última edición</dt><dd>{dateLabel(shown.updated_at)}</dd></div>
+          <div><dt>Última edición</dt><dd>{versionTimestamp(shown.updated_at)}</dd></div>
           <div><dt>Creada por</dt><dd>{shown.created_by_name}</dd></div>
-          {shown.approved_at && <div><dt>Aprobación</dt><dd>{dateLabel(shown.approved_at)}</dd></div>}
+          {shown.approved_at && <div><dt>Aprobación</dt><dd>{versionTimestamp(shown.approved_at)}</dd></div>}
         </dl></details>
       </div>
       {!currentView && <div className="workspace-callout"><p>{shown.id===approved?.id?`Esta es la versión aprobada. Hay una V${current?.number} posterior en preparación.`:`Estás consultando una versión anterior. La actual es la V${current?.number}.`}</p><Button variant="secondary" onClick={()=>current && showVersion(current)}>Ver V{current?.number}<ArrowRight size={16} aria-hidden="true"/></Button></div>}
@@ -118,8 +110,8 @@ export function BudgetWorkspace({budget,versions,onNavigate,onEdit,canEdit,addin
       <ol className="budget-history-list">{history.versions.map(v=>{
         const prev=history.versions.find(p=>p.number<v.number),diff=prev?compareBudgetHistory(prev,v):null;
         return <li key={v.id} className="budget-history-card" data-actual={v.id===current?.id||undefined}>
-          <header><span><strong>V{v.number}{v.id===current?.id && <span className="current-badge current-badge-inline" data-tone="current"><span className="pulse-dot" aria-hidden="true"/>Actual</span>}</strong><span className="version-status" data-current={v.id===approved?.id?"approved":v.id===working?.id?"working":undefined}>{versionLabel(v,history)}</span></span><strong className="pl-mono">{money(totals(v.items).total)}<small className="muted">con IVA</small></strong></header>
-          <p className="muted text-sm">Última edición {dateLabel(v.updated_at)} · creada por {v.created_by_name}</p>
+          <header><BudgetVersionIdentity version={v} currentId={current?.id} approvedId={approved?.id} showUpdated/><strong className="pl-mono">{money(totals(v.items).total)}<small className="muted">con IVA</small></strong></header>
+          <p className="muted text-sm">Creada por {v.created_by_name}</p>
           <p>{v.change_reason || "Sin motivo registrado"}</p>
           {diff?<p className="history-diff-summary">Desde V{prev!.number}: {diff.hasChanges?[
             diff.counts.added?`${diff.counts.added} añadida${diff.counts.added===1?"":"s"}`:"",diff.counts.changed?`${diff.counts.changed} modificada${diff.counts.changed===1?"":"s"}`:"",diff.counts.removed?`${diff.counts.removed} eliminada${diff.counts.removed===1?"":"s"}`:"",diff.notesChanged?"condiciones actualizadas":""
@@ -134,55 +126,10 @@ export function BudgetWorkspace({budget,versions,onNavigate,onEdit,canEdit,addin
       <div className="budget-view-head">{volver}</div>
       <div><h2>Qué cambió entre versiones</h2><p className="muted">Elige las dos versiones. Se comparan las partidas y las condiciones guardadas.</p></div>
       {history.versions.length<2?<p className="workspace-callout">Necesitas al menos dos versiones para comparar cambios.</p>:<>
-        <div className="budget-comparison-pickers">{([{key:"desde",label:"Desde",value:from},{key:"hasta",label:"Hasta",value:to}] as const).map(p=><label className="field" key={p.key}><span>{p.label}</span><select className="workspace-select" value={p.value?.id ?? ""} onChange={e=>onNavigate({desde:p.key==="desde"?e.target.value:from?.id,hasta:p.key==="hasta"?e.target.value:to?.id})}>{history.versions.map(v=><option key={v.id} value={v.id}>{v.id===current?.id?"Actual · ":""}V{v.number} · {versionLabel(v,history).replace(/ actual$/,"")}</option>)}</select></label>)}</div>
+        <div className="budget-comparison-pickers">{([{key:"desde",label:"Desde",value:from},{key:"hasta",label:"Hasta",value:to}] as const).map(p=><label className="field" key={p.key}><span>{p.label}</span><select className="workspace-select" value={p.value?.id ?? ""} onChange={e=>onNavigate({desde:p.key==="desde"?e.target.value:from?.id,hasta:p.key==="hasta"?e.target.value:to?.id})}>{history.versions.map(v=><option key={v.id} value={v.id}>{v.id===current?.id?"Actual · ":""}V{v.number} · {versionState(v,approved?.id)} · {versionTimestamp(v.created_at)}</option>)}</select></label>)}</div>
         {from && to && from.id!==to.id?<BudgetComparison before={from} after={to}/>:<p className="workspace-callout">Elige dos versiones distintas para ver sus diferencias.</p>}
       </>}
     </section>}
   </section>;
 }
 
-function fieldValue(item:BudgetItem|undefined,field:keyof BudgetItem) {
-  if(!item)return "—";
-  if(field==="unit_price")return money(item.unit_price);
-  if(field==="quantity")return `${number(item.quantity)} ${item.unit}`;
-  if(field==="adjustment_percent" || field==="vat_rate")return `${number(item[field])} %`;
-  if(field==="inclusion")return {included:"Entra en el precio",optional:"Alternativa, no suma",excluded:"No entra en el precio"}[item.inclusion];
-  return String(item[field]);
-}
-function TextChange({before,after}:{before:string;after:string}) {
-  const diff=changedText(before,after);
-  return <div className="cmp-row cmp-row-text"><span className="cmp-k">Texto</span><span className="cmp-v"><del>{before?<>{diff.prefix}{diff.before}{diff.suffix}</>:"Sin texto"}</del><ins>{after?<>{diff.prefix}{diff.after}{diff.suffix}</>:"Sin texto"}</ins></span></div>;
-}
-const textFields:(keyof BudgetItem)[]=["description","chapter"];
-/**
- * Comparador por filas: resumen de totales arriba y, por capítulo, una fila por cambio
- * («campo · antes → después»). Lo añadido y lo eliminado se marcan con texto, no solo con color.
- */
-export function BudgetComparison({before,after}:{before:BudgetVersion;after:BudgetVersion}) {
-  const comparison=compareBudgetHistory(before,after),{changes,delta}=comparison;
-  const porCapitulo=new Map<string,typeof changes>();
-  for(const change of changes){const chapter=(change.after ?? change.before)!.chapter;porCapitulo.set(chapter,[...(porCapitulo.get(chapter) ?? []),change]);}
-  const tono=(value:number)=>value>0?"up":value<0?"down":undefined;
-  return <div className="budget-comparison">
-    <div className="cmp-summary">
-      <div className="cmp-summary-line"><span className="pl-mono cmp-before">{money(comparison.previous.total)}</span><ArrowRight size={15} strokeWidth={1.6} aria-hidden="true"/><strong className="pl-mono">{money(comparison.next.total)}</strong><span className="pl-mono cmp-delta" data-tone={tono(delta.total)}>{signed(delta.total)}</span></div>
-      <span className="muted text-xs">V{before.number} → V{after.number} · con IVA · sin IVA {signed(delta.base)} · IVA {signed(delta.tax)}</span>
-      {comparison.hasChanges && <div className="cmp-tags"><span className="cmp-tag" data-kind={comparison.counts.added?"added":undefined}>{comparison.counts.added} añadida{comparison.counts.added===1?"":"s"}</span><span className="cmp-tag">{comparison.counts.changed} modificada{comparison.counts.changed===1?"":"s"}</span><span className="cmp-tag" data-kind={comparison.counts.removed?"removed":undefined}>{comparison.counts.removed} eliminada{comparison.counts.removed===1?"":"s"}</span>{comparison.notesChanged && <span className="cmp-tag">Condiciones</span>}</div>}
-    </div>
-    {!comparison.hasChanges && <p className="workspace-callout">No hay cambios en partidas ni condiciones entre V{before.number} y V{after.number}.</p>}
-    {[...porCapitulo.entries()].map(([chapter,list])=><section className="cmp-chapter" key={chapter} aria-label={chapter}>
-      <h3 className="cmp-chapter-head">{chapter}</h3>
-      {list.map(change=>{const item=(change.after ?? change.before)!;return <article className="cmp-item" key={change.id} data-kind={change.kind}>
-        <header className="cmp-item-head">{change.kind!=="changed" && <span className="cmp-tag" data-kind={change.kind}>{change.kind==="added"?"Añadida":"Eliminada"}</span>}<span className="cmp-item-title">{item.description}</span><span className="pl-mono cmp-delta" data-tone={tono(change.delta)}>{change.delta?signed(change.delta):item.inclusion==="included"?"Sin cambio de base":money(lineTotal(item))}</span></header>
-        {change.kind==="changed"
-          ? change.fields.map(field=>{const f=field as keyof BudgetItem;const texto=textFields.includes(f);return <div className="cmp-row" key={field} data-text={texto||undefined}><span className="cmp-k">{fieldNames[field] ?? field}</span><span className="cmp-v"><del>{fieldValue(change.before,f)}</del>{!texto && <ArrowRight size={13} strokeWidth={1.8} aria-hidden="true"/>}<ins>{fieldValue(change.after,f)}</ins></span></div>;})
-          : <ItemChangeSummary item={item} label={change.kind==="added"?"Después":"Antes"}/>}
-      </article>;})}
-    </section>)}
-    {comparison.notesChanged && <section className="cmp-chapter" aria-label="Condiciones"><h3 className="cmp-chapter-head">Condiciones</h3><article className="cmp-item"><header className="cmp-item-head"><span className="cmp-item-title">Notas para el cliente</span></header><TextChange before={before.notes} after={after.notes}/></article></section>}
-  </div>;
-}
-
-function ItemChangeSummary({item,label}:{item:BudgetItem;label:string}) {
-  return <div className="cmp-row"><span className="cmp-k">{label}</span><span className="cmp-v cmp-v-plain">{fieldValue(item,"quantity")} × {fieldValue(item,"unit_price")}{item.adjustment_percent!==0?` · ${item.adjustment_percent>0?"recargo":"descuento"} ${number(Math.abs(item.adjustment_percent))} %`:""} · IVA {number(item.vat_rate)} % · Importe sin IVA: {money(lineTotal(item))} · {fieldValue(item,"inclusion")}</span></div>;
-}
