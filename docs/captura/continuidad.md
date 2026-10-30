@@ -84,3 +84,9 @@ Recorrido completo de navegador correcto tras las correcciones de Hugo: fechas v
 El checkout de Fable permanece intacto. No se han fusionado ramas, enviado originales privados ni aplicado migraciones o importaciones de producción. La continuación por horas sigue pausada.
 
 Entrega de fechas: 4589c6a / PR #64, adjunta al chat y basada en #63. Orden de revisión #63 → #64, sin fusionar desde este chat. El registro de supervisión recoge ambas y advierte de la activación pendiente en producción.
+
+## Activación autorizada en producción · 30/10/2026
+
+Hugo confirmó expresamente fusionar #63 y #64 y activar la migración. #63 fusionada en 29fb929; #64 en a8ea504. Migración 202610300001 aplicada transaccionalmente mediante la API de gestión de Supabase, registrada en schema_migrations y esquema API recargado. Comprobación de catálogo correcta: tabla/función, trigger activo, RLS, lectura autenticada y escrituras directas/lectura anónima denegadas. No se modificaron presupuestos reales ni se generaron fechas retrospectivas. Vercel despliega main automáticamente. La documentación anterior que hablaba de activación pendiente describe el estado previo; esta sección lo sustituye. Rama de cierre documental codex/estado-fechas-produccion.
+
+Vercel confirmó READY para el commit a8ea504 en el dominio https://plano-crm-five.vercel.app. /login responde 200 y la consulta de fechas sin sesión devuelve 401 con private,no-store. La migración y sus permisos se verificaron por catálogo; no se simuló una edición en presupuestos de clientes. Comprobación documental final: 314 pruebas + una privada omitida, tipos y build correctos.

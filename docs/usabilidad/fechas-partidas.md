@@ -16,7 +16,11 @@ La demostración local usa el mismo contrato y guarda los eventos con el resto d
 
 ## Activación
 
-La migración está preparada para revisión. No se ha aplicado a Supabase de producción desde este chat. La interfaz autentificada indica «Registro por partida pendiente de activar» si falta la función. Al aplicar la migración comenzará el registro de nuevos cambios, sin reconstruir retrospectivamente datos no guardados.
+La migración `202610300001` se aplicó en Supabase de producción el 30/10/2026, con autorización explícita de Hugo para fusionar #63/#64 y activarla. Se ejecutó en una transacción que también registró la versión en `supabase_migrations.schema_migrations` y notificó la recarga del esquema API.
+
+Verificación de producción mediante lectura de catálogo: tabla y función existentes, trigger activo, RLS habilitada, lectura para miembros autenticados y ausencia de permisos directos de inserción, actualización y borrado. El acceso anónimo a la tabla está denegado. No se editaron presupuestos reales para probar el registro ni se reconstruyeron fechas antiguas. Las nuevas ediciones empiezan a registrarse desde la activación.
+
+En otros entornos que todavía no tengan esta migración, la interfaz distingue «Registro por partida pendiente de activar».
 
 ## Verificación
 

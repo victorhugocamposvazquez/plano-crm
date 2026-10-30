@@ -12,7 +12,7 @@ export type Capability = {
 };
 
 export const documentationDate = "2026-10-30";
-export const workBranch = "codex/fechas-cambios-partidas";
+export const workBranch = "codex/estado-fechas-produccion";
 const repository = "https://github.com/victorhugocamposvazquez/plano-crm";
 export const statusLabels: Record<CapabilityStatus, string> = {
   available: "Implementado",
@@ -27,9 +27,9 @@ export function evidenceUrl(path: string, deployedCommit: string | null = null) 
 export const capabilities: Capability[] = [
   {
     id: "fechas-partidas", name: "Fechas y autor de las ediciones de partidas", status: "partial",
-    summary: "Registro transaccional de altas, cambios y bajas, con última edición individual en el comparador.",
+    summary: "Registro transaccional de altas, cambios y bajas, con última edición individual en el comparador. Migración activada en producción el 30/10/2026.",
     available: ["Fecha y autor verificados por el servidor; los eventos conservan valores anteriores y posteriores.", "Consulta privada por empresa y versión, sin alterar aprobados ni duplicar reintentos."],
-    pending: ["Aplicar la migración revisada en producción para registrar futuras ediciones.", "Pantalla del registro completo de guardados; el comparador muestra la última edición en la versión consultada.", "Los datos antiguos sin registro individual no permiten reconstruir una fecha exacta."],
+    pending: ["Pantalla del registro completo de guardados; el comparador muestra la última edición en la versión consultada.", "Los datos antiguos sin registro individual no permiten reconstruir una fecha exacta."],
     evidence: [{ label: "Fechas y activación", path: "docs/usabilidad/fechas-partidas.md" }, { label: "Migración", path: "supabase/migrations/202610300001_budget_item_events.sql" }],
   },
   {
@@ -99,7 +99,7 @@ export const productChanges: ProductChange[] = [
   {
     id: "fechas-partidas", date: "2026-10-30", title: "Registrar fechas y autor de cambios de partidas",
     impact: "Registro transaccional de altas, modificaciones y bajas; última edición individual visible en el comparador.",
-    limitation: "Migración preparada, pendiente de activar en producción; las fechas individuales antiguas no registradas no se reconstruyen.",
+    limitation: "El registro comienza desde la activación; las fechas individuales antiguas no registradas no se reconstruyen.",
     commit: "4589c6a", pullRequest: 64,
   },
   {
