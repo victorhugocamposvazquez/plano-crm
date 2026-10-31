@@ -1592,10 +1592,21 @@ button.fin-line { width: 100%; border-left: 0; border-right: 0; border-bottom: 0
   .pv-summary p.pv-summary-kicker { display: none; }
   .project-workspace .panel-title { display: none; }
   .project-workspace .docs-head { justify-content: flex-end; }
-  .shell:has(.drawer[data-floating]) .nav { display: none; }
+  .shell:has(.drawer[data-floating][open]) .nav { display: none; }
 }
 @media (min-width: 1100px) {
   .modal[data-size="wide"]:has(.catalog-pick) { width: min(1040px, calc(100vw - 48px)); max-width: none; }
   .catalog-pick .picker-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
 @media (min-width: 768px) and (max-width: 1099px) { .project-workspace .tab { font-size: var(--pl-text-md); padding-inline: 6px; } }
+
+/* Banda fija del móvil: la «P.» siempre en el mismo sitio */
+.phone-bar { display: none; }
+@media (max-width: 767px) {
+  .phone-bar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 10px; box-sizing: content-box; height: var(--pl-phone-bar); padding: env(safe-area-inset-top, 0px) 12px 0 16px; background: var(--pl-bg); border-bottom: var(--pl-hairline) solid var(--pl-line); }
+  .phone-bar-brand { display: inline-flex; align-items: center; min-width: 44px; min-height: 44px; color: inherit; text-decoration: none; }
+  .phone-bar .pl-brand { font-size: var(--pl-text-h2); --pl-brand-dot: 5px; }
+  .phone-bar .pl-brand-text { display: none; }
+  .phone-bar .pl-brand-initial { display: inline; }
+  .phone-tools { position: static; margin-left: auto; }
+}

@@ -153,11 +153,14 @@ export function AppShell({ children }: { children: ReactNode }) {
       </nav>
 
       <div className="shell-column">
-        {raices.includes(pathname) && <div className="phone-tools">
+        <div className="phone-bar">
+          <Link prefetch={false} href="/" className="phone-bar-brand" aria-label="Inicio"><Brand /></Link>
+          {raices.includes(pathname) && <div className="phone-tools">
           <button type="button" className="phone-tool" onClick={() => setSearch(true)} aria-label="Buscar en Plano"><Search size={19} strokeWidth={1.6} aria-hidden="true" /></button>
           {chatBoton("movil")}
           <button type="button" className="phone-avatar" onClick={() => setCuentaMovil(true)} aria-label={`Tu cuenta · ${actor.name}${avisosSinLeer ? ` · ${avisosSinLeer} avisos sin leer` : ""}`} aria-haspopup="dialog" aria-expanded={cuentaMovil}><AvatarRing name={actor.name} count={avisosSinLeer} /></button>
-        </div>}
+          </div>}
+        </div>
         {volver && <div className="phone-subnav">
           <Link prefetch={false} href={volver.href} className="phone-back"><ChevronLeft size={18} strokeWidth={1.8} aria-hidden="true" />{volver.label}</Link>
           {puedeCrear && <button type="button" className="phone-plus" aria-label="Crear" aria-haspopup="dialog" onClick={() => setCrearMovil(true)}><Plus size={18} strokeWidth={2} aria-hidden="true" /></button>}
