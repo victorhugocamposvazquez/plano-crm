@@ -1,11 +1,13 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Users, Search, X, ArrowUpRight, MapPin } from "lucide-react";
+import { ChevronRight, Plus } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
-import { ProjectStatus } from "@/components/ui/status";
+import { SearchBox } from "@/components/ui/search-box";
 import { money, can } from "@/lib/domain";
-import { clientes, buscarClientes } from "@/lib/resumen";
+import { clientes } from "@/lib/resumen";
+import { buscarTolerante } from "@/lib/busqueda";
+import { iniciales } from "@/lib/pasos";
 import { useQueryState } from "@/lib/use-query-state";
 
 /** Clientes tal y como aparecen en los proyectos: todavía no hay ficha de cliente propia en el dominio. */
@@ -15,46 +17,29 @@ export default function ClientesPage() {
   const [query, setQuery] = useState(queryParam);
   useEffect(() => { const t = setTimeout(() => { if (query !== queryParam) setQueryParam(query); }, 300); return () => clearTimeout(t); }, [query, queryParam, setQueryParam]);
   const lista = useMemo(() => clientes(data), [data]);
-  const visibles = useMemo(() => buscarClientes(lista, query), [lista, query]);
-  const enObra = lista.filter(c => c.activos > 0).length;
+  const visibles = useMemo(() => buscarTolerante(lista, query, c => `${c.name} ${c.ubicaciones.join(" ")} ${c.projects.map(p => `${p.name} ${p.code}`).join(" ")}`), [lista, query]);
+  const vocabulario = useMemo(() => lista.flatMap(c => [c.name, ...c.ubicaciones, ...c.projects.map(p => p.name)]), [lista]);
+  const puedeCrear = can(actor.role, "project.create");
 
   return (
     <div className="page">
-      <div>
-        <div className="eyebrow"><Users size={13} strokeWidth={1.8} aria-hidden="true" /><span>{data.organization_name || "Espacio de trabajo"}</span></div>
-        <h1 className="h1">Clientes.</h1>
-        <p className="subtitle">{loading ? "Cargando…" : `${lista.length} clientes · ${enObra} con obra en marcha · ${money(lista.reduce((s, c) => s + c.aprobadoTotal, 0))} aprobados, con IVA`}</p>
+      <div className="pl-head">
+        <div><h1 className="pl-title">Clientes</h1><p className="pl-sub">Personas y empresas para las que trabajamos.</p></div>
+        {puedeCrear && <Link href="/proyectos?nuevo=1" className="btn btn-primary"><Plus size={17} strokeWidth={1.8} aria-hidden="true" />Nuevo cliente</Link>}
       </div>
-
-      <label className="search">
-        <Search size={16} strokeWidth={1.8} aria-hidden="true" />
-        <input type="search" className="search-input" value={query} onChange={e => setQuery(e.target.value)} placeholder="Buscar por nombre, calle o proyecto…" aria-label="Buscar clientes" autoComplete="off" />
-        {query && <button type="button" className="search-clear" aria-label="Borrar búsqueda" onClick={() => setQuery("")}><X size={15} strokeWidth={1.8} aria-hidden="true" /></button>}
-      </label>
-
-      {!loading && visibles.length === 0 && <div className="empty"><strong>{query ? `Nada coincide con «${query}»` : "Todavía no hay clientes"}</strong><span className="muted text-sm">{query ? "Prueba con parte del nombre o de la calle." : "Cada cliente aparece aquí con su primer proyecto."}</span>{!query && can(actor.role, "project.create") && <Link href="/proyectos?nuevo=1" className="btn btn-primary">Nuevo proyecto</Link>}</div>}
-
-      <div className="client-list">
+      <SearchBox seccion="clientes" value={query} onChange={setQuery} label="Buscar clientes" placeholder="Busca lo que sea: nombre, calle, proyecto…" count={loading ? undefined : `${visibles.length} ${visibles.length === 1 ? "cliente" : "clientes"}`} vocabulario={vocabulario} />
+      {!loading && visibles.length === 0 && <div className="empty"><strong>{query ? `Nada coincide con «${query}»` : "Todavía no hay clientes"}</strong><span className="muted text-sm">{query ? "Prueba con parte del nombre o de la calle." : "Cada cliente aparece aquí con su primer proyecto."}</span>{!query && puedeCrear && <Link href="/proyectos?nuevo=1" className="btn btn-primary">Nuevo proyecto</Link>}</div>}
+      {visibles.length > 0 && <div className="pl-card client-rows">
         {visibles.map(c => (
-          <article key={c.id} className="client-card zone">
-            <header>
-              <span style={{ minWidth: 0 }}>
-                <strong className="client-name">{c.name}</strong>
-                {c.ubicaciones.length > 0 && <small className="muted"><MapPin size={12} strokeWidth={1.8} aria-hidden="true" />{c.ubicaciones.slice(0, 2).join(" · ")}{c.ubicaciones.length > 2 ? ` · +${c.ubicaciones.length - 2}` : ""}</small>}
-              </span>
-              <Link href={`/proyectos?q=${encodeURIComponent(c.name)}`} className="btn btn-ghost" style={{ height: 32 }}>Ver en proyectos<ArrowUpRight size={14} strokeWidth={1.7} aria-hidden="true" /></Link>
-            </header>
-            <dl className="client-facts">
-              <div><dt>Proyectos</dt><dd className="pl-mono">{c.projects.length}{c.activos ? <small className="muted"> · {c.activos} en marcha</small> : null}</dd></div>
-              <div><dt>Aprobado</dt><dd className="pl-mono">{c.aprobadoTotal ? money(c.aprobadoTotal) : "—"}</dd></div>
-              <div><dt>En revisión</dt><dd className="pl-mono">{c.enRevisionTotal ? money(c.enRevisionTotal) : "—"}</dd></div>
-            </dl>
-            <ul className="client-projects">
-              {c.projects.map(p => <li key={p.id}><Link href={`/proyectos/${p.id}`}><span>{p.name}</span><ProjectStatus status={p.status} /></Link></li>)}
-            </ul>
-          </article>
+          <Link key={c.id} href={`/clientes/${encodeURIComponent(c.id)}`} className="client-row">
+            <span className="avatar avatar-sm" aria-hidden="true">{iniciales(c.name)}</span>
+            <span className="client-row-name"><strong>{c.name}</strong><small>{c.ubicaciones.slice(0, 2).join(" · ") || "Sin dirección"}</small></span>
+            <span className="client-row-projects">{c.projects.length} {c.projects.length === 1 ? "proyecto" : "proyectos"} · {c.projects[0]?.name}</span>
+            <span className="client-row-amount pl-mono">{c.aprobadoTotal ? money(c.aprobadoTotal) : "—"}</span>
+            <ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" className="muted" />
+          </Link>
         ))}
-      </div>
+      </div>}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useParams, useSearchParams } from "next/navigation";
-import { MessageCircle, MessageSquare, Plus, Check, ArrowRight } from "lucide-react";
+import { MessageCircle, Plus, Check } from "lucide-react";
 import { Drawer } from "@/components/ui/drawer";
 import { BackLink } from "@/components/ui/back-link";
 import { TaskDialog } from "@/components/project/task-dialog";
@@ -27,8 +27,8 @@ import { cargarBorrador } from "@/lib/plano-flujo";
 import { budgetHistory } from "@/lib/budget-history";
 import { marcarVisto } from "@/lib/chat-visto";
 import { pasoVisible, type TipoAccion } from "@/lib/siguiente-paso";
-import { quienActua, quienEtiqueta } from "@/lib/pasos";
-import { projectProgress, money, totals, dateLabel, kindNames, can, purchaseStatus, type Task, type Command } from "@/lib/domain";
+import { pasoDe, pasos, quienActua, quienEtiqueta, textoMovimiento } from "@/lib/pasos";
+import { projectProgress, projectStatus, money, totals, dateLabel, kindNames, can, purchaseStatus, type Task, type Command } from "@/lib/domain";
 import "@/styles/project-workspace.css";
 
 type Section = "overview" | "budget" | "work" | "purchases" | "documents" | "cobros";
@@ -137,7 +137,8 @@ export default function ProyectoPage() {
   const recordatorio=enviada?`Hola. ¿Has podido ver el presupuesto de ${project.name} (V${enviada.number}, ${money(totals(enviada.items).total)} con IVA)? Dime si tienes cualquier duda.`:"";
   const verSiguiente=paso && paso.accion!=="ninguna";
   const shownParam=history?.versions.find(v=>v.id===params.get("v"));
-  const versionEnviar=shownParam?.status==="draft"?shownParam:editable;
+  // Tras enviarla sigue siendo la misma versión: el diálogo necesita seguir montado para enseñar el último paso.
+  const versionEnviar=shownParam ?? working;
   const anteriorEnviada=history?.versions.find(v=>v.status==="issued" && (!approved || v.number>approved.number) && v.id!==versionEnviar?.id);
 
   return <div className="page project-workspace">
@@ -149,7 +150,7 @@ export default function ProyectoPage() {
       </div>
       <div className="ficha-tools">
         <ProjectStepper status={project.status} progress={progress} onCambiar={puedeFase?()=>setSolicitud("estado"):undefined}/>
-        <Button variant="icon" className="ficha-chat" onClick={()=>navigate({chat:"1"})} aria-haspopup="dialog" aria-expanded={chatAbierto} aria-label="Chat del proyecto"><MessageSquare size={18} strokeWidth={1.7} aria-hidden="true"/></Button>
+        <button type="button" className="pill ficha-phase" data-tone={project.status==="completed"?"success":pasoDe(project.status)==="obra"?"info":"muted"} disabled={!puedeFase} aria-haspopup="dialog" aria-label={`Fase del proyecto: ${projectStatus[project.status]}. Cambiar de fase`} onClick={()=>setSolicitud("estado")}>{pasos.find(p=>p.id===pasoDe(project.status))?.label}</button>
         <ProjectMenu project={project} approvedVersion={approved} puedeEstimar={canBudget} onChat={()=>navigate({chat:"1"})} solicitud={solicitud} onAtendida={()=>setSolicitud(null)} planoHref={planoHref} fotosHref={fotosHref} onManual={aMano} borrador={editable} cobroSugerido={cobroSugerido}/>
       </div>
     </header>
@@ -221,7 +222,7 @@ export default function ProyectoPage() {
         <section className="pl-card moves" aria-label="Últimos movimientos">
           <strong>Últimos movimientos</strong>
           {activities.length===0 && <p className="muted text-sm">Aún no hay movimientos.</p>}
-          {activities.slice(0,4).map(a=><p key={a.id}><span>{dateLabel(a.created_at)}</span> · {a.actor_name} · {a.text}</p>)}
+          {activities.slice(0,4).map(a=><p key={a.id}><span>{dateLabel(a.created_at)}</span> · {a.actor_name} · {textoMovimiento(a.text)}</p>)}
         </section>
       </div>
     </section>}

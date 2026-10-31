@@ -10,7 +10,7 @@ import { budgetHistory } from "@/lib/budget-history";
 import { Onboarding } from "@/components/onboarding";
 import { InstallHint } from "@/components/install-hint";
 import { queToca } from "@/lib/siguiente-paso";
-import { enlacePaso, quienActua, quienEtiqueta } from "@/lib/pasos";
+import { enlacePaso, quienActua, quienEtiqueta, textoMovimiento } from "@/lib/pasos";
 import { veSeccion } from "@/lib/navegacion";
 import { can, dateLabel, money, totals, type Task, type Workspace } from "@/lib/domain";
 import { buildAgenda, greeting, localDate, longDate } from "@/lib/hoy";
@@ -19,7 +19,7 @@ const textoMensaje = (body: string) => body.replace(/\[\[[^\]]*\]\]/g, "").trim(
 
 function novedades(data: Workspace, yo: string) {
   const mensajes = data.messages.filter(m => !m.deleted_at && m.author_name !== yo && textoMensaje(m.body)).map(m => ({ id: m.id, when: m.created_at, project_id: m.project_id as string | null, tone: "info", texto: <>{m.author_name}: <em>«{textoMensaje(m.body)}»</em></> }));
-  const hechos = data.activities.filter(a => !a.text.startsWith("Mensaje ") && !a.text.startsWith("Reacción ")).map(a => ({ id: a.id, when: a.created_at, project_id: a.project_id, tone: "success", texto: <>{a.actor_name}: {a.text}</> }));
+  const hechos = data.activities.filter(a => !a.text.startsWith("Mensaje ") && !a.text.startsWith("Reacción ")).map(a => ({ id: a.id, when: a.created_at, project_id: a.project_id, tone: "success", texto: <>{a.actor_name}: {textoMovimiento(a.text)}</> }));
   return [...mensajes, ...hechos].sort((a, b) => b.when.localeCompare(a.when)).slice(0, 4);
 }
 

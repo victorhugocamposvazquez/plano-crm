@@ -33,7 +33,7 @@ export function desgloseIva(items: BudgetItem[]) {
 }
 
 export const estadoDocumento = (version: BudgetVersion) =>
-  version.status === "approved" ? "Aprobado para obra" : version.status === "issued" ? "Presupuesto" : version.status === "superseded" ? "Revisión sustituida" : "Borrador · no válido como oferta";
+  version.status === "approved" ? "Aceptado" : version.status === "issued" ? "Presupuesto" : version.status === "superseded" ? "Versión archivada" : "Borrador · no válido como oferta";
 
 export const fechaDocumento = (iso: string) => new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "long", year: "numeric" }).format(new Date(iso));
 

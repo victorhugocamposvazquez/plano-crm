@@ -47,7 +47,7 @@ export function createDemo(): Workspace {
       { id: demoId(301), organization_id: org, project_id: demoId(12), name: "Muebles de cocina", supplier: "Taller de ejemplo", quantity: 1, unit: "global", received_quantity: 0, delivered_quantity: 0, status: "planned" }
     ],
     documents: [], certifications: [],
-    messages: [{ id: demoId(400), organization_id: org, project_id: demoId(10), body: "La V1 sigue siendo la aprobada para obra. Los cambios de pavimento están en el borrador V2, pendientes de confirmar.", author_name: "Marta · Demo", created_at: date(-1) }],
+    messages: [{ id: demoId(400), organization_id: org, project_id: demoId(10), body: "La V1 sigue siendo la aceptada. Los cambios de pavimento están en el borrador V2, pendientes de confirmar.", author_name: "Marta · Demo", created_at: date(-1) }],
     activities: [{ id: demoId(500), organization_id: org, project_id: demoId(10), text: "V2 creada: cambio de pavimento y ajustes de alcance", actor_name: "Alex · Demo", created_at: date(-1) }, { id: demoId(501), organization_id: org, project_id: demoId(12), text: "Desmontaje de cocina completado", actor_name: "Dani · Demo", created_at: date(-2) }]
   };
 }

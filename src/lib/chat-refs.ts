@@ -38,7 +38,7 @@ export function plainText(body: string) {
 
 /** Categorías del selector «#», en el orden en que se ofrecen. */
 export const categorias: { type: RefType; label: string; hint: string }[] = [
-  { type: "v", label: "Presupuesto", hint: "Una revisión de este proyecto" },
+  { type: "v", label: "Presupuesto", hint: "Una versión de este proyecto" },
   { type: "d", label: "Documento", hint: "Plano, contrato, foto o PDF" },
   { type: "t", label: "Tarea", hint: "De la agenda del proyecto" },
   { type: "c", label: "Compra", hint: "Material o pedido" },
@@ -57,7 +57,7 @@ export function referenciables(data: Workspace, projectId: string): RefOption[] 
   const out: RefOption[] = [];
   for (const b of data.budgets.filter(b => b.project_id === projectId)) {
     for (const v of data.versions.filter(v => v.budget_id === b.id).sort((a, z) => z.number - a.number)) {
-      const estado = v.id === b.approved_version_id ? "aprobada para obra" : v.status === "draft" ? "en revisión" : v.status === "issued" ? "cerrada" : "anterior";
+      const estado = v.id === b.approved_version_id ? "aceptada" : v.status === "draft" ? "borrador" : v.status === "issued" ? "enviada" : "archivada";
       out.push({ type: "v", id: v.id, label: `V${v.number} · ${b.title}`, group: "Presupuesto", hint: `${estado} · ${v.change_reason}` });
     }
   }

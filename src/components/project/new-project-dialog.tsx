@@ -1,5 +1,5 @@
 "use client";
-import { useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Footprints } from "lucide-react";
@@ -12,16 +12,17 @@ const vacio = { name: "", client_name: "", location: "", kind: "integral" as Pro
 
 /**
  * Alta de un proyecto desde oficina o administración: solo los datos de partida, sin presupuesto.
- * El proyecto nace como «contacto» y el presupuesto se abre después desde su ficha.
+ * El proyecto nace en el paso «Visita» y el presupuesto se abre después desde su ficha.
  * La estimación en la visita (/proyectos/nueva) es la otra puerta de entrada, no la única.
  */
-export function NewProjectDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function NewProjectDialog({ open, onClose, cliente = "" }: { open: boolean; onClose: () => void; cliente?: string }) {
   const router = useRouter();
   const { data, actor, busy, send, notify } = useWorkspace();
   const allowed = can(actor.role, "project.create");
   const [form, setForm] = useState(vacio);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  useEffect(() => { if (open && cliente) setForm(f => (f.client_name ? f : { ...f, client_name: cliente })); }, [open, cliente]);
   const ok = form.name.trim().length > 0 && form.client_name.trim().length > 0;
 
   function close() { setForm(vacio); setError(""); onClose(); }

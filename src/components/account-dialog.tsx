@@ -48,7 +48,7 @@ export function AccountDialog({ open, onClose }: { open: boolean; onClose: () =>
         </div>
         <dl className="account-facts">
           <div><dt><Building2 size={15} strokeWidth={1.7} aria-hidden="true" />Organización</dt><dd>{data.organization_name || "—"}</dd></div>
-          <div><dt><ShieldCheck size={15} strokeWidth={1.7} aria-hidden="true" />Perfil</dt><dd>{roleNames[actor.role]}<small className="muted">{actor.role === "admin" || actor.role === "office" ? " · aprueba presupuestos y certificaciones" : actor.role === "site" ? " · tareas, mensajes, documentos y recepciones" : actor.role === "viewer" ? " · solo consulta" : ""}</small></dd></div>
+          <div><dt><ShieldCheck size={15} strokeWidth={1.7} aria-hidden="true" />Perfil</dt><dd>{roleNames[actor.role]}<small className="muted">{actor.role === "admin" || actor.role === "office" ? " · aprueba presupuestos y cobros" : actor.role === "site" ? " · tareas, mensajes, documentos y recepciones" : actor.role === "viewer" ? " · solo consulta" : ""}</small></dd></div>
           <div><dt>{mode === "supabase" ? <Database size={15} strokeWidth={1.7} aria-hidden="true" /> : <FlaskConical size={15} strokeWidth={1.7} aria-hidden="true" />}Datos</dt><dd>{mode === "supabase" ? "Espacio compartido de la empresa" : "Demostración local"}</dd></div>
         </dl>
         {(actor.role === "admin" || actor.role === "office") && <Link href="/configuracion/identidad" className="account-link" onClick={onClose}><Palette size={16} strokeWidth={1.7} aria-hidden="true" /><span style={{ flex: 1 }}>Identidad de la empresa<small className="muted">Logo, colores y portada de los documentos</small></span></Link>}

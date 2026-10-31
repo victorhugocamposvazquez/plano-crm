@@ -131,7 +131,6 @@ export function BudgetWorkspace({project,budget,versions,onNavigate,onEdit,canEd
         </>}
       </section>}
 
-      {shown.notes && view==="items" && <details className="budget-notes budget-notes-phone"><summary>Notas y condiciones de V{shown.number}</summary><p>{shown.notes}</p></details>}
     </div>
 
     <aside className="budget-side" aria-label={`Total y acciones de V${shown.number}`}>

@@ -339,3 +339,21 @@ Alcance y comprobación: `docs/usabilidad/lectura-clara.md`. No cambia las regla
 Se conserva la estructura de lectura de Fable: capítulos abiertos y filas de partidas. Se retira el bloque amplio de resumen y la agrupación nueva de acciones de escritorio. Las fechas no se ocultan para reducir densidad. `BudgetVersionIdentity` muestra versión, Actual o Para obra, estado y fecha de creación; la edición se etiqueta aparte. En presupuestos, Actual conserva el verde y la referencia para obra se expresa con texto neutro. Resumen, botones de versiones, historial, listado y consulta desde chat comparten este significado.
 
 El comparador presenta totales y fechas por versión, explicación de cada cambio e impacto con IVA. El detalle Antes/Después se abre desde un control con texto; no se basa en tachados. Especificación y límites: `docs/usabilidad/versiones-claras.md`. Esta sección sustituye las decisiones anteriores que ocultaban las fechas de la fila de versiones o mezclaban aprobación y revisión actual en el resumen.
+
+## Propuesta completa de usabilidad (31-10-2026)
+
+Estilos en `src/styles/plano-app.css`, después de `ui.css`. Detalle de lo integrado y lo pendiente en `docs/usabilidad/propuesta-completa.md`.
+
+**Tokens nuevos.** `--pl-text-search`, `--pl-text-figure`, `--pl-text-total`; `--pl-radius-card`, `--pl-radius-search`; `--pl-search-height`, `--pl-chat-width`, `--pl-panel-width`, `--pl-panel-wide`, `--pl-popover-account`; `--pl-enter-duration`, `--pl-enter-ease`; `--pl-success-line`, `--pl-info-line`, `--pl-warning-line`, `--pl-danger-line`; `--pl-selected`, `--pl-search-bg`, `--pl-chat-bg`, `--pl-chat-mine`, `--pl-chat-other`; `--pl-series-1` a `--pl-series-3`. La marca pasa a 23 px, tracking −0,045 em y cuadrado de 6 px; el menú a 248 px y la cabecera de escritorio a 52 px.
+
+**Vocabulario.** Fases: Visita → Presupuesto → Obra → Entregado (`src/lib/pasos.ts`; el dominio conserva sus cinco estados). Versiones: Borrador, Enviado, Aceptado, Archivada; la actual late en verde. Quién actúa: Te espera a ti (ámbar), Esperando al cliente (azul), Atrasado (rojo), Al día (verde). «Cobro» sustituye a «certificación»; mientras no haya facturas se dice «cobro preparado», nunca «cobrado».
+
+**Reglas.**
+- Una sola acción naranja por pantalla (`data-accent="orange"`): la que responde a «¿qué hago ahora?».
+- Armazón de alto fijo desde 768 px: menú y cabecera no se mueven; solo hace scroll `.shell-main`. En móvil se mantiene la barra inferior.
+- Los desplegables usan `Popover` y se cierran al pulsar fuera. Los formularios cortos y las fichas usan `Modal` con `panel`, que entra por la derecha en escritorio y es hoja inferior en móvil.
+- El chat flota sin bloquear la pantalla (`Drawer floating`).
+- Buscador común `SearchBox`: 60 px, últimas búsquedas y cómo se ha entendido. La tolerancia está en `src/lib/busqueda.ts`; los números solo coinciden por el principio de la palabra.
+- Los importes llevan separador de miles siempre (`money`).
+- Gráficos: un solo eje, curvas suaves, hover con cruz y tabla con los mismos datos. La paleta `--pl-series-*` se ha pasado por el validador de daltonismo en los dos temas.
+- Lo que no tiene dato no se aproxima ni se simula: se omite y se anota en `docs/PREGUNTAS.md`.

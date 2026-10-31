@@ -12,7 +12,7 @@ import { BudgetVersionIdentity } from "./budget-version-identity";
 export function BudgetPeek({ versionId, data, onVersion }: { versionId: string; data: Workspace; onVersion: (id: string) => void }) {
   const v = data.versions.find(x => x.id === versionId);
   const b = v ? data.budgets.find(x => x.id === v.budget_id) : undefined;
-  if (!v || !b) return <p className="muted text-sm">Esa revisión ya no existe.</p>;
+  if (!v || !b) return <p className="muted text-sm">Esa versión ya no existe.</p>;
   const t = totals(v.items);
   const aprobada = b.approved_version_id === v.id;
   const ref = !aprobada && b.approved_version_id ? data.versions.find(x => x.id === b.approved_version_id) : undefined;
@@ -39,10 +39,10 @@ export function BudgetPeek({ versionId, data, onVersion }: { versionId: string; 
         <div><dt>Sin IVA</dt><dd className="pl-mono">{money(t.base)}</dd></div>
         <div><dt>IVA</dt><dd className="pl-mono">{money(t.tax)}</dd></div>
         <div><dt>Total con IVA · V{v.number}</dt><dd className="pl-mono"><strong>{money(t.total)}</strong></dd></div>
-        {ref && <div><dt>Diferencia con IVA respecto a V{ref.number} aprobada</dt><dd className="pl-mono">{diff > 0 ? "+" : ""}{money(diff)}</dd></div>}
+        {ref && <div><dt>Diferencia con IVA respecto a V{ref.number} aceptada</dt><dd className="pl-mono">{diff > 0 ? "+" : ""}{money(diff)}</dd></div>}
       </dl>
       {v.change_reason && <p className="text-sm"><span className="muted">Motivo: </span>{v.change_reason}</p>}
-      {capitulos.length === 0 && <p className="muted text-sm">Esta revisión todavía no tiene partidas.</p>}
+      {capitulos.length === 0 && <p className="muted text-sm">Esta versión todavía no tiene partidas.</p>}
       {capitulos.map(c => (
         <section key={c.chapter} className="peek-chapter">
           <h3><span>{c.chapter}</span><span className="pl-mono">{money(c.subtotal)}</span></h3>

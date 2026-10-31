@@ -19,7 +19,7 @@ export default function ComprasPage() {
     <div className="page">
       <div>
         <div className="eyebrow"><Package size={13} strokeWidth={1.8} aria-hidden="true" /><span>{data.organization_name || "Espacio de trabajo"}</span></div>
-        <h1 className="h1">Compras y materiales.</h1>
+        <h1 className="pl-title">Todos los materiales</h1>
         <p className="subtitle">{loading ? "Cargando…" : `${totales.porPedir} por pedir · ${totales.pedidos} pedidos sin recibir · ${totales.recibidos} recibidos · ${totales.enObra} en obra`}</p>
       </div>
 

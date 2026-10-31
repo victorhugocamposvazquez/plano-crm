@@ -26,7 +26,7 @@ describe("Referencias en el chat", () => {
     const opciones = referenciables(data, projectId);
     const versiones = opciones.filter(o => o.type === "v");
     expect(versiones[0].label.startsWith("V2")).toBe(true);
-    expect(versiones[1].hint).toMatch(/aprobada para obra/);
+    expect(versiones[1].hint).toMatch(/aceptada/);
     expect(opciones.some(o => o.type === "t")).toBe(true);
     expect(opciones.some(o => o.type === "c")).toBe(true);
     expect(filtrarReferencias(opciones, "demolic").every(o => /demolic/i.test(`${o.label} ${o.hint}`))).toBe(true);

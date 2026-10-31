@@ -31,7 +31,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     try {
       if (mode === "demo") {
         // La demostración se lee al instante: se espera un momento para no adelantarse a la hidratación de la página.
-        await new Promise(resolve => setTimeout(resolve, 60));
+        await new Promise<void>(resolve => { const seguir = () => setTimeout(resolve, 60); if (document.readyState === "complete") seguir(); else window.addEventListener("load", seguir, { once: true }); });
         const next = savedDemo(); if (!localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify(next)); setData(next);
       } else {
         const response = await fetch("/api/workspace", { cache: "no-store" });

@@ -134,7 +134,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         {enlace(masItem)}
         <div className="nav-foot">
           <Popover open={cuenta} onClose={() => setCuenta(false)} side="top" panelClassName="account-panel" trigger={
-            <button type="button" className="nav-account" onClick={() => setCuenta(v => !v)} aria-haspopup="dialog" aria-expanded={cuenta} title="Tu cuenta">
+            <button type="button" className="nav-account" onClick={() => setCuenta(v => !v)} aria-haspopup="dialog" aria-expanded={cuenta} aria-label={`Tu cuenta · ${actor.name}`} title="Tu cuenta">
               <span className="avatar avatar-ink" aria-hidden="true">{initials}</span>
               <span className="nav-user"><strong>{actor.name}</strong><small>{roleNames[actor.role]}</small></span>
               <ChevronUp size={15} strokeWidth={1.7} aria-hidden="true" className="nav-account-chevron" />

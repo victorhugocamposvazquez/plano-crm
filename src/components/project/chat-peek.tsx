@@ -53,7 +53,7 @@ export function ChatPeek({ vista, projectId, onChange, onClose }: { vista: Vista
   const ultima = versiones[0];
   const ficha = (s?: string) => `/proyectos/${projectId}${s ? `?s=${s}` : ""}`;
 
-  const titulo = !vista ? "" : vista.kind === "presupuesto" ? "Presupuesto" : vista.kind === "versiones" ? "Revisiones del presupuesto" : vista.kind === "pdf" ? "Documento del presupuesto" : vista.kind === "tareas" ? "Tareas del proyecto" : vista.kind === "compras" ? "Compras y materiales" : vista.kind === "documentos" ? "Documentos del proyecto" : vista.kind === "cliente" ? "Cliente" : "Cómo va el proyecto";
+  const titulo = !vista ? "" : vista.kind === "presupuesto" ? "Presupuesto" : vista.kind === "versiones" ? "Versiones del presupuesto" : vista.kind === "pdf" ? "Documento del presupuesto" : vista.kind === "tareas" ? "Tareas del proyecto" : vista.kind === "compras" ? "Materiales" : vista.kind === "documentos" ? "Documentos del proyecto" : vista.kind === "cliente" ? "Cliente" : "Cómo va el proyecto";
   const destino = !vista ? ficha() : vista.kind === "presupuesto" || vista.kind === "versiones" || vista.kind === "pdf" ? ficha("budget") : vista.kind === "compras" ? ficha("purchases") : vista.kind === "documentos" ? ficha("documents") : vista.kind === "cliente" ? `/clientes?q=${encodeURIComponent(project.client_name)}` : ficha();
   const pdfDe = vista?.kind === "presupuesto" ? data.versions.find(v => v.id === vista.versionId) : undefined;
 
@@ -119,8 +119,8 @@ export function ChatPeek({ vista, projectId, onChange, onClose }: { vista: Vista
                 <span className="muted text-xs">{tasks.filter(t => t.status === "done").length} de {tasks.length} tareas completadas · avance ponderado por tarea{atrasadas ? ` · ${atrasadas} atrasada${atrasadas === 1 ? "" : "s"}` : ""}</span>
               </div>
               <dl className="peek-totals" style={{ border: 0, borderTop: "var(--pl-hairline) solid var(--pl-line)", borderRadius: 0 }}>
-                <div><dt>Aprobado · sin IVA</dt><dd className="pl-mono">{aprobada ? money(totals(aprobada.v.items).base) : "—"}</dd></div>
-                <div><dt>En revisión · sin IVA</dt><dd className="pl-mono">{enCurso ? money(totals(enCurso.v.items).base) : "—"}</dd></div>
+                <div><dt>Aceptado · sin IVA</dt><dd className="pl-mono">{aprobada ? money(totals(aprobada.v.items).base) : "—"}</dd></div>
+                <div><dt>En curso · sin IVA</dt><dd className="pl-mono">{enCurso ? money(totals(enCurso.v.items).base) : "—"}</dd></div>
                 <div><dt>Tareas pendientes</dt><dd className="pl-mono">{tasks.filter(t => t.status === "pending").length}</dd></div>
               </dl>
             </div>

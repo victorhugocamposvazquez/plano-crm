@@ -30,6 +30,7 @@ export default function ProyectosPage() {
   const [queryParam, setQueryParam] = useQueryState<string>("q", "");
   // «?nuevo=1» abre el alta sobre la lista: recargar o volver atrás conserva el contexto.
   const [nuevo, setNuevo] = useQueryState<string>("nuevo", "");
+  const [clienteNuevo] = useQueryState<string>("cliente", "");
   const [query, setQuery] = useState(queryParam);
   useEffect(() => { const t = setTimeout(() => { if (query !== queryParam) setQueryParam(query); }, 300); return () => clearTimeout(t); }, [query, queryParam, setQueryParam]);
   const hoy = localDate();
@@ -92,7 +93,7 @@ export default function ProyectosPage() {
           {!query && puedeCrear && <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><button type="button" className="btn btn-primary" onClick={() => setNuevo("1")}>Nuevo proyecto</button><Link href="/proyectos/nueva" className="btn btn-secondary">Empezar con una visita</Link></div>}
         </div>
       )}
-      <NewProjectDialog open={nuevo === "1"} onClose={() => setNuevo("")} />
+      <NewProjectDialog open={nuevo === "1"} onClose={() => setNuevo("")} cliente={clienteNuevo} />
     </div>
   );
 }

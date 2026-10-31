@@ -61,7 +61,7 @@ export function siguientePaso(data: Workspace, project: Project, hoy = new Date(
     return { etapa: "entrega", titulo: "Obra terminada y cobros preparados", detalle: "Marca el proyecto como entregado para cerrarlo.", accion: "finalizar", label: "Marcar como entregado", urgencia: 0 };
   }
 
-  return { etapa: "presupuesto", titulo: "Presupuesto en marcha", detalle: "Revisa la revisión en curso desde la pestaña Presupuesto.", accion: "editar", budget_id: working?.budget_id ?? budgets[0]?.id, label: "Ver presupuesto", urgencia: 0 };
+  return { etapa: "presupuesto", titulo: "Presupuesto en marcha", detalle: "Revisa la versión en curso desde la pestaña Presupuesto.", accion: "editar", budget_id: working?.budget_id ?? budgets[0]?.id, label: "Ver presupuesto", urgencia: 0 };
 }
 
 /**

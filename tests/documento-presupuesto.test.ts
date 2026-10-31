@@ -27,6 +27,6 @@ describe("Documento de presupuesto", () => {
 
   it("etiqueta el borrador como no válido y la aprobada como aprobada", () => {
     expect(estadoDocumento(v2)).toMatch(/Borrador/);
-    expect(estadoDocumento({ ...v2, status: "approved" })).toBe("Aprobado para obra");
+    expect(estadoDocumento({ ...v2, status: "approved" })).toBe("Aceptado");
   });
 });

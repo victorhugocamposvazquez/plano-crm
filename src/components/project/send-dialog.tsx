@@ -40,6 +40,7 @@ export function SendDialog({ open, onClose, project, version, approved, previous
     finally { setEnviando(false); }
   }
 
+  if (!enviada && version.status !== "draft") return null;
   if (enviada) return (
     <Modal open={open} onClose={cerrar} title={`V${version.number} lista para el cliente`} footer={<Button variant="primary" onClick={cerrar}>Hecho</Button>}>
       <div className="send-done">

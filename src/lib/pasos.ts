@@ -51,3 +51,8 @@ export function enlacePaso(projectId: string, paso: { accion: string; budget_id?
   if (paso.accion === "tareas" || paso.accion === "tarea") return `${base}?s=work`;
   return base;
 }
+
+/** Los movimientos se guardan con su texto original; aquí se dicen con las palabras de la obra. */
+export function textoMovimiento(texto: string) {
+  return texto.replace("cerrada para revisión", "enviada al cliente").replace("aprobada para obra", "aceptada").replace("Borrador de certificación", "Cobro preparado");
+}

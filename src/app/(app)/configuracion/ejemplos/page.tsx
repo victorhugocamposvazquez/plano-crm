@@ -8,7 +8,7 @@ import { BackLink } from "@/components/ui/back-link";
 import { can, kindNames } from "@/lib/domain";
 import { previsualizar, articulosQueFaltan, cargarEjemplos, type Resultado } from "@/lib/proyectos-ejemplo";
 
-const estados: Record<string, string> = { lead: "Contacto", estimating: "Presupuestando", planning: "Planificando", active: "En obra", completed: "Terminado" };
+const estados: Record<string, string> = { lead: "Visita", estimating: "Presupuesto", planning: "Obra · planificando", active: "Obra", completed: "Entregado" };
 
 /**
  * Proyectos de ejemplo: los cinco del modo demo, creados en el espacio de trabajo real por los comandos de siempre.
