@@ -16,7 +16,7 @@ function pdf(stream='1 0 0 rg 10 20 80 4 re f') {
   await page.getByRole('button',{name:/Añadir y leer un plano/}).waitFor();
   const buffer=pdf();await page.locator('input[type=file][accept="application/pdf"]').setInputFiles({name:'Plano Demolicion.pdf',mimeType:'application/pdf',buffer});
   await expect(page.getByTitle('Plano Demolicion.pdf',{exact:true})).toBeVisible({timeout:30000});
-  await expect(page.getByText(/1 página · 1 trazo · en Documentos/)).toBeVisible();
+  await expect(page.getByText(/1 página · 1 trazo · en Planos y fotos/)).toBeVisible();
   const state=await page.evaluate(project=>({b:JSON.parse(localStorage.getItem('plano.borrador.'+project)),ws:JSON.parse(localStorage.getItem('plano.workspace.v1'))}),project);
   expect(state.ws.documents).toHaveLength(1);expect(state.b.planos[0].documentId).toBe(state.ws.documents[0].id);
   expect(state.b.planos[0].extraction.sha256).toBe(require('node:crypto').createHash('sha256').update(buffer).digest('hex'));

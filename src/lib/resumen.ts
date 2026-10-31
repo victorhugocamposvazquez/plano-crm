@@ -6,6 +6,7 @@ import { totals, type Budget, type BudgetVersion, type Document, type Project, t
  * Solo agrupa y suma lo que ya hay en el espacio; los importes son base sin IVA salvo que se diga.
  */
 
+export const claveCliente = (nombre: string) => norm(nombre) || "sin-cliente";
 const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().trim();
 
 /* ---------- Presupuestos ---------- */
@@ -58,7 +59,7 @@ export function clientes(data: Workspace): Cliente[] {
   const map = new Map<string, Cliente>();
   const filas = filasPresupuesto(data);
   for (const p of data.projects) {
-    const key = norm(p.client_name) || "sin-cliente";
+    const key = claveCliente(p.client_name);
     const c = map.get(key) ?? { id: key, name: p.client_name || "Sin cliente", projects: [], activos: 0, aprobado: 0, enRevision: 0, aprobadoTotal: 0, enRevisionTotal: 0, ubicaciones: [], ultimo: p.created_at };
     c.projects.push(p);
     if (p.status === "active" || p.status === "planning") c.activos++;

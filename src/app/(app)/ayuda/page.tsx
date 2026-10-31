@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import { CircleHelp, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
 import { roleNames } from "@/lib/domain";
 
@@ -30,8 +30,7 @@ export default function AyudaPage() {
   return (
     <div className="page">
       <div>
-        <div className="eyebrow"><CircleHelp size={13} strokeWidth={1.8} aria-hidden="true" /><span>Ayuda</span></div>
-        <h1 className="h1">¿Cómo se hace?</h1>
+        <h1 className="pl-title">¿Cómo se hace?</h1>
         <p className="subtitle">Las seis cosas que más se preguntan, con el botón que lleva a la pantalla. Tu perfil es {roleNames[actor.role].toLowerCase()}.</p>
       </div>
 

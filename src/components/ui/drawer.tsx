@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useRef, type ReactNode } from "react";
 import { X } from "lucide-react";
+import { quitarFocoDeCerrar } from "./modal";
 
 /**
  * Panel lateral: en escritorio se abre a la derecha sin tapar la pantalla; en móvil ocupa la altura completa.
@@ -13,7 +14,7 @@ export function Drawer({ open, onClose, title, subtitle, children, footer, size 
     const dialog = ref.current;
     if (!dialog) return;
     // Flotante: se abre sin bloquear la pantalla de debajo, que sigue viéndose y usándose. El resto, como diálogo.
-    if (open && !dialog.open) { if (floating) { dialog.show(); (document.activeElement as HTMLElement | null)?.blur(); } else dialog.showModal(); }
+    if (open && !dialog.open) { if (floating) { dialog.show(); (document.activeElement as HTMLElement | null)?.blur(); } else { dialog.showModal(); quitarFocoDeCerrar(dialog); } }
     if (!open && dialog.open) dialog.close();
   }, [open, floating]);
   useEffect(() => {

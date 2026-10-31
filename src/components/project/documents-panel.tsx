@@ -53,7 +53,7 @@ export function DocumentsPanel({ project, documents }: { project: Project; docum
 
   return (
     <section className="project-documents" aria-label="Archivos del proyecto">
-      <header className="pl-head"><div className="pl-seg" role="group" aria-label="Filtrar archivos"><button type="button" aria-pressed={!filtro} onClick={() => setFiltro("")}>Todo {documents.length}</button>{[...groups.entries()].map(([cat, list]) => <button key={cat} type="button" aria-pressed={filtro === cat} onClick={() => setFiltro(cat)}>{categoryNames[cat]} {list.length}</button>)}</div>{allowed && <Button variant="primary" onClick={() => setAttaching(true)} aria-haspopup="dialog"><Upload {...iconProps}/>Subir</Button>}</header>
+      <header className="pl-head">{documents.length === 0 ? <strong className="panel-title">Planos y fotos</strong> : <div className="pl-seg" role="group" aria-label="Filtrar archivos"><button type="button" aria-pressed={!filtro} onClick={() => setFiltro("")}>Todo {documents.length}</button>{[...groups.entries()].map(([cat, list]) => <button key={cat} type="button" aria-pressed={filtro === cat} onClick={() => setFiltro(cat)}>{categoryNames[cat]} {list.length}</button>)}</div>}{allowed && <Button variant="primary" onClick={() => setAttaching(true)} aria-haspopup="dialog"><Upload {...iconProps}/>Subir</Button>}</header>
 
       {documents.length === 0 && <div className="documents-empty"><FileText size={28} strokeWidth={1.3} aria-hidden="true"/><strong>Aún no hay archivos</strong><p className="muted">{allowed ? "Pulsa Subir, elige qué vas a subir y selecciona los archivos." : "Los archivos que adjunte el equipo aparecerán aquí."}</p></div>}
 

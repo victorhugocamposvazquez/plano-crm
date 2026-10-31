@@ -8,7 +8,7 @@ import { SearchBox } from "@/components/ui/search-box";
 import { projectProgress, kindNames, money, totals, can, type Workspace } from "@/lib/domain";
 import { searchProjects } from "@/lib/search";
 import { pasoVisible } from "@/lib/siguiente-paso";
-import { iniciales, pasoDe, pasos, quienActua, quienEtiqueta, type Paso, type Quien } from "@/lib/pasos";
+import { iniciales, pasoDe, pasos, quienActua, quienEtiqueta, tituloPaso, type Paso, type Quien } from "@/lib/pasos";
 import { localDate } from "@/lib/hoy";
 import { useQueryState } from "@/lib/use-query-state";
 import { NewProjectDialog } from "@/components/project/new-project-dialog";
@@ -79,7 +79,7 @@ export default function ProyectosPage() {
                 <span className="project-step">{pasos.find(p => p.id === paso)?.label}</span>
                 <span className="project-progress" aria-label={enObra ? `Avance ${avance} %` : "Sin avance todavía"}><span className="mini-meter" aria-hidden="true"><span style={{ width: `${enObra ? avance : 0}%` }} /></span><small>{enObra ? `${avance} %` : "—"}</small></span>
                 <span className="project-amount pl-mono">{importe !== null ? money(importe) : "—"}</span>
-                <span className="project-next" data-tone={quienEtiqueta[q].tone}><Pill label={quienEtiqueta[q].label} tone={quienEtiqueta[q].tone} /><small>{siguiente.titulo}</small></span>
+                <span className="project-next" data-tone={quienEtiqueta[q].tone}><Pill label={quienEtiqueta[q].label} tone={quienEtiqueta[q].tone} /><small>{tituloPaso(siguiente.titulo)}</small></span>
                 <span className="project-phase-phone">{pasos.find(p => p.id === paso)?.label}</span>
               </Link>
             );

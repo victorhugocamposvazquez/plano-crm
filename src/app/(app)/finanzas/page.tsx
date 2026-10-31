@@ -52,7 +52,7 @@ export default function FinanzasPage() {
       <div className="pl-head">
         <div><h1 className="pl-title">Finanzas</h1><p className="pl-sub">Lo aceptado, lo preparado para cobrar y lo que falta. Importes sin IVA.</p></div>
         <div className="pl-head-actions">
-          <Button onClick={exportar} disabled={!data.certifications.length}><Download size={16} strokeWidth={1.7} aria-hidden="true" />Exportar para la gestoría</Button>
+          <Button onClick={exportar} disabled={!data.certifications.length} title={data.certifications.length ? undefined : "Todavía no hay cobros que exportar"}><Download size={16} strokeWidth={1.7} aria-hidden="true" />Exportar para la gestoría</Button>
           {puedeCobrar && <Button variant="primary" onClick={() => setNuevoCobro(true)}><Plus size={17} strokeWidth={1.8} aria-hidden="true" />Preparar cobro</Button>}
         </div>
       </div>

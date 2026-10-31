@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useState } from "react";
-import { Smartphone, Share, EllipsisVertical, Check } from "lucide-react";
+import { Share, EllipsisVertical, Check } from "lucide-react";
 
 /** Instalar Plano en el móvil: icono en la pantalla de inicio y pantalla completa, sin barra de dirección. */
 export default function InstalarPage() {
@@ -14,8 +14,7 @@ export default function InstalarPage() {
   return (
     <div className="page">
       <div>
-        <div className="eyebrow"><Smartphone size={13} strokeWidth={1.8} aria-hidden="true" /><span>Instalar</span></div>
-        <h1 className="h1">Plano en tu móvil.</h1>
+        <h1 className="pl-title">Plano en tu móvil</h1>
         <p className="subtitle">Con icono en la pantalla de inicio y sin barra de dirección. No hay que descargar nada de la tienda: dos pasos desde el navegador.</p>
       </div>
 

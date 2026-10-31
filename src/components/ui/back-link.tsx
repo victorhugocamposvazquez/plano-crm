@@ -1,7 +1,7 @@
 "use client";
 import type { ReactNode } from "react";
 import { useRouter } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 
 /**
  * «Volver» que respeta de dónde vienes: si hay historial dentro de Plano vuelve a esa pantalla
@@ -17,7 +17,7 @@ export function BackLink({ fallback, children, compact = false }: { fallback: st
   }
   return (
     <a href={fallback} onClick={go} className="muted back-link" data-compact={compact || undefined} style={{ display: "inline-flex", alignItems: "center", gap: 6, textDecoration: "none" }}>
-      <ArrowLeft size={13} strokeWidth={1.8} aria-hidden="true" className="back-link-arrow" /><span className="back-link-text">{children}</span>
+      <ChevronLeft size={16} strokeWidth={1.8} aria-hidden="true" className="back-link-arrow" /><span className="back-link-text">{children}</span>
     </a>
   );
 }

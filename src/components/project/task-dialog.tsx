@@ -104,7 +104,6 @@ export function TaskDialog({ task, onClose }: { task: Task | null; onClose: () =
             </div>
           )}
           {!canEdit && <p className="muted text-xs">Tu perfil puede completar la tarea; editarla o moverla corresponde a oficina, jefe de obra o administración.</p>}
-          {project && <p className="muted text-xs">Creada el {dateLabel(project.created_at)} como parte de la planificación del proyecto.</p>}
         </div>
       )}
     </Modal>

@@ -4,7 +4,6 @@ import Link from "next/link";
 import { Sparkles, Check, AlertTriangle, Loader2 } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
 import { Button } from "@/components/ui/button";
-import { BackLink } from "@/components/ui/back-link";
 import { can, kindNames } from "@/lib/domain";
 import { previsualizar, articulosQueFaltan, cargarEjemplos, type Resultado } from "@/lib/proyectos-ejemplo";
 
@@ -37,8 +36,7 @@ export default function EjemplosPage() {
   return (
     <div className="page">
       <div>
-        <div className="eyebrow"><BackLink fallback="/mas">Más</BackLink><span>· Configuración</span></div>
-        <div className="page-head"><h1 className="h2" style={{ fontSize: "var(--pl-text-h1)" }}>Proyectos de ejemplo</h1></div>
+        <div className="page-head"><h1 className="pl-title">Proyectos de ejemplo</h1></div>
         <p className="subtitle">Cinco proyectos ficticios con sus presupuestos, tareas, compras y un catálogo corto, para ver Plano con contenido y enseñarlo. Son los mismos de la demostración. Lo que ya exista no se toca.</p>
       </div>
 

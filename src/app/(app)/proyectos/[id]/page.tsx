@@ -28,7 +28,9 @@ import { cargarBorrador } from "@/lib/plano-flujo";
 import { budgetHistory, versionState } from "@/lib/budget-history";
 import { marcarVisto, sinLeerPorProyecto } from "@/lib/chat-visto";
 import { pasoVisible, type TipoAccion } from "@/lib/siguiente-paso";
-import { pasoDe, pasos, quienActua, quienEtiqueta, textoMovimiento } from "@/lib/pasos";
+import { pasoDe, pasos, quienActua, quienEtiqueta, textoMovimiento, tituloPaso } from "@/lib/pasos";
+import { veSeccion } from "@/lib/navegacion";
+import { claveCliente } from "@/lib/resumen";
 import { projectProgress, projectStatus, money, totals, dateLabel, kindNames, can, purchaseStatus, type Task, type Command } from "@/lib/domain";
 import "@/styles/project-workspace.css";
 
@@ -129,7 +131,7 @@ export default function ProyectoPage() {
     {id:"fotos",label:"Fotos del estado actual",hint:fotosVisita?`${fotosVisita} foto${fotosVisita===1?"":"s"}`:"Ninguna todavía",done:fotosVisita>0},
     {id:"presupuesto",label:"Presupuesto abierto",hint:budgets.length?(budgets.length===1?"1 presupuesto":`${budgets.length} presupuestos`):"A mano, desde un plano o desde fotos",done:budgets.length>0}
   ];
-  const puedeFase=can(actor.role,"project.status");
+  const puedeFase=can(actor.role,"project.status"),veClientes=veSeccion(actor.role,"/clientes");
   const quien=quienActua(data,project,hoy),etiqueta=quienEtiqueta[quien];
   const baseAceptada=approved?totals(approved.items).base:0,preparado=cobros.reduce((s,c)=>s+c.amount,0);
   const sinPedir=purchases.filter(p=>p.status==="planned").length,esperando=purchases.filter(p=>p.status==="ordered"),enObraMat=purchases.filter(p=>p.status==="delivered").length;
@@ -150,7 +152,7 @@ export default function ProyectoPage() {
       <BackLink fallback="/proyectos" compact>Proyectos</BackLink>
       <div className="ficha-title">
         <div className="ficha-name"><h1 className="pl-title">{project.name}</h1><span className="kind-tag">{kindNames[project.kind]}</span></div>
-        <p className="pl-sub">{[project.client_name,project.location,project.code].filter(Boolean).join(" · ")}</p>
+        <p className="pl-sub">{veClientes?<Link href={`/clientes/${encodeURIComponent(claveCliente(project.client_name))}`} className="ficha-client">{project.client_name}</Link>:project.client_name}{[project.location,project.code].filter(Boolean).map(t=><span key={t}> · {t}</span>)}</p>
         <ol className="step-bars" aria-label="Camino del proyecto">{pasos.map((p,i)=>{const actual=pasos.findIndex(x=>x.id===pasoDe(project.status));return <li key={p.id} data-state={project.status==="completed" || i<actual?"done":i===actual?"current":"todo"}>{p.label}</li>;})}</ol>
       </div>
       <div className="ficha-tools">
@@ -172,7 +174,7 @@ export default function ProyectoPage() {
       {verSiguiente && paso && <section className="first-card" data-tone={etiqueta.tone==="success"?"warning":etiqueta.tone} aria-label="Siguiente paso">
         <div className="first-card-kicker kicker-split"><span>Siguiente paso · {quien==="cliente"?"en manos del cliente":quien==="atrasado"?"va atrasado":"te toca a ti"}</span>{enviada && <span>{haceDias(enviada.updated_at)}</span>}</div>
         <div className="first-card-body">
-          <div><strong>{paso.titulo}</strong><p>{enviada && approved && enviada.id!==approved.id?<><span className="pl-mono">{money(totals(enviada.items).total)}</span> con IVA · {totals(enviada.items).total>=totals(approved.items).total?"sube":"baja"} <span className="pl-mono">{money(Math.abs(totals(enviada.items).total-totals(approved.items).total))}</span> sobre lo aceptado. </>:null}{paso.detalle}</p></div>
+          <div><strong>{tituloPaso(paso.titulo)}</strong><p>{enviada && approved && enviada.id!==approved.id?<><span className="pl-mono">{money(totals(enviada.items).total)}</span> con IVA · {totals(enviada.items).total>=totals(approved.items).total?"sube":"baja"} <span className="pl-mono">{money(Math.abs(totals(enviada.items).total-totals(approved.items).total))}</span> sobre lo aceptado. </>:null}{paso.detalle}</p></div>
           <div className="first-card-actions">
             {enviada && paso.accion==="aprobar" && <a className="btn btn-secondary" href={`https://wa.me/?text=${encodeURIComponent(recordatorio)}`} target="_blank" rel="noopener"><MessageCircle size={16} strokeWidth={1.7} aria-hidden="true"/>Recordar por WhatsApp</a>}
             {puedePaso ? <Button variant="primary" data-accent="orange" disabled={busy} onClick={()=>accionPaso(paso.accion)}>{paso.label}</Button> : <span className="muted text-sm">Lo completa otro perfil.</span>}
@@ -182,7 +184,7 @@ export default function ProyectoPage() {
       <nav className="pl-card ficha-list" aria-label="Apartados del proyecto">
         {[
           {id:"budget" as const,icon:Euro,tone:"warning",label:"Presupuesto",hint:current?`V${current.number} · ${versionState(current,approved?.id)} · ${history?.versions.length} ${history?.versions.length===1?"versión":"versiones"}`:"Todavía no hay",valor:current?money(totals(current.items).total):"",actual:Boolean(current)},
-          {id:"work" as const,icon:Check,tone:"success",label:"Obra",hint:`${progress} % · ${doneTasks.length} de ${tasks.length} tareas hechas`},
+          {id:"work" as const,icon:Check,tone:"success",label:"Obra",hint:tasks.length?`${progress} % · ${doneTasks.length} de ${tasks.length} tareas hechas`:"Todavía sin tareas"},
           {id:"purchases" as const,icon:Package,tone:"danger",label:"Materiales",hint:materialDetalle},
           {id:"documents" as const,icon:ImageIcon,tone:"muted",label:"Planos y fotos",hint:documents.length?`${documents.length} archivo${documents.length===1?"":"s"}`:"Sin archivos"},
           {id:"cobros" as const,icon:Receipt,tone:"info",label:"Cobros",hint:approved?`Preparados · puedes cobrar hasta el ${progress} %`:"Cuando el cliente acepte",valor:approved?money(preparado):""}
@@ -192,11 +194,11 @@ export default function ProyectoPage() {
           {a.valor && <span className="pl-mono ficha-list-value">{a.valor}</span>}
           <ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" className="muted"/>
         </button>;})}
-        <Link href={`/clientes/${encodeURIComponent(project.client_name.normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().trim())}`} className="ficha-list-row">
+        {veClientes && <Link href={`/clientes/${encodeURIComponent(claveCliente(project.client_name))}`} className="ficha-list-row">
           <span className="ficha-list-icon" data-tone="info"><Users size={17} strokeWidth={1.8} aria-hidden="true"/></span>
           <span className="ficha-list-text"><strong>Cliente</strong><small>{project.client_name}</small></span>
           <ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" className="muted"/>
-        </Link>
+        </Link>}
       </nav>
       <div className="ficha-cards">
         <button type="button" className="pl-card ficha-card" onClick={()=>selectSection("budget")} aria-label={current?`Presupuesto: ${money(totals((approved??current).items).total)} con IVA. Ver presupuesto y versiones`:"Presupuesto: todavía no hay. Ver opciones para presupuestar"}>
@@ -228,7 +230,7 @@ export default function ProyectoPage() {
         </button>
         <button type="button" className="pl-card ficha-card" onClick={()=>selectSection("cobros")} aria-label={`Cobros: ${money(preparado)} preparados. Ver cobros`}>
           <span>Cobros</span>
-          <strong className="pl-mono">{money(preparado)}</strong>
+          <strong className={approved?"pl-mono":"ficha-card-text"}>{approved?money(preparado):"Sin cobros"}</strong>
           <small>{approved?<>de <span className="pl-mono">{money(baseAceptada)}</span> sin IVA · puedes cobrar hasta el {progress} %</>:"Cuando el cliente acepte el presupuesto"}</small>
         </button>
       </div>
@@ -242,7 +244,7 @@ export default function ProyectoPage() {
                 {can(actor.role,"task.update") && <Button disabled={busy} onClick={()=>moverAManana(tocaHoy)}>Mañana</Button>}
               </div>
             </section>
-          : <section className="pl-card today-task" aria-label="Tareas"><div className="today-task-head"><strong>Tareas</strong></div><p className="muted text-sm" style={{margin:0}}>{pendingTasks.length?`La siguiente es «${pendingTasks[0].title}», el ${dateLabel(pendingTasks[0].due_date)}.`:"No hay tareas pendientes."}</p>{can(actor.role,"task.create") && <div className="today-task-actions"><Button onClick={()=>setSolicitud("tarea")}><Plus size={15} strokeWidth={1.8} aria-hidden="true"/>Nueva tarea</Button></div>}</section>}
+          : <section className="pl-card today-task" data-calm aria-label="Tareas"><div className="today-task-head"><strong>Tareas</strong></div><p className="muted text-sm" style={{margin:0}}>{pendingTasks.length?`La siguiente es «${pendingTasks[0].title}», el ${dateLabel(pendingTasks[0].due_date)}.`:"No hay tareas pendientes."}</p>{can(actor.role,"task.create") && <div className="today-task-actions"><Button onClick={()=>setSolicitud("tarea")}><Plus size={15} strokeWidth={1.8} aria-hidden="true"/>Nueva tarea</Button></div>}</section>}
         <section className="pl-card moves" aria-label="Últimos movimientos">
           <strong>Últimos movimientos</strong>
           {activities.length===0 && <p className="muted text-sm">Aún no hay movimientos.</p>}

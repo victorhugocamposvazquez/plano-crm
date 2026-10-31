@@ -40,6 +40,9 @@ export function quienActua(data: Workspace, project: Project, hoy = localDate())
 
 export const iniciales = (texto: string) => texto.split(/[\s·]+/).filter(w => /^[\p{L}\d]/u.test(w) && !/^(de|del|la|el|en|y)$/i.test(w)).slice(0, 2).map(w => w[0]?.toUpperCase()).join("") || "·";
 
+/** En la ficha y las listas ya se dice que es lo siguiente: el título no lo repite. */
+export const tituloPaso = (titulo: string) => titulo.replace(/^Siguiente: /, "").replace(/^./, c => c.toUpperCase());
+
 /** Adónde lleva la acción de un paso desde fuera de la ficha (Hoy, listas). */
 export function enlacePaso(projectId: string, paso: { accion: string; budget_id?: string }) {
   const base = `/proyectos/${projectId}`;

@@ -4,7 +4,6 @@ import Link from "next/link";
 import { Palette, Upload, X, Check, ArrowUpRight } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
 import { Button } from "@/components/ui/button";
-import { BackLink } from "@/components/ui/back-link";
 import { useBranding } from "@/lib/use-branding";
 import { brandingPorDefecto, paletaSugerida, normalizarHex, validarBranding, textoSobre, lineasLegales, type Branding } from "@/lib/branding";
 import { DocBrand, estiloDocumento } from "@/components/documents/budget-document";
@@ -53,9 +52,8 @@ export default function IdentidadPage() {
   return (
     <div className="page">
       <div>
-        <div className="eyebrow"><BackLink fallback="/mas">Más</BackLink><span>· Configuración</span></div>
         <div className="page-head">
-          <h1 className="h1">Identidad de la empresa.</h1>
+          <h1 className="pl-title">Identidad de la empresa</h1>
           {puedeEditar && <Button variant="primary" className="btn-new" onClick={guardarTodo} disabled={!dirty || errores.length > 0}><Check size={17} strokeWidth={1.8} aria-hidden="true" />Guardar</Button>}
         </div>
         <p className="subtitle">Logo, colores, portada y datos legales que salen en los presupuestos y documentos de {data.organization_name || "tu empresa"}. {puedeEditar ? "" : "Tu perfil puede consultarla; la edita oficina o administración."}</p>

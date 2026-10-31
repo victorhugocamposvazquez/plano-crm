@@ -47,7 +47,7 @@ export default function LoginPage() {
       </aside>
 
       <section className="auth-card">
-        <div className="page-head"><h1 className="h1">Entrar.</h1><ThemeToggle /></div>
+        <div className="page-head"><h1 className="pl-title">Entrar</h1><ThemeToggle /></div>
 
         {!configured ? (
           <div className="empty">
