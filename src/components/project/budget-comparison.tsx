@@ -59,7 +59,7 @@ function Snapshot({ item, other, fields, side }: { item?: BudgetItem; other?: Bu
 }
 
 /** Expone versiones e impacto con la misma base fiscal; no atribuye causas no registradas. */
-export function BudgetComparison({ before, after, edits = [], editStatus = "ready" }: { before: BudgetVersion; after: BudgetVersion; edits?: BudgetItemEdit[]; editStatus?: "ready" | "loading" | "unavailable" | "error" }) {
+export function BudgetComparison({ before, after, edits = [], editStatus = "ready", cabecera, pie }: { before: BudgetVersion; after: BudgetVersion; edits?: BudgetItemEdit[]; editStatus?: "ready" | "loading" | "unavailable" | "error"; cabecera?: ReactNode; pie?: ReactNode }) {
   const latest = new Map<string, BudgetItemEdit>();
   for (const edit of edits) {
     const current = latest.get(edit.item_id);
@@ -77,7 +77,29 @@ export function BudgetComparison({ before, after, edits = [], editStatus = "read
     chapters.set(chapter, [...(chapters.get(chapter) ?? []), change]);
   }
   const summary = [counts.changed ? `${counts.changed} partida${counts.changed === 1 ? " modificada" : "s modificadas"}` : "", counts.added ? `${counts.added} añadida${counts.added === 1 ? "" : "s"}` : "", counts.removed ? `${counts.removed} eliminada${counts.removed === 1 ? "" : "s"}` : "", comparison.notesChanged ? "Cambian las condiciones" : ""].filter(Boolean).join(" · ");
-  return <div className="budget-comparison">
+  const iguales = after.items.filter(i => !changes.some(c => c.id === i.id)).length;
+  return <div className="pv-changes">
+    <section className="pv-summary" aria-label="Diferencia total">
+      {cabecera}
+      {delta.total === 0 ? <strong className="pv-summary-same">La V{after.number} cuesta lo mismo que la V{before.number}</strong> : <><span>La V{after.number} cuesta</span> <strong className="pl-mono" data-tone={delta.total > 0 ? "up" : "down"}><i>{delta.total > 0 ? "+" : "−"}</i>{money(Math.abs(delta.total))}</strong> </>}
+      <p>{delta.total === 0 ? "" : `${delta.total > 0 ? "más" : "menos"} que la V${before.number}, `}por <b>{changes.length} {changes.length === 1 ? "cambio" : "cambios"}</b>. Con IVA.</p>
+      {pie}
+    </section>
+    <div className="pv-change-list">
+      {changes.map(change => {
+        const item = (change.before ?? change.after)!, diferencia = contribution(change.after).total - contribution(change.before).total, edit = latest.get(change.id);
+        return <article key={change.id} className="pv-change">
+          <span className="pv-change-icon" data-tone={diferencia > 0 ? "up" : diferencia < 0 ? "down" : undefined} aria-hidden="true">{change.kind === "added" ? "+" : change.kind === "removed" ? "−" : diferencia > 0 ? "↑" : diferencia < 0 ? "↓" : "="}</span>
+          <div><strong>{item.description}</strong><p>{explanation(change)}</p><small>{edit ? <>Última edición: <time dateTime={edit.occurred_at}>{versionTimestamp(edit.occurred_at)}</time> · {edit.actor_name}</> : `Se cambió en la V${after.number}`}</small></div>
+          {diferencia !== 0 && <span className="pl-mono pv-change-delta" data-tone={diferencia > 0 ? "up" : "down"}>{diferencia > 0 ? "+" : "−"}{money(Math.abs(diferencia))}</span>}
+        </article>;
+      })}
+      {comparison.notesChanged && <article className="pv-change"><span className="pv-change-icon" aria-hidden="true">=</span><div><strong>Condiciones</strong><p>Cambia el texto de las condiciones.</p></div></article>}
+    </div>
+    {iguales > 0 && <p className="pv-same">Las otras {iguales} partidas son iguales en las dos versiones.</p>}
+    {unlinked && <p className="workspace-callout" role="status">Las versiones no conservan el vínculo entre sus partidas: se muestran como añadidas y eliminadas.</p>}
+    <details className="pv-detail"><summary>Ver el detalle, antes y después</summary>
+  <div className="budget-comparison">
     <section className="comparison-overview" aria-label="Efecto en el total del presupuesto">
       <header><p className="comparison-overline">De V{before.number} a V{after.number} · importes con IVA</p><h3 data-tone={tone(delta.total)}>{delta.total === 0 ? "El total se mantiene" : `El presupuesto ${delta.total > 0 ? "sube" : "baja"} ${money(Math.abs(delta.total))}`}</h3></header>
       <Pair beforeLabel={beforeLabel} afterLabel={afterLabel} before={<><strong className="pl-mono comparison-total">{money(comparison.previous.total)}</strong><VersionDates version={before}/></>} after={<><strong className="pl-mono comparison-total">{money(comparison.next.total)}</strong><VersionDates version={after}/></>}/>
@@ -104,6 +126,7 @@ export function BudgetComparison({ before, after, edits = [], editStatus = "read
       })}
     </section>)}
     {comparison.notesChanged && <section className="comparison-chapter" aria-label="Condiciones"><h3>Condiciones</h3><article className="comparison-change"><header><h4>Notas para el cliente</h4><p>Cambia el texto de las condiciones. Las partes diferentes están resaltadas.</p></header><Pair beforeLabel={beforeLabel} afterLabel={afterLabel} longText before={<p className="comparison-notes">{before.notes ? <Highlight before={before.notes} after={after.notes} side="before"/> : "Sin condiciones escritas"}</p>} after={<p className="comparison-notes">{after.notes ? <Highlight before={before.notes} after={after.notes} side="after"/> : "Sin condiciones escritas"}</p>}/></article></section>}
+  </div></details>
   </div>;
 }
 

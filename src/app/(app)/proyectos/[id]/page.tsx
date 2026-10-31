@@ -146,7 +146,11 @@ export default function ProyectoPage() {
   const anteriorEnviada=history?.versions.find(v=>v.status==="issued" && (!approved || v.number>approved.number) && v.id!==versionEnviar?.id);
 
   return <div className="page project-workspace" data-seccion={section}>
-    <button type="button" className="phone-back ficha-subback" onClick={()=>selectSection("overview")}><ChevronLeft size={18} strokeWidth={1.8} aria-hidden="true"/>{project.name}</button>
+    {section!=="overview" && section!=="budget" && <div className="ficha-subnav">
+      <button type="button" className="phone-back" onClick={()=>selectSection("overview")}><ChevronLeft size={18} strokeWidth={1.8} aria-hidden="true"/>{project.name}</button>
+      {section==="work" && can(actor.role,"task.create") && <button type="button" className="pill-action" onClick={()=>setSolicitud("tarea")}>+ Tarea</button>}
+    </div>}
+    {section!=="overview" && section!=="budget" && <h2 className="ficha-subtitle">{{work:"Obra",purchases:"Materiales",documents:"Planos y fotos",cobros:"Cobros"}[section]}</h2>}
     <header className="ficha-head">
       <BackLink fallback="/proyectos" compact>Proyectos</BackLink>
       <div className="ficha-title">
@@ -175,8 +179,8 @@ export default function ProyectoPage() {
         <div className="first-card-body">
           <div><strong>{tituloPaso(paso.titulo)}</strong><p>{enviada && approved && enviada.id!==approved.id?<><span className="pl-mono">{money(totals(enviada.items).total)}</span> con IVA · {totals(enviada.items).total>=totals(approved.items).total?"sube":"baja"} <span className="pl-mono">{money(Math.abs(totals(enviada.items).total-totals(approved.items).total))}</span> sobre lo aceptado. </>:null}{paso.detalle}</p></div>
           <div className="first-card-actions">
-            {enviada && paso.accion==="aprobar" && <a className="btn btn-secondary" href={`https://wa.me/?text=${encodeURIComponent(recordatorio)}`} target="_blank" rel="noopener"><MessageCircle size={16} strokeWidth={1.7} aria-hidden="true"/>Recordar por WhatsApp</a>}
-            {puedePaso ? <Button variant="primary" data-accent="orange" disabled={busy} onClick={()=>accionPaso(paso.accion)}>{paso.label}</Button> : <span className="muted text-sm">Lo completa otro perfil.</span>}
+            {enviada && paso.accion==="aprobar" && <a className="btn btn-secondary first-card-remind" href={`https://wa.me/?text=${encodeURIComponent(recordatorio)}`} target="_blank" rel="noopener"><MessageCircle size={16} strokeWidth={1.7} aria-hidden="true"/><span className="solo-escritorio-inline">Recordar por WhatsApp</span><span className="solo-movil-inline">Recordar</span></a>}
+            {puedePaso ? <Button variant="primary" data-accent="orange" disabled={busy} onClick={()=>accionPaso(paso.accion)}>{paso.accion==="aprobar"?<><span className="solo-escritorio-inline">{paso.label}</span><span className="solo-movil-inline">Ha respondido</span></>:paso.label}</Button> : <span className="muted text-sm">Lo completa otro perfil.</span>}
           </div>
         </div>
       </section>}
@@ -256,7 +260,7 @@ export default function ProyectoPage() {
       {budgets.length>1 && <label className="field"><span>Presupuesto del proyecto</span><select className="workspace-select" value={budget?.id} onChange={e=>navigate({p:e.target.value,v:null,desde:null,hasta:null,editar:null})}>{budgets.map(b=><option value={b.id} key={b.id}>{b.title}</option>)}</select></label>}
       {!budget && <div className="empty"><strong>Abre el primer presupuesto</strong><span className="muted">Elige cómo aportar los trabajos: catálogo, planos o fotos de la visita.</span>{canBudget && <Button variant="primary" disabled={busy || creatingBudget} onClick={crearPresupuesto}><Plus size={17} aria-hidden="true"/>{creatingBudget?"Abriendo…":"Nuevo presupuesto"}</Button>}</div>}
       {!budget && canBudget && <AddToBudget planoHref={planoHref} visitaHref={fotosHref} haPresupuesto={false} borradorPlano={borradorPlano} onManual={aMano}/>}
-      {budget && <BudgetWorkspace key={budget.id} project={project} budget={budget} versions={data.versions} onNavigate={patch=>navigate({s:"budget",...patch})} onEdit={editBudget} canEdit={canBudget} planoHref={planoHref} fotosHref={fotosHref}/>}
+      {budget && <BudgetWorkspace key={budget.id} project={project} budget={budget} versions={data.versions} onNavigate={patch=>navigate({s:"budget",...patch})} onEdit={editBudget} canEdit={canBudget} planoHref={planoHref} fotosHref={fotosHref} onBack={()=>selectSection("overview")}/>}
     </section>}
 
     {section==="work" && <div className="ficha-enter"><WorkPanel projectId={project.id} tasks={tasks} progress={progress} meterTone={meterTone==="warning"?"warning":"success"} approved={approved} onNueva={()=>setSolicitud("tarea")} onAbrir={setAbierta} onToggle={toggleTask} pendiente={pendingTask}/></div>}

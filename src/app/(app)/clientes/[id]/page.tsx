@@ -2,7 +2,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { Plus } from "lucide-react";
+import { Mail, MessageCircle, Plus } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
 import { BackLink } from "@/components/ui/back-link";
 import { Pill, type Tone } from "@/components/ui/status";
@@ -42,11 +42,16 @@ export default function ClientePage() {
   return (
     <div className="page ficha-enter">
       <div className="solo-escritorio"><BackLink fallback="/clientes">Todos los clientes</BackLink></div>
-      <div className="pl-head">
+      <div className="pl-head client-head">
         <div className="client-id"><span className="avatar avatar-lg-soft" aria-hidden="true">{iniciales(cliente.name)}</span><div><h1 className="pl-title">{cliente.name}</h1><p className="pl-sub">Cliente desde {desde}</p></div></div>
-        {can(actor.role, "project.create") && <Link href={`/proyectos?nuevo=1&cliente=${encodeURIComponent(cliente.name)}`} className="btn btn-primary" data-keep="true"><Plus size={17} strokeWidth={1.8} aria-hidden="true" />Nuevo proyecto</Link>}
+        <div className="pl-head-actions client-actions"><a className="btn btn-secondary" href={`https://wa.me/?text=${encodeURIComponent(`Hola, ${cliente.name}.`)}`} target="_blank" rel="noopener">WhatsApp</a><a className="btn btn-secondary" href={`mailto:?subject=${encodeURIComponent(cliente.projects[0]?.name ?? "Tu proyecto")}`}>Email</a>{can(actor.role, "project.create") && <Link href={`/proyectos?nuevo=1&cliente=${encodeURIComponent(cliente.name)}`} className="btn btn-primary"><Plus size={17} strokeWidth={1.8} aria-hidden="true" />Nuevo proyecto</Link>}</div>
       </div>
-      <div className="stat-row stat-row-4">
+      <div className="client-tiles solo-movil-grid">
+        <a href={`https://wa.me/?text=${encodeURIComponent(`Hola, ${cliente.name}.`)}`} target="_blank" rel="noopener"><MessageCircle size={18} strokeWidth={1.7} aria-hidden="true" />WhatsApp</a>
+        <a href={`mailto:?subject=${encodeURIComponent(cliente.projects[0]?.name ?? "Tu proyecto")}`}><Mail size={18} strokeWidth={1.7} aria-hidden="true" />Email</a>
+        {can(actor.role, "project.create") && <Link href={`/proyectos?nuevo=1&cliente=${encodeURIComponent(cliente.name)}`}><Plus size={18} strokeWidth={1.7} aria-hidden="true" />Proyecto</Link>}
+      </div>
+      <div className="stat-row stat-row-4 stat-joined">
         <div className="pl-card stat"><span>Proyectos</span><strong className="pl-mono">{cliente.projects.length}</strong><small>{cliente.activos} en marcha</small></div>
         <div className="pl-card stat"><span>Presupuestado (actual)</span><strong className="pl-mono">{money(presupuestado)}</strong><small>con IVA</small></div>
         <div className="pl-card stat"><span>Facturado</span><strong className="pl-mono">{money(sumaTotal(emitidas(facturas)))}</strong><small>con IVA · {emitidas(facturas).length} {emitidas(facturas).length === 1 ? "factura" : "facturas"}</small></div>

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { ChevronRight, Plus } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
 import { SearchBox } from "@/components/ui/search-box";
 import { money, can } from "@/lib/domain";
@@ -25,15 +25,14 @@ export default function ClientesPage() {
     <div className="page">
       <div className="pl-head">
         <div><h1 className="pl-title">Clientes</h1><p className="pl-sub">Personas y empresas para las que trabajamos.</p></div>
-        {puedeCrear && <Link href="/proyectos?nuevo=1" className="btn btn-primary"><Plus size={17} strokeWidth={1.8} aria-hidden="true" />Nuevo cliente</Link>}
       </div>
       <SearchBox seccion="clientes" value={query} onChange={setQuery} label="Buscar clientes" placeholder="Busca lo que sea: nombre, calle, proyecto…" count={loading ? undefined : `${visibles.length} ${visibles.length === 1 ? "cliente" : "clientes"}`} vocabulario={vocabulario} />
       {!loading && visibles.length === 0 && <div className="empty"><strong>{query ? `Nada coincide con «${query}»` : "Todavía no hay clientes"}</strong><span className="muted text-sm">{query ? "Prueba con parte del nombre o de la calle." : "Cada cliente aparece aquí con su primer proyecto."}</span>{!query && puedeCrear && <Link href="/proyectos?nuevo=1" className="btn btn-primary">Nuevo proyecto</Link>}</div>}
       {visibles.length > 0 && <div className="pl-card client-rows">
-        {visibles.map(c => (
+        {visibles.map((c, i) => (
           <Link key={c.id} href={`/clientes/${encodeURIComponent(c.id)}`} className="client-row">
-            <span className="avatar avatar-sm" aria-hidden="true">{iniciales(c.name)}</span>
-            <span className="client-row-name"><strong>{c.name}</strong><small>{c.ubicaciones.slice(0, 2).join(" · ") || "Sin dirección"}</small></span>
+            <span className="avatar avatar-sm" data-color={i % 5} aria-hidden="true">{iniciales(c.name)}</span>
+            <span className="client-row-name"><strong>{c.name}</strong><small>{c.ubicaciones.slice(0, 2).join(" · ") || "Sin dirección"}<span className="solo-movil-inline"> · {c.projects.length} {c.projects.length === 1 ? "proyecto" : "proyectos"}{c.activos ? " en marcha" : ""}</span></small></span>
             <span className="client-row-projects">{c.projects.length} {c.projects.length === 1 ? "proyecto" : "proyectos"} · {c.projects[0]?.name}</span>
             <span className="client-row-amount pl-mono">{c.aprobadoTotal ? money(c.aprobadoTotal) : "—"}</span>
             <ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" className="muted" />

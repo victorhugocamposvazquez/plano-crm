@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import Link from "next/link";
-import { LayoutGrid, AtSign, Camera, MapPin, ListPlus, ArrowUp, Hash, FileText, ListChecks, Package, Receipt, X, Paperclip, Pencil, Trash2, Check, SmilePlus, Loader2, Image as ImageIcon, ExternalLink, Download, Search, Info, CircleHelp, ArrowLeft, Users, Layers2, Link2, ChevronRight, Slash, Sparkles, Activity } from "lucide-react";
+import { ChevronLeft, LayoutGrid, AtSign, Camera, MapPin, ListPlus, ArrowUp, Hash, FileText, ListChecks, Package, Receipt, X, Paperclip, Pencil, Trash2, Check, SmilePlus, Loader2, Image as ImageIcon, ExternalLink, Download, Search, Info, CircleHelp, ArrowLeft, Users, Layers2, Link2, ChevronRight, Slash, Sparkles, Activity } from "lucide-react";
 import { Menu } from "@/components/ui/menu";
 import { Modal } from "@/components/ui/modal";
 import { Popover } from "@/components/ui/popover";
@@ -134,6 +134,7 @@ export function ChatPanel({ projectId, messages, title, subtitle, onClose }: { p
 
   function onChange(value: string) {
     setBody(value);
+    setMencionAbierta(/(^|\s)@$/.test(value));
     const at = value.lastIndexOf("#");
     if (at >= 0 && (at === 0 || /\s/.test(value[at - 1])) && !value.slice(at).includes("]]")) setPicker(p => ({ open: true, query: value.slice(at + 1), cat: p.open ? p.cat : null, active: 0 }));
     else if (picker.open) setPicker(pickerCerrado);
@@ -196,7 +197,7 @@ export function ChatPanel({ projectId, messages, title, subtitle, onClose }: { p
 
   function mencionar(nombre: string) {
     setMencionAbierta(false);
-    setBody(b => `${b}${b && !b.endsWith(" ") ? " " : ""}@${nombre} `);
+    setBody(b => { const sin = /(^|\s)@$/.test(b) ? b.slice(0, -1) : b; return `${sin}${sin && !sin.endsWith(" ") ? " " : ""}@${nombre} `; });
     setTimeout(() => textarea.current?.focus(), 0);
   }
   function compartir(tipo: RefType) {
@@ -266,12 +267,13 @@ export function ChatPanel({ projectId, messages, title, subtitle, onClose }: { p
       <div className="chat-top">
         {vista === "info" ? (
           <button type="button" className="chat-top-back" onClick={() => setVista("chat")}><ArrowLeft size={16} strokeWidth={1.8} aria-hidden="true" />Volver al chat</button>
-        ) : (
+        ) : (<>
+          {onClose && <button type="button" className="chat-top-close-phone" aria-label="Volver" onClick={onClose}><ChevronLeft size={22} strokeWidth={1.8} aria-hidden="true" /></button>}
           <button type="button" className="chat-top-people" onClick={() => setVista("info")} title="Participantes y lo compartido">
             {title ? <span className="avatar avatar-ink chat-top-avatar" aria-hidden="true">{inicialesProyecto(title)}</span> : <AvatarStack />}
             <span className="chat-top-names"><strong>{title ?? `${gente.length} participante${gente.length === 1 ? "" : "s"}`}</strong><small className="muted">{nombres}</small>{subtitle && <small className="sr-only">{subtitle}</small>}</span>
           </button>
-        )}
+        </>)}
         <span className="chat-top-tools">
           {/* La lupa siempre a la vista, en la conversación y en la información: abre la búsqueda por palabra. */}
           <button type="button" className="composer-tool" aria-label="Buscar en la conversación" title="Buscar en la conversación" aria-pressed={buscando && vista === "chat"} onClick={() => { if (buscando && vista === "chat") { setBuscando(false); setConsulta(""); return; } setVista("chat"); setBuscando(true); }}><Search size={18} strokeWidth={1.7} aria-hidden="true" /></button>
@@ -377,7 +379,7 @@ export function ChatPanel({ projectId, messages, title, subtitle, onClose }: { p
       {vista === "chat" && (
         <div className="chat-quick-wrap">
           <nav ref={chipsRef} className="chat-quick" aria-label="Consultar sin salir del chat">
-            {accesosRapidos.map(c => { const Icon = iconoAcceso[c.id] ?? Sparkles; return <button key={c.id} type="button" className="chip" title={c.descripcion} onClick={() => consultar(c)}><Icon size={14} strokeWidth={1.8} aria-hidden="true" />{c.acceso}</button>; })}
+            {accesosRapidos.map(c => { const Icon = iconoAcceso[c.id] ?? Sparkles; return <button key={c.id} type="button" className="chip" data-acceso={c.id} title={c.descripcion} onClick={() => consultar(c)}><Icon size={14} strokeWidth={1.8} aria-hidden="true" />{c.acceso}</button>; })}
           </nav>
           <button type="button" className="chat-quick-more" aria-label="Ver más" title="Ver más" onClick={() => chipsRef.current?.scrollBy({ left: 160, behavior: "smooth" })}><ChevronRight size={15} strokeWidth={1.9} aria-hidden="true" /></button>
         </div>
@@ -440,13 +442,13 @@ export function ChatPanel({ projectId, messages, title, subtitle, onClose }: { p
             <input ref={attachInput} type="file" accept={adjuntables.join(",")} onChange={e => { void adjuntar(e.target.files?.[0]); e.target.value = ""; }} style={{ display: "none" }} aria-hidden="true" tabIndex={-1} />
             <input ref={fotoInput} type="file" accept="image/*" capture="environment" onChange={e => { void adjuntar(e.target.files?.[0]); e.target.value = ""; }} style={{ display: "none" }} aria-hidden="true" tabIndex={-1} />
             <Popover open={mencionAbierta} onClose={() => setMencionAbierta(false)} side="top" panelClassName="composer-pop" trigger={
-              <button type="button" className="composer-tool" aria-label="Mencionar a alguien" title="Mencionar a alguien" aria-expanded={mencionAbierta} onClick={() => setMencionAbierta(v => !v)}><AtSign size={18} strokeWidth={1.7} aria-hidden="true" /></button>
+              <button type="button" className="composer-tool composer-at" aria-label="Mencionar a alguien" title="Mencionar a alguien" aria-expanded={mencionAbierta} onClick={() => setMencionAbierta(v => !v)}><AtSign size={18} strokeWidth={1.7} aria-hidden="true" /></button>
             }>
               <span className="composer-pop-title">Mencionar a</span>
               {equipo.length === 0 && <p className="muted text-sm" style={{ margin: 0, padding: "6px 12px 10px" }}>Todavía no hay nadie más en esta obra.</p>}
               {equipo.map(n => <button key={n} type="button" className="composer-pop-item" onClick={() => mencionar(n)}><span className="msg-avatar" data-tone={tonoAutor(n)} aria-hidden="true">{iniciales(n)}</span>{n}</button>)}
             </Popover>
-            <textarea ref={textarea} value={body} onChange={e => onChange(e.target.value)} onKeyDown={onKey} rows={1} placeholder={uploading ? "Subiendo el archivo…" : "Escribe un mensaje"} aria-label="Nuevo mensaje" maxLength={5000} />
+            <textarea ref={textarea} value={body} onChange={e => onChange(e.target.value)} onKeyDown={onKey} rows={1} placeholder={uploading ? "Subiendo el archivo…" : "Mensaje · @ para mencionar"} aria-label="Nuevo mensaje" maxLength={5000} />
             <button type="submit" className="composer-send" aria-label={body.trim().startsWith("/") || atajoExacto ? "Consultar" : "Enviar mensaje"} disabled={(!body.trim() && adjuntos.length === 0) || sending || busy}>{body.trim().startsWith("/") || atajoExacto ? <Sparkles size={16} strokeWidth={2} aria-hidden="true" /> : <ArrowUp size={17} strokeWidth={2} aria-hidden="true" />}</button>
           </div>
         </form>

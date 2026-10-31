@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Plus } from "lucide-react";
+import { ChevronRight, Plus } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
 import { Pill } from "@/components/ui/status";
 import { SearchBox } from "@/components/ui/search-box";
@@ -79,7 +79,8 @@ export default function ProyectosPage() {
                 <span className="project-step">{pasos.find(p => p.id === paso)?.label}</span>
                 <span className="project-progress" aria-label={enObra ? `Avance ${avance} %` : "Sin avance todavía"}><span className="mini-meter" aria-hidden="true"><span style={{ width: `${enObra ? avance : 0}%` }} /></span><small>{enObra ? `${avance} %` : "—"}</small></span>
                 <span className="project-amount pl-mono">{importe !== null ? money(importe) : "—"}</span>
-                <span className="project-next" data-tone={quienEtiqueta[q].tone}><Pill label={quienEtiqueta[q].label} tone={quienEtiqueta[q].tone} /><small>{tituloPaso(siguiente.titulo)}</small></span>
+                <span className="project-next" data-tone={quienEtiqueta[q].tone}><Pill label={quienEtiqueta[q].label} tone={quienEtiqueta[q].tone} /><small><span className="solo-movil-inline">{quienEtiqueta[q].label} · </span>{tituloPaso(siguiente.titulo)}</small></span>
+                <ChevronRight className="project-chevron" size={16} strokeWidth={1.7} aria-hidden="true" />
                 <span className="project-phase-phone">{pasos.find(p => p.id === paso)?.label}</span>
               </Link>
             );

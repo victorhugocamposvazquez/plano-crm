@@ -52,6 +52,7 @@ export default function CatalogoPage() {
   const [nuevoParam, setNuevoParam] = useQueryState<"1" | "">("nuevo", "");
   const [importParam, setImportParam] = useQueryState<"1" | "">("importar", "");
   const [filtroAbierto, setFiltroAbierto] = useState(false);
+  const [hojaFiltro, setHojaFiltro] = useState(false);
   const [cerradas, setCerradas] = useState<Set<string>>(new Set());
   const [ficha, setFicha] = useState<{ article: Article | null } | null>(null);
   const [form, setForm] = useState<Form>(vacio());
@@ -119,7 +120,7 @@ export default function CatalogoPage() {
       {chapters.length > 0 && <div className="filter-row">
         <span className="muted text-sm">Filtrar por</span>
         <Popover open={filtroAbierto} onClose={() => setFiltroAbierto(false)} panelClassName="filter-panel" trigger={
-          <button type="button" className="filter-button" data-active={categoria ? true : undefined} aria-expanded={filtroAbierto} onClick={() => setFiltroAbierto(v => !v)}><span>Categoría:</span><strong>{categoria || "Todas"}</strong><ChevronDown size={15} strokeWidth={1.8} aria-hidden="true" /></button>
+          <button type="button" className="filter-button" data-active={categoria ? true : undefined} aria-expanded={filtroAbierto} onClick={() => { if (window.matchMedia("(max-width: 767px)").matches) setHojaFiltro(true); else setFiltroAbierto(v => !v); }}><span>Categoría:</span><strong>{categoria || "Todas"}</strong><ChevronDown size={15} strokeWidth={1.8} aria-hidden="true" /></button>
         }>
           <button type="button" className="filter-option" data-on={!categoria || undefined} onClick={() => { setCategoria(""); setFiltroAbierto(false); }}>Todas las categorías<span className="pl-mono">{data.articles.length}</span></button>
           {chapters.map(c => <button key={c} type="button" className="filter-option" data-on={categoria === c || undefined} onClick={() => { setCategoria(c); setFiltroAbierto(false); }}>{c}<span className="pl-mono">{data.articles.filter(a => a.chapter === c).length}</span></button>)}
@@ -179,6 +180,11 @@ export default function CatalogoPage() {
           {fallo && <p role="alert" className="auth-error">{fallo}</p>}
           <p className="muted text-xs">Los presupuestos que ya copiaron este artículo conservan su precio y su texto.</p>
         </form>
+      </Modal>
+      <Modal open={hojaFiltro} onClose={() => setHojaFiltro(false)} title="Categoría" footer={<><Button onClick={() => { setCategoria(""); setHojaFiltro(false); }}>Quitar</Button><Button variant="primary" onClick={() => setHojaFiltro(false)}>Ver {encontrados.length} {encontrados.length === 1 ? "artículo" : "artículos"}</Button></>}>
+        <div className="filter-sheet" role="radiogroup" aria-label="Categoría">
+          {chapters.map(c => <button key={c} type="button" role="radio" aria-checked={categoria === c} onClick={() => setCategoria(categoria === c ? "" : c)}><i aria-hidden="true" /><strong>{c}</strong><span>{data.articles.filter(a => a.chapter === c).length}</span></button>)}
+        </div>
       </Modal>
       <ImportDialog open={importParam === "1"} onClose={() => setImportParam("")} />
     </div>

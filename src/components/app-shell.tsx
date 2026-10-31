@@ -58,7 +58,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [cuenta, setCuenta] = useState(false);
   const [cuentaMovil, setCuentaMovil] = useState(false);
   const [crearMovil, setCrearMovil] = useState(false);
-  const [chats, setChats] = useState(false);
+  const [chats, setChats] = useState<"movil" | "escritorio" | null>(null);
   const crear = useQuickCreate();
   const { sinLeer: avisosSinLeer } = useAvisos();
   const puedeCrear = opcionesPara(actor.role).length > 0;
@@ -89,9 +89,9 @@ export function AppShell({ children }: { children: ReactNode }) {
     return data.projects.filter(p => p.status !== "completed" || ultimo.has(p.id)).sort((a, b) => (ultimo.get(b.id) ?? "").localeCompare(ultimo.get(a.id) ?? "")).slice(0, 8);
   }, [data.messages, data.projects]);
 
-  function abrirChat() {
+  function abrirChat(lugar: "movil" | "escritorio") {
     if (proyectoActual) { const q = new URLSearchParams(window.location.search); q.set("chat", "1"); router.push(`${pathname}?${q.toString()}`); }
-    else setChats(v => !v);
+    else setChats(v => (v === lugar ? null : lugar));
   }
 
   const enlace = (item: Item, badge?: ReactNode) => {
@@ -105,15 +105,16 @@ export function AppShell({ children }: { children: ReactNode }) {
       </Link>
     );
   };
-  const chatBoton = (
-    <Popover open={chats} onClose={() => setChats(false)} align="end" panelClassName="chats-panel" trigger={
-      <button type="button" className="chat-button" onClick={abrirChat} aria-label={totalSinLeer ? `Chat, ${totalSinLeer} sin leer` : "Chat"} aria-haspopup="dialog" title="Chat de las obras">
-        <MessageSquare size={17} strokeWidth={1.7} aria-hidden="true" /><span className="chat-button-text">Chat</span>{totalSinLeer > 0 && <span className="count-badge" data-tone="info">{totalSinLeer}</span>}
+  // Una instancia por sitio y estado propio: si no, la copia oculta cierra el desplegable antes de que llegue el toque.
+  const chatBoton = (lugar: "movil" | "escritorio") => (
+    <Popover open={chats === lugar} onClose={() => setChats(null)} align="end" panelClassName="chats-panel" trigger={
+      <button type="button" className="chat-button" onClick={() => abrirChat(lugar)} aria-label={totalSinLeer ? `Chat, ${totalSinLeer} sin leer` : "Chat"} aria-haspopup="dialog" title="Chat de las obras">
+        <MessageSquare className="chat-button-icon" size={17} strokeWidth={1.7} aria-hidden="true" /><span className="chat-button-text">Chat</span>{totalSinLeer > 0 && <span className="count-badge" data-tone="info">{totalSinLeer}</span>}
       </button>
     }>
       <strong className="chats-title">Chats de las obras</strong>
       {conversaciones.length === 0 && <p className="muted text-sm" style={{ padding: "8px 14px" }}>Todavía no hay proyectos.</p>}
-      {conversaciones.map(p => <Link key={p.id} prefetch={false} href={`/proyectos/${p.id}?chat=1`} className="chats-row" onClick={() => setChats(false)}>
+      {conversaciones.map(p => <Link key={p.id} prefetch={false} href={`/proyectos/${p.id}?chat=1`} className="chats-row" onClick={() => setChats(null)}>
         <span className="avatar avatar-sm" aria-hidden="true">{iniciales(p.name)}</span>
         <span className="chats-name"><strong>{p.name}</strong><small>{p.location || p.client_name}</small></span>
         {sinLeer.get(p.id) ? <span className="count-badge" data-tone="info">{sinLeer.get(p.id)}</span> : <ChevronRight size={15} strokeWidth={1.7} aria-hidden="true" className="muted" />}
@@ -154,17 +155,20 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="shell-column">
         {raices.includes(pathname) && <div className="phone-tools">
           <button type="button" className="phone-tool" onClick={() => setSearch(true)} aria-label="Buscar en Plano"><Search size={19} strokeWidth={1.6} aria-hidden="true" /></button>
-          {chatBoton}
+          {chatBoton("movil")}
           <button type="button" className="phone-avatar" onClick={() => setCuentaMovil(true)} aria-label={`Tu cuenta · ${actor.name}${avisosSinLeer ? ` · ${avisosSinLeer} avisos sin leer` : ""}`} aria-haspopup="dialog" aria-expanded={cuentaMovil}><AvatarRing name={actor.name} count={avisosSinLeer} /></button>
         </div>}
-        {volver && <Link prefetch={false} href={volver.href} className="phone-back"><ChevronLeft size={18} strokeWidth={1.8} aria-hidden="true" />{volver.label}</Link>}
+        {volver && <div className="phone-subnav">
+          <Link prefetch={false} href={volver.href} className="phone-back"><ChevronLeft size={18} strokeWidth={1.8} aria-hidden="true" />{volver.label}</Link>
+          {puedeCrear && <button type="button" className="phone-plus" aria-label="Crear" aria-haspopup="dialog" onClick={() => setCrearMovil(true)}><Plus size={18} strokeWidth={2} aria-hidden="true" /></button>}
+        </div>}
         <header className="deskbar">
           <nav className="crumbs" aria-label="Estás en">
             {migas.map((m, i) => <span key={`${m.label}-${i}`}>{i > 0 && <span aria-hidden="true"> › </span>}{m.href ? <Link prefetch={false} href={m.href}>{m.label}</Link> : <span aria-current="page">{m.label}</span>}</span>)}
           </nav>
           <div className="deskbar-tools">
             <button type="button" className="deskbar-search" onClick={() => setSearch(true)} aria-label="Buscar en Plano" title="Buscar (⌘K)"><Search size={15} strokeWidth={1.8} aria-hidden="true" /><span>Buscar proyecto, cliente, calle…</span><kbd>⌘K</kbd></button>
-            {chatBoton}
+            {chatBoton("escritorio")}
           </div>
         </header>
         <main className="shell-main">{children}</main>

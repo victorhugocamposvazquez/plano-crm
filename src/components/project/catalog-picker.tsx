@@ -44,7 +44,7 @@ export function CatalogPicker({ open, onClose, project, version, planoHref, foto
     <Modal open={open} onClose={onClose} size="wide" title="Añadir del catálogo" footer={<>
       <span className="picker-count">{ids.length ? <>{ids.length} {ids.length === 1 ? "artículo" : "artículos"} · <span className="pl-mono">{money(importe)}</span> sin IVA</> : "Marca los artículos que entran"}</span>
       <Button onClick={onClose} disabled={guardando}>Cancelar</Button>
-      <Button variant="primary" onClick={anadir} disabled={!validos.length || validos.length !== ids.length || guardando || busy}>{guardando ? "Añadiendo…" : validos.length ? `Añadir ${validos.length} ${validos.length === 1 ? "partida" : "partidas"} al borrador` : "Elige artículos"}</Button>
+      <Button variant="primary" data-accent="orange" onClick={anadir} disabled={!validos.length || validos.length !== ids.length || guardando || busy}>{guardando ? "Añadiendo…" : validos.length ? `Añadir ${validos.length} ${validos.length === 1 ? "partida" : "partidas"} al borrador` : "Elige artículos"}</Button>
     </>}>
       {planoHref && <div className="picker-ways solo-movil-grid" role="group" aria-label="Cómo añadir">
         <span data-on="true"><BookOpen size={17} strokeWidth={1.7} aria-hidden="true" />Catálogo</span>

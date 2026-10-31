@@ -51,8 +51,8 @@ const ws=page=>page.evaluate(()=>JSON.parse(localStorage.getItem('plano.workspac
 
   // Versiones y comparador, con fecha y autor de cada edición.
   await page.getByRole('button',{name:/^Versiones · /}).click();await expect(page.getByText('La actual · la última que se ha tocado')).toBeVisible();await expect(page.getByText('La estás preparando. Todavía no la ha visto el cliente.')).toBeVisible();
-  await page.getByRole('button',{name:/^Ver qué cambia/}).click();await expect(page.getByLabel('Comparar con')).toBeVisible();await expect(page.getByText(/El presupuesto (sube|baja)/)).toBeVisible();
-  await expect(page.getByText(/Última edición de esta partida en V2/).first()).toBeVisible();
+  await page.getByRole('button',{name:/^Ver qué cambia/}).click();await expect(page.getByLabel('Comparar con',{exact:true})).toBeVisible();await expect(page.getByText('La V2 cuesta')).toBeVisible();await expect(page.getByText(/Última edición:/).first()).toBeVisible();
+  await page.getByText('Ver el detalle, antes y después').click();await expect(page.getByText(/El presupuesto (sube|baja)/)).toBeVisible();await expect(page.getByText(/Última edición de esta partida en V2/).first()).toBeVisible();
   console.log('Versiones y comparador correctos');
 
   // Enviar al cliente, responder «sí» y ver qué cambia en el proyecto.
