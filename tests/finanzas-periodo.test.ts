@@ -18,11 +18,11 @@ describe("periodos de Finanzas", () => {
     expect(rangoPeriodo("trimestre", -1, "2026-02-10").desde).toBe("2025-10-01");
     expect(rangoPeriodo("ano", -1, "2026-02-10").hasta).toBe("2025-12-31");
   });
-  it("lo pendiente es lo aceptado menos lo preparado", () => {
+  it("lo pendiente es lo facturado sin cobrar, con IVA", () => {
     const data = createDemo();
     const r = resumenPeriodo(data, "ano", 0);
     expect(r.pendiente).toBeGreaterThan(0);
-    const proyecto = data.certifications[0]?.project_id;
+    const proyecto = data.invoices?.[0]?.project_id;
     if (proyecto) expect(resumenPeriodo(data, "ano", 0, proyecto).pendiente).toBeLessThanOrEqual(r.pendiente);
   });
   it("no inventa un porcentaje sin base de comparación", () => {
@@ -32,6 +32,6 @@ describe("periodos de Finanzas", () => {
   });
   it("el CSV usa punto y coma y coma decimal", () => {
     const data = createDemo();
-    expect(csvGestoria(data).split("\n")[0]).toBe("Fecha;Cliente;Proyecto;Concepto;Estado;Base sin IVA");
+    expect(csvGestoria(data).split("\n")[0]).toBe("Número;Fecha;Vence;Cliente;Proyecto;Concepto;Estado;Base;IVA %;IVA;Total;Cobrada el");
   });
 });

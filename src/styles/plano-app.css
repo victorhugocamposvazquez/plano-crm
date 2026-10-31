@@ -1173,3 +1173,27 @@ a.mas-row:hover, button.mas-row:hover { background: var(--pl-soft); }
   .editor-sum { flex-wrap: wrap; row-gap: 2px; }
   .editor-sum strong { white-space: nowrap; }
 }
+
+/* ---------- Facturas ---------- */
+.invoice-detail { display: flex; flex-direction: column; align-items: stretch; gap: 14px; }
+.invoice-detail > .pill { align-self: flex-start; }
+.invoice-project { font-size: var(--pl-text-ui); font-weight: var(--pl-weight-medium); }
+.invoice-pay { display: flex; align-items: flex-end; gap: 10px; flex-wrap: wrap; padding: 12px 14px; border: var(--pl-hairline) solid var(--pl-line); border-radius: var(--pl-radius-control); }
+.invoice-pay .field { flex: 1 1 150px; margin: 0; }
+.cobro-row-button { width: 100%; border-left: 0; border-right: 0; border-bottom: 0; background: none; color: inherit; font: inherit; text-align: left; cursor: pointer; }
+.cobro-row-button:hover { background: var(--pl-soft); }
+.fin-kpi small[data-alerta], .fin-due-row small[data-alerta] { color: var(--pl-danger); }
+button.fin-due-row { width: 100%; border-left: 0; border-right: 0; border-bottom: 0; background: none; font: inherit; text-align: left; cursor: pointer; }
+.fin-due .pl-card-head + .fin-due-row { border-top: 0; }
+.fin-table-head { display: flex; align-items: center; justify-content: space-between; gap: 8px 12px; flex-wrap: wrap; }
+.fin-states { display: flex; gap: 6px; overflow-x: auto; scrollbar-width: none; max-width: 100%; }
+.fin-states::-webkit-scrollbar { display: none; }
+button.fin-line { width: 100%; border-left: 0; border-right: 0; border-bottom: 0; background: none; color: inherit; font: inherit; font-size: var(--pl-text-md); text-align: left; cursor: pointer; }
+.fin-line:first-of-type { border-top: 0; }
+.fin-line-number { flex: 0 0 auto; font-size: var(--pl-text-sm); }
+.fin-line-date { white-space: nowrap; }
+.fin-empty { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 12px 16px; }
+.fin-empty p { margin: 0; }
+.danger { color: var(--pl-danger); }
+@media (max-width: 767px) { .fin-line-date:empty { display: none; } .invoice-pay .btn { width: 100%; justify-content: center; } }
+@media (max-width: 767px) { .line-chart-labels[data-densa] span:not(:nth-child(3n + 1)):not(:last-child) { display: none; } .line-chart { padding-left: 36px; } }

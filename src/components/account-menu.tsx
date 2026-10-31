@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AtSign, CalendarClock, CircleAlert, CircleHelp, LogOut, MessageCircleQuestion, Palette, Settings } from "lucide-react";
+import { AtSign, Receipt, CalendarClock, CircleAlert, CircleHelp, LogOut, MessageCircleQuestion, Palette, Settings } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
 import { ThemePicker } from "@/components/ui/theme-toggle";
 import { TextSizeSwitch } from "@/components/ui/text-size-toggle";
@@ -12,7 +12,7 @@ import { iniciales } from "@/lib/pasos";
 import { veSeccion } from "@/lib/navegacion";
 
 const perfilDetalle = { admin: "aprueba presupuestos y cobros", office: "aprueba presupuestos y cobros", manager: "lleva las obras", site: "tareas, mensajes y documentos", viewer: "solo consulta" } as const;
-const iconoAviso: Record<TipoAviso, { icon: typeof AtSign; tone: string }> = { mencion: { icon: AtSign, tone: "info" }, atrasada: { icon: CircleAlert, tone: "danger" }, agenda: { icon: CalendarClock, tone: "success" }, cliente: { icon: MessageCircleQuestion, tone: "warning" } };
+const iconoAviso: Record<TipoAviso, { icon: typeof AtSign; tone: string }> = { mencion: { icon: AtSign, tone: "info" }, atrasada: { icon: CircleAlert, tone: "danger" }, agenda: { icon: CalendarClock, tone: "success" }, cliente: { icon: MessageCircleQuestion, tone: "warning" }, factura: { icon: Receipt, tone: "danger" } };
 
 /** Avisos y cuáles están sin leer, calculados con lo que hay en el espacio. */
 export function useAvisos() {

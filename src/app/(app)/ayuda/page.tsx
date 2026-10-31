@@ -22,7 +22,8 @@ const glosario: [string, string][] = [
   ["Aceptada", "La versión que el cliente ha aceptado; la obra se hace con esta."],
   ["¿Entra en el precio?", "Si una partida suma en el total, se enseña como alternativa sin sumar, o queda fuera."],
   ["Recargo o descuento", "Porcentaje que sube o baja el precio de una partida respecto al catálogo."],
-  ["Cobro", "Lo hecho que ya puedes cobrar de lo aceptado. Queda preparado como borrador; todavía no es una factura."]
+  ["Cobro preparado", "Lo hecho que ya puedes cobrar de lo aceptado. De ahí sale la factura."],
+  ["Factura", "Recibe su número al enviarla y ya no se edita. Plano la registra y le hace seguimiento: no sustituye a la factura oficial."]
 ];
 
 export default function AyudaPage() {

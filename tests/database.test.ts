@@ -137,6 +137,39 @@ describe("Comandos transaccionales de presupuesto",()=>{
     await command({type:"budget.save",version_id:next,expected_revision:0,items:[{...firstItem,quantity:1}],notes:""});await command({type:"budget.issue",version_id:next,expected_revision:1});
     await expect(command({type:"budget.approve",version_id:next,reference:"Reducir"})).rejects.toThrow(/inferior/);
   });
+  it("numera las facturas al enviarlas, sin huecos, y protege las enviadas",async()=>{
+    const projectId=await project();const due="2099-01-01";
+    const id=async()=>(await db.query<{id:string}>("select id from invoices order by created_at desc,id limit 1")).rows[0].id;
+    await command({type:"invoice.create",project_id:projectId,concept:"Primera",base:10000,vat_rate:21});const primera=await id();
+    expect((await db.query("select number,status,tax,total,client_name from invoices where id=$1",[primera])).rows[0]).toEqual({number:null,status:"draft",tax:2100,total:12100,client_name:"Cliente ficticio"});
+    await command({type:"invoice.update",id:primera,base:20000,vat_rate:10});
+    expect((await db.query("select tax,total from invoices where id=$1",[primera])).rows[0]).toEqual({tax:2000,total:22000});
+    await command({type:"invoice.create",project_id:projectId,concept:"Descartada",base:500,vat_rate:21});await command({type:"invoice.delete",id:await id()});
+    await command({type:"invoice.send",id:primera,due_date:due});
+    await command({type:"invoice.create",project_id:projectId,concept:"Segunda",base:100,vat_rate:21});const segunda=(await db.query<{id:string}>("select id from invoices where concept='Segunda'")).rows[0].id;await command({type:"invoice.send",id:segunda,due_date:due});
+    const year=new Date().getFullYear();
+    expect((await db.query("select number from invoices order by number_seq")).rows).toEqual([{number:`${year}-0001`},{number:`${year}-0002`}]);
+    await expect(command({type:"invoice.delete",id:primera})).rejects.toThrow(/no se borra/);
+    await expect(command({type:"invoice.update",id:primera,concept:"Otro"})).rejects.toThrow(/no se edita/);
+    await expect(command({type:"invoice.send",id:primera,due_date:due})).rejects.toThrow(/ya está enviada/);
+    await command({type:"invoice.pay",id:primera,paid_on:"2026-10-31"});await command({type:"invoice.unpay",id:primera});
+    expect((await db.query("select status,paid_on from invoices where id=$1",[primera])).rows[0]).toEqual({status:"sent",paid_on:null});
+  });
+  it("una factura sale una sola vez de un cobro y con su importe",async()=>{
+    const {projectId,versionId}=await approved();const base=lineTotal(firstItem);
+    await command({type:"certification.create",project_id:projectId,budget_version_id:versionId,title:"Tramo",amount:base});const cert=(await db.query<{id:string}>("select id from certifications")).rows[0].id;
+    await command({type:"invoice.create",project_id:projectId,concept:"Tramo",base:1,vat_rate:21,certification_id:cert});
+    expect((await db.query<{base:unknown}>("select base from invoices")).rows[0].base).toBe(base);
+    await expect(command({type:"invoice.create",project_id:projectId,concept:"Otra",base:1,vat_rate:21,certification_id:cert})).rejects.toThrow(/ya tiene factura/);
+  });
+  it("solo oficina o administración tocan facturas y cada empresa ve las suyas",async()=>{
+    const projectId=await project();const c={type:"invoice.create",project_id:projectId,concept:"Prueba",base:100,vat_rate:21};
+    await expect(command(c,manager)).rejects.toThrow(/administración/);await expect(command(c,site)).rejects.toThrow(/permiso/);await expect(command(c,viewer)).rejects.toThrow(/permiso/);
+    await command(c);
+    expect((await asUser(viewer,()=>db.query("select id from invoices"))).rows).toHaveLength(1);
+    expect((await asUser(outsider,()=>db.query("select id from invoices"))).rows).toHaveLength(0);
+    await expect(asUser(admin,()=>db.query("delete from invoices"))).rejects.toThrow(/permission|permiso/);
+  });
   it("no permite registrar documentos inexistentes o con metadatos inventados",async()=>{
     const projectId=await project(),path=`${org}/${projectId}/${demoId(700)}`;
     const c={type:"document.add",project_id:projectId,name:"Plano.pdf",category:"plan",storage_path:path,mime_type:"application/pdf",size_bytes:1000};

@@ -22,7 +22,9 @@ export type Document = { id: string; organization_id: string; project_id: string
 export type Message = { id: string; organization_id: string; project_id: string; body: string; author_name: string; created_at: string; edited_at?: string | null; deleted_at?: string | null; reactions?: Record<string, string[]> | null };
 export type Activity = { id: string; organization_id: string; project_id: string | null; text: string; actor_name: string; created_at: string };
 export type Certification = { id: string; organization_id: string; project_id: string; budget_version_id: string; title: string; amount: number; status: "draft"; created_at: string };
-export type Workspace = { organization_id: string; organization_name: string; projects: Project[]; articles: Article[]; budgets: Budget[]; versions: BudgetVersion[]; tasks: Task[]; purchases: Purchase[]; documents: Document[]; messages: Message[]; activities: Activity[]; certifications: Certification[]; budget_item_events?: BudgetItemEvent[] };
+/** Registro de factura: el número se asigna al enviarla, en serie anual sin huecos. No sustituye a la factura oficial. */
+export type Invoice = { id: string; organization_id: string; project_id: string; certification_id: string | null; client_name: string; concept: string; base: number; vat_rate: number; tax: number; total: number; status: "draft" | "sent" | "paid"; number: string | null; number_year: number | null; number_seq: number | null; issue_date: string | null; due_date: string | null; paid_on: string | null; created_by_name: string; created_at: string; updated_at: string };
+export type Workspace = { organization_id: string; organization_name: string; projects: Project[]; articles: Article[]; budgets: Budget[]; versions: BudgetVersion[]; tasks: Task[]; purchases: Purchase[]; documents: Document[]; messages: Message[]; activities: Activity[]; certifications: Certification[]; budget_item_events?: BudgetItemEvent[]; invoices?: Invoice[] };
 
 const text = z.string().trim().min(1).max(500);
 export const commandSchema = z.discriminatedUnion("type", [
@@ -47,7 +49,13 @@ export const commandSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("message.delete"), id: z.uuid() }),
   z.object({ type: z.literal("message.react"), id: z.uuid(), emoji: z.enum(["👍", "✅", "❤️", "👀", "🙏", "⚠️"]) }),
   z.object({ type: z.literal("document.add"), project_id: z.uuid(), name: text, category: z.enum(["plan", "contract", "technical", "before", "during", "after", "other"]), storage_path: text, mime_type: text, size_bytes: z.number().int().positive().max(52428800) }),
-  z.object({ type: z.literal("certification.create"), project_id: z.uuid(), budget_version_id: z.uuid(), title: text, amount: z.number().int().positive().max(100000000) })
+  z.object({ type: z.literal("certification.create"), project_id: z.uuid(), budget_version_id: z.uuid(), title: text, amount: z.number().int().positive().max(100000000) }),
+  z.object({ type: z.literal("invoice.create"), project_id: z.uuid(), concept: text, base: z.number().int().positive().max(100000000), vat_rate: z.number().min(0).max(30).multipleOf(0.01), due_date: z.iso.date().nullable().optional(), certification_id: z.uuid().nullable().optional() }),
+  z.object({ type: z.literal("invoice.update"), id: z.uuid(), concept: text.optional(), base: z.number().int().positive().max(100000000).optional(), vat_rate: z.number().min(0).max(30).multipleOf(0.01).optional(), due_date: z.iso.date().nullable().optional() }),
+  z.object({ type: z.literal("invoice.delete"), id: z.uuid() }),
+  z.object({ type: z.literal("invoice.send"), id: z.uuid(), due_date: z.iso.date() }),
+  z.object({ type: z.literal("invoice.pay"), id: z.uuid(), paid_on: z.iso.date() }),
+  z.object({ type: z.literal("invoice.unpay"), id: z.uuid() })
 ]);
 export type Command = z.infer<typeof commandSchema>;
 export const roleNames: Record<Role, string> = { admin: "Administración", office: "Oficina", manager: "Jefe de obra", site: "Equipo de obra", viewer: "Consulta" };
@@ -88,10 +96,11 @@ export function compareVersions(before: BudgetVersion, after: BudgetVersion): It
     return [{ id, kind: !a ? "added" as const : !b ? "removed" as const : "changed" as const, before: a, after: b, fields, delta: (b?.inclusion === "included" ? lineTotal(b) : 0) - (a?.inclusion === "included" ? lineTotal(a) : 0) }];
   });
 }
+export const impuestoFactura = (base: number, vatRate: number) => roundRatio(BigInt(base) * BigInt(Math.round(vatRate * 100)), 10000n);
 export function can(role: Role, action: Command["type"]) {
   if (role === "viewer") return false;
   if (role === "site") return ["task.toggle", "message.send", "message.edit", "message.delete", "message.react", "document.add", "purchase.update"].includes(action);
-  if (action === "budget.approve" || action === "certification.create") return role === "admin" || role === "office";
+  if (action === "budget.approve" || action === "certification.create" || action.startsWith("invoice.")) return role === "admin" || role === "office";
   return true;
 }
 
@@ -225,6 +234,57 @@ export function applyCommand(previous: Workspace, input: Command, actor: Actor, 
       const already = state.certifications.filter(c => state.versions.find(x => x.id === c.budget_version_id)?.budget_id === b.id).reduce((s, c) => s + c.amount, 0);
       if (already + command.amount > totals(v.items).base) throw new Error("El importe supera el saldo del presupuesto aprobado.");
       state.certifications.push({ id: uuid(), organization_id: org, project_id: command.project_id, budget_version_id: v.id, title: command.title, amount: command.amount, status: "draft", created_at: now }); activity = `Borrador de certificación: ${command.title}`; break;
+    }
+    case "invoice.create": {
+      const facturas = state.invoices ?? (state.invoices = []);
+      let base = command.base;
+      if (command.certification_id) {
+        const cert = state.certifications.find(c => c.id === command.certification_id && c.project_id === command.project_id);
+        if (!cert) throw new Error("Cobro no encontrado.");
+        if (facturas.some(f => f.certification_id === cert.id)) throw new Error("Ese cobro ya tiene factura.");
+        base = cert.amount;
+      }
+      const tax = impuestoFactura(base, command.vat_rate);
+      facturas.push({ id: uuid(), organization_id: org, project_id: command.project_id, certification_id: command.certification_id ?? null, client_name: state.projects.find(p => p.id === command.project_id)!.client_name, concept: command.concept, base, vat_rate: command.vat_rate, tax, total: base + tax, status: "draft", number: null, number_year: null, number_seq: null, issue_date: null, due_date: command.due_date ?? null, paid_on: null, created_by_name: actor.name, created_at: now, updated_at: now });
+      activity = `Factura en borrador: ${command.concept}`; break;
+    }
+    case "invoice.update": {
+      const f = (state.invoices ?? []).find(x => x.id === command.id); if (!f) throw new Error("Factura no encontrada.");
+      if (f.status !== "draft") throw new Error("Una factura enviada no se edita.");
+      if (f.certification_id && command.base !== undefined && command.base !== f.base) throw new Error("El importe sale del cobro preparado.");
+      if (command.concept !== undefined) f.concept = command.concept;
+      if (command.base !== undefined) f.base = command.base;
+      if (command.vat_rate !== undefined) f.vat_rate = command.vat_rate;
+      if (command.due_date !== undefined) f.due_date = command.due_date;
+      f.tax = impuestoFactura(f.base, f.vat_rate); f.total = f.base + f.tax; f.updated_at = now; projectId = f.project_id;
+      activity = `Factura en borrador actualizada: ${f.concept}`; break;
+    }
+    case "invoice.delete": {
+      const f = (state.invoices ?? []).find(x => x.id === command.id); if (!f) throw new Error("Factura no encontrada.");
+      if (f.status !== "draft") throw new Error("Una factura enviada no se borra: el número debe quedar registrado.");
+      state.invoices = state.invoices!.filter(x => x.id !== f.id); projectId = f.project_id;
+      activity = `Factura en borrador eliminada: ${f.concept}`; break;
+    }
+    case "invoice.send": {
+      const f = (state.invoices ?? []).find(x => x.id === command.id); if (!f) throw new Error("Factura no encontrada.");
+      if (f.status !== "draft") throw new Error("Esta factura ya está enviada.");
+      const hoy = new Intl.DateTimeFormat("sv-SE", { timeZone: "Europe/Madrid" }).format(new Date(now));
+      if (command.due_date < hoy) throw new Error("El vencimiento no puede ser anterior a hoy.");
+      const year = Number(hoy.slice(0, 4)), seq = Math.max(0, ...state.invoices!.filter(x => x.number_year === year).map(x => x.number_seq ?? 0)) + 1;
+      f.status = "sent"; f.number_year = year; f.number_seq = seq; f.number = `${year}-${String(seq).padStart(4, "0")}`; f.issue_date = hoy; f.due_date = command.due_date; f.updated_at = now; projectId = f.project_id;
+      activity = `Factura ${f.number} enviada: ${f.concept}`; break;
+    }
+    case "invoice.pay": {
+      const f = (state.invoices ?? []).find(x => x.id === command.id); if (!f) throw new Error("Factura no encontrada.");
+      if (f.status !== "sent") throw new Error("Solo se cobra una factura enviada.");
+      f.status = "paid"; f.paid_on = command.paid_on; f.updated_at = now; projectId = f.project_id;
+      activity = `Factura ${f.number} cobrada`; break;
+    }
+    case "invoice.unpay": {
+      const f = (state.invoices ?? []).find(x => x.id === command.id); if (!f) throw new Error("Factura no encontrada.");
+      if (f.status !== "paid") throw new Error("Esta factura no está cobrada.");
+      f.status = "sent"; f.paid_on = null; f.updated_at = now; projectId = f.project_id;
+      activity = `Factura ${f.number} vuelve a pendiente de cobro`; break;
     }
   }
   state.activities.unshift({ id: uuid(), organization_id: org, project_id: projectId, text: activity, actor_name: actor.name, created_at: now });

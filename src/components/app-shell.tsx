@@ -13,6 +13,7 @@ import { useWorkspace } from "@/components/workspace-provider";
 import { roleNames, type Workspace } from "@/lib/domain";
 import { veSeccion } from "@/lib/navegacion";
 import { sinLeerPorProyecto } from "@/lib/chat-visto";
+import { facturasDe, vencidas } from "@/lib/facturas";
 import { buildAgenda, localDate } from "@/lib/hoy";
 import { iniciales, quienActua } from "@/lib/pasos";
 
@@ -78,6 +79,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const hoy = localDate();
   const avisos = useMemo(() => data.projects.filter(p => quienActua(data, p, hoy) === "te-espera").length, [data, hoy]);
   const atrasadas = useMemo(() => buildAgenda(data, hoy).overdue.length, [data, hoy]);
+  const facturasVencidas = useMemo(() => vencidas(facturasDe(data), hoy).length, [data, hoy]);
   const abiertos = data.projects.filter(p => p.status !== "completed").length;
   const isActive = (href: string, exact?: boolean) => (exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`));
   const proyectoActual = pathname.match(/^\/proyectos\/([0-9a-f-]{36})/)?.[1];
@@ -132,7 +134,7 @@ export function AppShell({ children }: { children: ReactNode }) {
         {enlace(hoyItem, avisos > 0 ? <span className="count-badge" data-tone="warning" aria-label={`${avisos} proyectos te esperan`}>{avisos}</span> : undefined)}
         {visibles(trabajo).length > 0 && <span className="nav-group">Trabajo</span>}
         {visibles(trabajo).map(item => <Fragment key={item.href}>
-          {enlace(item, item.href === "/proyectos" ? <span className="nav-count" aria-hidden="true">{abiertos}</span> : item.href === "/agenda" && atrasadas > 0 ? <span className="nav-alert" title={`${atrasadas} atrasadas`}><span className="sr-only">{atrasadas} tareas atrasadas</span></span> : undefined)}
+          {enlace(item, item.href === "/proyectos" ? <span className="nav-count" aria-hidden="true">{abiertos}</span> : item.href === "/agenda" && atrasadas > 0 ? <span className="nav-alert" title={`${atrasadas} atrasadas`}><span className="sr-only">{atrasadas} tareas atrasadas</span></span> : item.href === "/finanzas" && facturasVencidas > 0 ? <span className="count-badge" data-tone="danger" aria-label={`${facturasVencidas} facturas vencidas`}>{facturasVencidas}</span> : undefined)}
           {item.href === "/proyectos" && puedeCrear && <button type="button" className="nav-plus" aria-label="Crear" aria-haspopup="dialog" aria-expanded={crearMovil} onClick={() => setCrearMovil(true)}><Plus size={22} strokeWidth={2} aria-hidden="true" /></button>}
         </Fragment>)}
         {visibles(empresa).length > 0 && <span className="nav-group">Empresa</span>}

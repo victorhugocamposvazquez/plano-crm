@@ -1,13 +1,14 @@
 import { budgetHistory } from "./budget-history";
 import { normalizar } from "./busqueda";
 import { localDate } from "./hoy";
-import type { Actor, Workspace } from "./domain";
+import { facturasDe, vencidas } from "./facturas";
+import { money, type Actor, type Workspace } from "./domain";
 
 /**
  * Avisos de la persona. No hay tabla de notificaciones todavía (docs/PREGUNTAS.md): se deducen de lo que ya está
  * en el espacio, y lo leído se recuerda en este dispositivo.
  */
-export type TipoAviso = "mencion" | "atrasada" | "agenda" | "cliente";
+export type TipoAviso = "mencion" | "atrasada" | "agenda" | "cliente" | "factura";
 export type Aviso = { id: string; tipo: TipoAviso; quien: string; texto: string; cuando: string; href: string };
 
 const primerNombre = (nombre: string) => nombre.split(/[\s·]+/)[0] ?? "";
@@ -36,6 +37,7 @@ export function construirAvisos(data: Workspace, actor: Actor, hoy = localDate()
     const dias = Math.round((Date.parse(`${hoy}T12:00:00`) - new Date(v.updated_at).getTime()) / 864e5);
     if (dias >= 3) avisos.push({ id: `c-${v.id}`, tipo: "cliente", quien: nombre(b.project_id), texto: `lleva ${dias} días sin contestar a la V${v.number}`, cuando: v.updated_at, href: `/proyectos/${b.project_id}?s=budget&p=${b.id}&accion=respuesta` });
   }
+  if (seVeTodo) for (const f of vencidas(facturasDe(data), hoy)) avisos.push({ id: `f-${f.id}`, tipo: "factura", quien: `Factura ${f.number}`, texto: `venció · ${f.client_name} · ${money(f.total)}`, cuando: `${f.due_date}T12:00:00`, href: `/finanzas?factura=${f.id}` });
   return avisos.sort((a, b) => b.cuando.localeCompare(a.cuando));
 }
 

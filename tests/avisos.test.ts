@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { avisosVisibles, construirAvisos, type Aviso } from "@/lib/avisos";
 import { createDemo, demoActor, demoId } from "@/lib/demo";
 
-const base = () => { const d = createDemo(); d.messages = []; d.tasks = []; return d; };
+const base = () => { const d = createDemo(); d.messages = []; d.tasks = []; d.invoices = []; return d; };
 const msg = (body: string, author = "Dani · Demo", extra = {}) => ({ id: demoId(900), organization_id: "o", project_id: demoId(10), body, author_name: author, created_at: "2026-10-30T10:00:00Z", ...extra });
 const tarea = (due: string, assignee = "Alex", extra = {}) => ({ id: demoId(901), organization_id: "o", project_id: demoId(10), title: "Pedir placa", trade: "Compras", assignee, due_date: due, status: "pending" as const, weight: 10, ...extra });
 
