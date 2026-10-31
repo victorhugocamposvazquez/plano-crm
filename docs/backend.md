@@ -62,3 +62,7 @@ Se conservan como alcance: clientes y oportunidades, visita y estimación asisti
 ## Tareas: edición y borrado (migración 202610270003)
 
 `task.update` recibe `id` y cualquier subconjunto de `title`, `trade`, `assignee`, `due_date`, `weight`; valida igual que `task.create` y solo cambia lo enviado. `task.delete` borra la tarea (el avance del proyecto se recalcula al vuelo). Ambos vedados al equipo de obra.
+
+## Facturas
+
+Tabla `invoices` (migración `202610310001_invoices.sql`) y comandos `invoice.create`, `invoice.update`, `invoice.delete`, `invoice.send`, `invoice.pay` e `invoice.unpay`, solo para Oficina y Administración. El número se asigna al enviar, en serie anual correlativa (`2026-0001`). Las enviadas no se editan ni se borran, y el bloqueo de la organización evita huecos y duplicados. El IVA y el total los calcula el servidor. Plano las registra y les hace seguimiento: no emite factura oficial.

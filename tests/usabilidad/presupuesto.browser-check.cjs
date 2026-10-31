@@ -79,8 +79,10 @@ const ws=page=>page.evaluate(()=>JSON.parse(localStorage.getItem('plano.workspac
 
   // Obra y cobros.
   await page.getByRole('tab',{name:/^Obra/}).click();await expect(page.getByRole('button',{name:'Nueva tarea'})).toBeVisible();
-  await page.getByRole('tab',{name:/^Cobros/}).click();await page.getByRole('button',{name:/^Preparar .*€/}).click();const cobro=page.getByRole('dialog',{name:'Preparar cobro'});await expect(cobro.getByLabel('Concepto')).toHaveValue(/Cobro parcial/);await cobro.getByRole('button',{name:'Crear borrador'}).click();await expect(cobro).not.toBeVisible();
-  expect((await ws(page)).certifications.length).toBeGreaterThan(0);
+  await page.getByRole('tab',{name:/^Cobros/}).click();await page.getByRole('button',{name:/^Facturar .*€/}).click();const cobro=page.getByRole('dialog',{name:'Factura'});await expect(cobro.getByLabel('Concepto')).toHaveValue(/Cobro parcial/);await cobro.getByRole('button',{name:'Enviar factura'}).click();
+  const anio=new Date().getFullYear();await expect(page.getByRole('dialog',{name:`${anio}-0003`})).toBeVisible();const emitida=page.getByRole('dialog',{name:`${anio}-0003`});await expect(emitida.getByRole('link',{name:'Ver el PDF'})).toBeVisible();
+  await emitida.getByRole('button',{name:'Marcar como cobrada'}).click();await expect(emitida.getByText('Cobrada',{exact:true})).toBeVisible();await emitida.getByRole('button',{name:'Deshacer el cobro'}).click();await expect(emitida.getByRole('button',{name:'Marcar como cobrada'})).toBeVisible();await emitida.getByRole('button',{name:'Cerrar'}).click();
+  expect((await ws(page)).invoices.find(f=>f.number===`${anio}-0003`).status).toBe('sent');
   await page.getByRole('tab',{name:/^Planos y fotos/}).click();await page.getByRole('button',{name:'Subir',exact:true}).click();const subir=page.getByRole('dialog',{name:'Subir archivos'});
   await subir.getByLabel('Seleccionar archivos',{exact:true}).setInputFiles({name:'visita-de-ejemplo.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg==','base64')});
   await expect(subir).not.toBeVisible();await expect(page.getByRole('button',{name:'Abrir visita-de-ejemplo.png'})).toBeVisible();
@@ -102,9 +104,15 @@ const ws=page=>page.evaluate(()=>JSON.parse(localStorage.getItem('plano.workspac
   console.log('Catálogo correcto');
 
   // Clientes y Finanzas leen lo anterior.
-  await page.goto(`${base}/clientes`);await page.getByRole('link',{name:/Cliente de ejemplo 01/}).click();await expect(page.getByRole('heading',{level:1})).toHaveText('Cliente de ejemplo 01');await page.getByRole('tab',{name:/^Cobros/}).click();await expect(page.getByText(/Cobro parcial/)).toBeVisible();
-  await page.goto(`${base}/finanzas`);await page.getByRole('button',{name:'Año',exact:true}).click();await expect(page.getByRole('heading',{level:1})).toHaveText('Finanzas');await expect(page.getByText(/Cobro parcial/)).toBeVisible();
-  const [descarga]=await Promise.all([page.waitForEvent('download'),page.getByRole('button',{name:'Exportar para la gestoría'}).click()]);expect(descarga.suggestedFilename()).toBe('cobros-para-la-gestoria.csv');
+  await page.goto(`${base}/clientes`);await page.getByRole('link',{name:/Cliente de ejemplo 01/}).click();await expect(page.getByRole('heading',{level:1})).toHaveText('Cliente de ejemplo 01');await page.getByRole('tab',{name:/^Facturas/}).click();await expect(page.getByText(/Cobro parcial · \d/)).toBeVisible();
+  await page.goto(`${base}/finanzas`);await page.getByRole('button',{name:'Año',exact:true}).click();await expect(page.getByRole('heading',{level:1})).toHaveText('Finanzas');await expect(page.getByText(/Cobro parcial · \d/).first()).toBeVisible();
+  await page.getByRole('button',{name:'Vencida',exact:true}).click();await expect(page.getByRole('button',{name:/-0002/})).toBeVisible();await expect(page.getByRole('button',{name:/-0003/})).toHaveCount(0);await page.getByRole('button',{name:'Todas',exact:true}).click();
+  await page.getByRole('button',{name:'Nueva factura'}).first().click();const nuevaF=page.getByRole('dialog',{name:'Factura'});await expect(nuevaF.getByRole('button',{name:'Enviar factura'})).toBeDisabled();await nuevaF.getByRole('button',{name:'Proyecto',exact:true}).click();await page.getByRole('option',{name:/Vivienda en Monte Alto/}).click();await nuevaF.getByLabel('Concepto').fill('Factura del recorrido');await nuevaF.getByLabel('Base').fill('1.000,00');await expect(nuevaF.getByText('1.210,00 €')).toBeVisible();await nuevaF.getByRole('button',{name:'Guardar borrador'}).click();await expect(nuevaF).not.toBeVisible();
+  await page.getByRole('button',{name:/Borrador.*Factura del recorrido/}).click();const borrador=page.getByRole('dialog',{name:'Factura'});await borrador.getByRole('button',{name:'Eliminar'}).click();await borrador.getByRole('button',{name:'Sí',exact:true}).click();await expect(borrador).not.toBeVisible();
+  await page.goto(`${base}/finanzas?factura=${id(601)}`);await expect(page.getByRole('dialog',{name:`${anio}-0002`})).toBeVisible();await page.goto(`${base}/finanzas`);await page.getByRole('button',{name:'Año',exact:true}).click();
+  const pdf=(await ws(page)).invoices.find(f=>f.number===`${anio}-0003`).id;
+  const [descarga]=await Promise.all([page.waitForEvent('download'),page.getByRole('button',{name:'Exportar para la gestoría'}).click()]);expect(descarga.suggestedFilename()).toBe('facturas-para-la-gestoria.csv');
+  await page.goto(`${base}/imprimir/factura/${pdf}`);await expect(page.getByText(`${anio}-0003`)).toBeVisible();await expect(page.getByText('No sustituye a la factura oficial',{exact:false})).toBeVisible();
   console.log('Clientes y Finanzas correctos');
 
   // Agenda de calendario: cuatro vistas y minicalendario, sin horas inventadas.

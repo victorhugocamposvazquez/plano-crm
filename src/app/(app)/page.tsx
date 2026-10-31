@@ -9,6 +9,7 @@ import { TaskDialog } from "@/components/project/task-dialog";
 import { budgetHistory } from "@/lib/budget-history";
 import { Onboarding } from "@/components/onboarding";
 import { InstallHint } from "@/components/install-hint";
+import { emitidas, facturasDe, sumaBase } from "@/lib/facturas";
 import { queToca } from "@/lib/siguiente-paso";
 import { enlacePaso, quienActua, quienEtiqueta, textoMovimiento } from "@/lib/pasos";
 import { veSeccion } from "@/lib/navegacion";
@@ -31,7 +32,7 @@ function empresa(data: Workspace, today: string) {
     aceptado: suma(data.versions.filter(v => v.approved_at?.startsWith(mes))),
     enviado: suma(historias.flatMap(h => (h.working?.status === "issued" ? [h.working] : []))),
     borradores: suma(historias.flatMap(h => (h.working?.status === "draft" ? [h.working] : []))),
-    cobros: data.certifications.filter(c => c.created_at.startsWith(mes)).reduce((s, c) => s + c.amount, 0)
+    cobrado: sumaBase(facturasDe(data).filter(f => f.paid_on?.startsWith(mes))), facturado: sumaBase(emitidas(facturasDe(data)).filter(f => f.issue_date?.startsWith(mes)))
   };
 }
 
@@ -157,7 +158,8 @@ export default function HoyPage() {
               <div><dt>Aceptado</dt><dd className="pl-mono">{money(cifras.aceptado)}</dd></div>
               <div><dt>Enviado, sin respuesta</dt><dd className="pl-mono" data-tone="info">{money(cifras.enviado)}</dd></div>
               <div><dt>Borradores sin enviar</dt><dd className="pl-mono" data-tone="warning">{money(cifras.borradores)}</dd></div>
-              <div data-rule><dt>Cobros preparados · sin IVA</dt><dd className="pl-mono" data-tone="success">{money(cifras.cobros)}</dd></div>
+              <div data-rule><dt>Facturado · sin IVA</dt><dd className="pl-mono">{money(cifras.facturado)}</dd></div>
+              <div><dt>Cobrado · sin IVA</dt><dd className="pl-mono" data-tone="success">{money(cifras.cobrado)}</dd></div>
             </dl>
           </section>
         )}

@@ -26,6 +26,7 @@ import { WorkPanel } from "@/components/project/work-panel";
 import { AddToBudget } from "@/components/plan/add-to-budget";
 import { cargarBorrador } from "@/lib/plano-flujo";
 import { budgetHistory, versionState } from "@/lib/budget-history";
+import { emitidas, facturasDe, sumaBase, vencidas } from "@/lib/facturas";
 import { marcarVisto, sinLeerPorProyecto } from "@/lib/chat-visto";
 import { pasoVisible, type TipoAccion } from "@/lib/siguiente-paso";
 import { pasoDe, pasos, quienActua, quienEtiqueta, textoMovimiento, tituloPaso } from "@/lib/pasos";
@@ -49,7 +50,6 @@ export default function ProyectoPage() {
   const budgetId=params.get("p"),chatAbierto=params.get("chat")==="1",accion=params.get("accion");
   const [abierta,setAbierta]=useState<Task|null>(null),[pendingTask,setPendingTask]=useState<string|null>(null);
   const [solicitud,setSolicitud]=useState<"tarea"|"certificacion"|"estado"|null>(null);
-  const [cobroSugerido,setCobroSugerido]=useState<{title:string;amount:number}|null>(null);
   const [creatingBudget,setCreatingBudget]=useState(false),[borradorPlano,setBorradorPlano]=useState(false);
   const project=data.projects.find(p=>p.id===id),canBudget=can(actor.role,"budget.create"),canToggle=can(actor.role,"task.toggle");
   const budgets=useMemo(()=>data.budgets.filter(b=>b.project_id===id).sort((a,b)=>a.created_at.localeCompare(b.created_at)),[data.budgets,id]);
@@ -97,7 +97,6 @@ export default function ProyectoPage() {
   const paso=project?pasoVisible(data,project,localDate()):null;
   const commandFor:Partial<Record<TipoAccion,Command["type"]>>={presupuesto:"budget.create",editar:"budget.save",cerrar:"budget.issue",aprobar:"budget.approve",planificar:"project.status","iniciar-obra":"project.status",finalizar:"project.status",tareas:"task.create",certificar:"certification.create"};
   const puedePaso=paso?(!commandFor[paso.accion] || can(actor.role,commandFor[paso.accion]!)):false;
-  function prepararCobro(sugerido?:{title:string;amount:number}) {setCobroSugerido(sugerido ?? null);setSolicitud("certificacion");}
   function accionPaso(tipo:TipoAccion) {
     if(!puedePaso)return;
     if(tipo==="presupuesto"){void crearPresupuesto();return;}
@@ -115,7 +114,7 @@ export default function ProyectoPage() {
   }
   const tasks=data.tasks.filter(t=>t.project_id===id).sort((a,b)=>a.due_date.localeCompare(b.due_date));
   const pendingTasks=tasks.filter(t=>t.status==="pending"),doneTasks=tasks.filter(t=>t.status==="done");
-  const documents=data.documents.filter(d=>d.project_id===id),purchases=data.purchases.filter(p=>p.project_id===id),cobros=data.certifications.filter(c=>c.project_id===id);
+  const documents=data.documents.filter(d=>d.project_id===id),purchases=data.purchases.filter(p=>p.project_id===id),cobros=data.certifications.filter(c=>c.project_id===id),facturas=facturasDe(data,id);
   const activities=data.activities.filter(a=>a.project_id===id);
   if(!hydrated || loading)return <p className="muted">Cargando el proyecto…</p>;
   if(!project)return <div className="empty"><strong>Proyecto no encontrado</strong><LinkButton href="/proyectos" variant="ghost">Volver a proyectos</LinkButton></div>;
@@ -133,7 +132,7 @@ export default function ProyectoPage() {
   ];
   const puedeFase=can(actor.role,"project.status"),veClientes=veSeccion(actor.role,"/clientes");
   const quien=quienActua(data,project,hoy),etiqueta=quienEtiqueta[quien];
-  const baseAceptada=approved?totals(approved.items).base:0,preparado=cobros.reduce((s,c)=>s+c.amount,0);
+  const baseAceptada=approved?totals(approved.items).base:0,cobrado=sumaBase(facturas.filter(f=>f.status==="paid")),facturado=sumaBase(emitidas(facturas)),facturasVencidas=vencidas(facturas,hoy).length;
   const sinPedir=purchases.filter(p=>p.status==="planned").length,esperando=purchases.filter(p=>p.status==="ordered"),enObraMat=purchases.filter(p=>p.status==="delivered").length;
   const materialTitulo=!purchases.length?"Sin materiales":esperando.length?"Esperando proveedor":sinPedir?`${sinPedir} por pedir`:enObraMat===purchases.length?"Todo en obra":purchaseStatus.received;
   const materialDetalle=esperando[0]?`${esperando[0].name} · llegan ${esperando[0].received_quantity} de ${esperando[0].quantity} ${esperando[0].unit}`:purchases.length?`${purchases.length} material${purchases.length===1?"":"es"} en la lista`:"Salen de las partidas aceptadas";
@@ -158,7 +157,7 @@ export default function ProyectoPage() {
       <div className="ficha-tools">
         <ProjectStepper status={project.status} progress={progress} onCambiar={puedeFase?()=>setSolicitud("estado"):undefined}/>
         <button type="button" className="pill ficha-phase" data-tone={project.status==="completed"?"success":pasoDe(project.status)==="obra"?"info":"muted"} disabled={!puedeFase} aria-haspopup="dialog" aria-label={`Fase del proyecto: ${projectStatus[project.status]}. Cambiar de fase`} onClick={()=>setSolicitud("estado")}>{pasos.find(p=>p.id===pasoDe(project.status))?.label}</button>
-        <ProjectMenu project={project} approvedVersion={approved} puedeEstimar={canBudget} onChat={()=>navigate({chat:"1"})} solicitud={solicitud} onAtendida={()=>setSolicitud(null)} planoHref={planoHref} fotosHref={fotosHref} onManual={aMano} borrador={editable} cobroSugerido={cobroSugerido}/>
+        <ProjectMenu project={project} approvedVersion={approved} puedeEstimar={canBudget} onChat={()=>navigate({chat:"1"})} solicitud={solicitud} onAtendida={()=>setSolicitud(null)} planoHref={planoHref} fotosHref={fotosHref} onManual={aMano} borrador={editable}/>
       </div>
     </header>
     <Tabs label="Secciones del proyecto" value={section} onChange={selectSection} options={[
@@ -167,7 +166,7 @@ export default function ProyectoPage() {
       {id:"work",label:"Obra",hint:enObra?`${progress} %`:undefined,dot:pendingTasks.some(t=>t.due_date<hoy)?"danger":undefined},
       {id:"purchases",label:"Materiales",dot:esperando.length?"info":sinPedir?"warning":undefined},
       {id:"documents",label:"Planos y fotos",hint:documents.length?String(documents.length):undefined},
-      {id:"cobros",label:"Cobros"}
+      {id:"cobros",label:"Cobros",dot:vencidas(facturasDe(data,id),hoy).length?"danger":undefined}
     ]}/>
 
     {section==="overview" && <section className="ficha-resumen ficha-enter" aria-label="Resumen del proyecto">
@@ -187,7 +186,7 @@ export default function ProyectoPage() {
           {id:"work" as const,icon:Check,tone:"success",label:"Obra",hint:tasks.length?`${progress} % · ${doneTasks.length} de ${tasks.length} tareas hechas`:"Todavía sin tareas"},
           {id:"purchases" as const,icon:Package,tone:"danger",label:"Materiales",hint:materialDetalle},
           {id:"documents" as const,icon:ImageIcon,tone:"muted",label:"Planos y fotos",hint:documents.length?`${documents.length} archivo${documents.length===1?"":"s"}`:"Sin archivos"},
-          {id:"cobros" as const,icon:Receipt,tone:"info",label:"Cobros",hint:approved?`Preparados · puedes cobrar hasta el ${progress} %`:"Cuando el cliente acepte",valor:approved?money(preparado):""}
+          {id:"cobros" as const,icon:Receipt,tone:"info",label:"Cobros",hint:approved?(facturasVencidas?`${facturasVencidas} ${facturasVencidas===1?"factura vencida":"facturas vencidas"}`:`Cobrado · ${money(facturado)} facturado, sin IVA`):"Cuando el cliente acepte",valor:approved||facturas.length?money(cobrado):""}
         ].map(a=>{const Icon=a.icon;return <button key={a.id} type="button" className="ficha-list-row" onClick={()=>selectSection(a.id)}>
           <span className="ficha-list-icon" data-tone={a.tone}><Icon size={17} strokeWidth={1.8} aria-hidden="true"/></span>
           <span className="ficha-list-text"><strong>{a.label}{a.actual && <span className="pulse-dot" aria-hidden="true"/>}</strong><small>{a.hint}</small></span>
@@ -228,10 +227,10 @@ export default function ProyectoPage() {
           <strong className="ficha-card-text" data-tone={esperando.length?"info":undefined}>{materialTitulo}</strong>
           <small>{materialDetalle}</small>
         </button>
-        <button type="button" className="pl-card ficha-card" onClick={()=>selectSection("cobros")} aria-label={`Cobros: ${money(preparado)} preparados. Ver cobros`}>
+        <button type="button" className="pl-card ficha-card" onClick={()=>selectSection("cobros")} aria-label={`Cobros: ${money(cobrado)} cobrados. Ver cobros y facturas`}>
           <span>Cobros</span>
-          <strong className={approved?"pl-mono":"ficha-card-text"}>{approved?money(preparado):"Sin cobros"}</strong>
-          <small>{approved?<>de <span className="pl-mono">{money(baseAceptada)}</span> sin IVA · puedes cobrar hasta el {progress} %</>:"Cuando el cliente acepte el presupuesto"}</small>
+          <strong className={approved||facturas.length?"pl-mono":"ficha-card-text"}>{approved||facturas.length?money(cobrado):"Sin cobros"}</strong>
+          <small>{facturasVencidas>0?<span className="danger">{facturasVencidas} {facturasVencidas===1?"factura vencida":"facturas vencidas"}</span>:approved?<>de <span className="pl-mono">{money(baseAceptada)}</span> aceptados · <span className="pl-mono">{money(facturado)}</span> facturados, sin IVA</>:"Cuando el cliente acepte el presupuesto"}</small>
         </button>
       </div>
       <div className="ficha-two">
@@ -263,7 +262,7 @@ export default function ProyectoPage() {
     {section==="work" && <div className="ficha-enter"><WorkPanel projectId={project.id} tasks={tasks} progress={progress} meterTone={meterTone==="warning"?"warning":"success"} approved={approved} onNueva={()=>setSolicitud("tarea")} onAbrir={setAbierta} onToggle={toggleTask} pendiente={pendingTask}/></div>}
     {section==="purchases" && <div className="ficha-enter"><PurchasesPanel projectId={project.id} purchases={purchases} approvedLabel={approved?`V${approved.number}`:undefined}/></div>}
     {section==="documents" && <div className="ficha-enter"><DocumentsPanel project={project} documents={documents}/></div>}
-    {section==="cobros" && <div className="ficha-enter"><CobrosPanel cobros={cobros} approved={approved} progress={progress} onPreparar={prepararCobro}/></div>}
+    {section==="cobros" && <div className="ficha-enter"><CobrosPanel projectId={project.id} cobros={cobros} facturas={facturas} approved={approved} progress={progress}/></div>}
     <button type="button" className="ficha-fab" onClick={()=>navigate({chat:"1"})} aria-label={sinLeerChat?`Chat, ${sinLeerChat} sin leer`:"Chat"} aria-haspopup="dialog"><MessageSquare size={18} strokeWidth={1.8} aria-hidden="true"/>Chat{sinLeerChat>0 && <span className="avatar-count">{sinLeerChat}</span>}</button>
     <TaskDialog task={abierta?data.tasks.find(t=>t.id===abierta.id) ?? null:null} onClose={()=>setAbierta(null)}/>
     {editable && <BudgetEditor open={editando} onClose={()=>navigate({editar:null})} project={project} version={editable} guiaInicial={editable.items.length===0}/>}

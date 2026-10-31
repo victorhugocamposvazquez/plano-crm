@@ -21,7 +21,7 @@ const estados = Object.keys(projectStatus) as Project["status"][];
  * (nuevo presupuesto a mano / desde un plano / desde fotos · obra · proyecto), porque ahí la cabecera
  * solo tiene sitio para el nombre, la fase y dos iconos.
  */
-export function ProjectMenu({ project, approvedVersion, puedeEstimar, onChat, solicitud, onAtendida, planoHref, fotosHref, onManual, borrador, cobroSugerido }: { project: Project; approvedVersion?: BudgetVersion; puedeEstimar: boolean; onChat: () => void; solicitud?: Dialogo | null; onAtendida?: () => void; planoHref?: string; fotosHref?: string; onManual?: () => void; borrador?: BudgetVersion; cobroSugerido?: { title: string; amount: number } | null }) {
+export function ProjectMenu({ project, approvedVersion, puedeEstimar, onChat, solicitud, onAtendida, planoHref, fotosHref, onManual, borrador }: { project: Project; approvedVersion?: BudgetVersion; puedeEstimar: boolean; onChat: () => void; solicitud?: Dialogo | null; onAtendida?: () => void; planoHref?: string; fotosHref?: string; onManual?: () => void; borrador?: BudgetVersion }) {
   const router = useRouter();
   const { data, actor, busy, send, notify } = useWorkspace();
   const [dialogo, setDialogo] = useState<Dialogo>("");
@@ -37,7 +37,7 @@ export function ProjectMenu({ project, approvedVersion, puedeEstimar, onChat, so
 
   function abrir(d: Dialogo) { setEstado(project.status); setDialogo(d); }
   // La ficha puede pedir que se abra un diálogo (desde «Siguiente paso»).
-  useEffect(() => { if (solicitud) { setEstado(project.status); if (solicitud === "certificacion" && cobroSugerido) setCert({ title: cobroSugerido.title, amount: (cobroSugerido.amount / 100).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }); setDialogo(solicitud); onAtendida?.(); } }, [solicitud]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (solicitud) { setEstado(project.status); setDialogo(solicitud); onAtendida?.(); } }, [solicitud]); // eslint-disable-line react-hooks/exhaustive-deps
   function cerrar() { setDialogo(""); setPending(false); }
 
   async function cambiarEstado() {

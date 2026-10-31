@@ -9,7 +9,7 @@ import { CommandPalette } from "@/components/command-palette";
 import { roleNames } from "@/lib/domain";
 import { iniciales } from "@/lib/pasos";
 import { veSeccion } from "@/lib/navegacion";
-import { finanzas } from "@/lib/resumen";
+import { facturasDe, vencidas } from "@/lib/facturas";
 
 /** Tu cuenta y lo que no cabe en la barra inferior: en móvil, Clientes, Catálogo, Finanzas y Ajustes viven aquí. */
 export default function MasPage() {
@@ -37,11 +37,11 @@ export default function MasPage() {
     } catch { notify("Sin conexión: no se ha podido cerrar la sesión."); }
     finally { setSaliendo(false); }
   }
-  const pendientes = finanzas(data).filas.filter(f => f.pendiente > 0).length;
+  const fueraDePlazo = vencidas(facturasDe(data)).length;
   const entradas = [
     { href: "/clientes", label: "Clientes", icon: Users, aviso: "" },
     { href: "/catalogo", label: "Catálogo", icon: BookOpen, aviso: "" },
-    { href: "/finanzas", label: "Finanzas", icon: Wallet, aviso: pendientes ? `${pendientes} por cobrar` : "" },
+    { href: "/finanzas", label: "Finanzas", icon: Wallet, aviso: fueraDePlazo ? `${fueraDePlazo} ${fueraDePlazo === 1 ? "vencida" : "vencidas"}` : "" },
     { href: "/ajustes", label: "Ajustes de la empresa", icon: Settings, aviso: "" }
   ].filter(e => veSeccion(actor.role, e.href));
   return (

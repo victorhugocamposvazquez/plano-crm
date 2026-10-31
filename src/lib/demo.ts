@@ -47,6 +47,10 @@ export function createDemo(): Workspace {
       { id: demoId(301), organization_id: org, project_id: demoId(12), name: "Muebles de cocina", supplier: "Taller de ejemplo", quantity: 1, unit: "global", received_quantity: 0, delivered_quantity: 0, status: "planned" }
     ],
     documents: [], certifications: [],
+    invoices: [
+      { id: demoId(600), organization_id: org, project_id: demoId(10), certification_id: null, client_name: "Cliente de ejemplo 01", concept: "Señal al aceptar", base: 300000, vat_rate: 21, tax: 63000, total: 363000, status: "paid", number: `${now.getFullYear()}-0001`, number_year: now.getFullYear(), number_seq: 1, issue_date: date(-14).slice(0, 10), due_date: date(-7).slice(0, 10), paid_on: date(-9).slice(0, 10), created_by_name: "Marta · Demo", created_at: date(-14), updated_at: date(-9) },
+      { id: demoId(601), organization_id: org, project_id: demoId(10), certification_id: null, client_name: "Cliente de ejemplo 01", concept: "Cobro parcial · demolición", base: 250000, vat_rate: 21, tax: 52500, total: 302500, status: "sent", number: `${now.getFullYear()}-0002`, number_year: now.getFullYear(), number_seq: 2, issue_date: date(-10).slice(0, 10), due_date: date(-3).slice(0, 10), paid_on: null, created_by_name: "Marta · Demo", created_at: date(-10), updated_at: date(-10) }
+    ],
     messages: [{ id: demoId(400), organization_id: org, project_id: demoId(10), body: "La V1 sigue siendo la aceptada. Los cambios de pavimento están en el borrador V2, pendientes de confirmar.", author_name: "Marta · Demo", created_at: date(-1) }],
     activities: [{ id: demoId(500), organization_id: org, project_id: demoId(10), text: "V2 creada: cambio de pavimento y ajustes de alcance", actor_name: "Alex · Demo", created_at: date(-1) }, { id: demoId(501), organization_id: org, project_id: demoId(12), text: "Desmontaje de cocina completado", actor_name: "Dani · Demo", created_at: date(-2) }]
   };

@@ -348,7 +348,7 @@ Estilos en `src/styles/plano-app.css`, después de `ui.css`. Detalle de lo integ
 
 **Tokens nuevos.** `--pl-ring-1` a `--pl-ring-3` y `--pl-ring-off` (aro de avisos), `--pl-text-ficha`, `--pl-text-total-phone`, `--pl-text-search`, `--pl-text-figure`, `--pl-text-total`; `--pl-radius-card`, `--pl-radius-search`; `--pl-search-height`, `--pl-chat-width`, `--pl-panel-width`, `--pl-panel-wide`, `--pl-popover-account`; `--pl-enter-duration`, `--pl-enter-ease`; `--pl-success-line`, `--pl-info-line`, `--pl-warning-line`, `--pl-danger-line`; `--pl-selected`, `--pl-search-bg`, `--pl-chat-bg`, `--pl-chat-mine`, `--pl-chat-other`; `--pl-series-1` a `--pl-series-3`. La marca pasa a 23 px, tracking −0,045 em y cuadrado de 6 px; el menú a 248 px y la cabecera de escritorio a 52 px.
 
-**Vocabulario.** Fases: Visita → Presupuesto → Obra → Entregado (`src/lib/pasos.ts`; el dominio conserva sus cinco estados). Versiones: Borrador, Enviado, Aceptado, Archivada; la actual late en verde. Quién actúa: Te espera a ti (ámbar), Esperando al cliente (azul), Atrasado (rojo), Al día (verde). «Cobro» sustituye a «certificación»; mientras no haya facturas se dice «cobro preparado», nunca «cobrado».
+**Vocabulario.** Fases: Visita → Presupuesto → Obra → Entregado (`src/lib/pasos.ts`; el dominio conserva sus cinco estados). Versiones: Borrador, Enviado, Aceptado, Archivada; la actual late en verde. Quién actúa: Te espera a ti (ámbar), Esperando al cliente (azul), Atrasado (rojo), Al día (verde). «Cobro preparado» sustituye a «certificación» y de él sale la factura. Facturas: Borrador, Enviada, Vencida, Cobrada; «cobrado» solo se dice de una factura cobrada.
 
 **Reglas.**
 - Una sola acción naranja por pantalla (`data-accent="orange"`): la que responde a «¿qué hago ahora?».

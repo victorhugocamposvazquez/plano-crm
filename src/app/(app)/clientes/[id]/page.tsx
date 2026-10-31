@@ -9,11 +9,12 @@ import { Pill, type Tone } from "@/components/ui/status";
 import { LinkButton } from "@/components/ui/button";
 import { budgetHistory, versionState } from "@/lib/budget-history";
 import { categoryNames } from "@/lib/documentos";
+import { emitidas, etiquetaFactura, facturasDe, porCobrar, sumaTotal, vencidas } from "@/lib/facturas";
 import { can, dateLabel, kindNames, money, totals } from "@/lib/domain";
 import { iniciales, pasoDe, pasos, quienActua, quienEtiqueta, textoMovimiento } from "@/lib/pasos";
 import { clientes } from "@/lib/resumen";
 
-type Pestana = "proyectos" | "presupuestos" | "cobros" | "documentos" | "historial";
+type Pestana = "proyectos" | "presupuestos" | "facturas" | "documentos" | "historial";
 
 /** Ficha de cliente: se compone de sus proyectos. Los datos de contacto llegarán cuando el cliente exista en el dominio. */
 export default function ClientePage() {
@@ -24,7 +25,7 @@ export default function ClientePage() {
   const cliente = useMemo(() => clientes(data).find(c => c.id === clave), [data, clave]);
   const ids = useMemo(() => new Set(cliente?.projects.map(p => p.id) ?? []), [cliente]);
   const presupuestos = useMemo(() => data.budgets.filter(b => ids.has(b.project_id)).flatMap(b => budgetHistory(b, data.versions).versions.map(v => ({ v, b, approvedId: b.approved_version_id, actual: budgetHistory(b, data.versions).current?.id === v.id }))), [data, ids]);
-  const cobros = useMemo(() => data.certifications.filter(c => ids.has(c.project_id)), [data, ids]);
+  const facturas = useMemo(() => facturasDe(data).filter(f => ids.has(f.project_id)), [data, ids]);
   const documentos = useMemo(() => data.documents.filter(d => ids.has(d.project_id)), [data, ids]);
   const historial = useMemo(() => data.activities.filter(a => a.project_id && ids.has(a.project_id)), [data, ids]);
   if (loading) return <p className="muted">Cargando el cliente…</p>;
@@ -32,10 +33,10 @@ export default function ClientePage() {
   const nombreProyecto = (pid: string | null) => data.projects.find(p => p.id === pid)?.name ?? "";
   const actuales = data.budgets.filter(b => ids.has(b.project_id)).map(b => budgetHistory(b, data.versions)).filter(h => h.current);
   const presupuestado = actuales.reduce((s, h) => s + totals(h.current!.items).total, 0);
-  const aceptadoBase = cliente.aprobado, preparado = cobros.reduce((s, c) => s + c.amount, 0);
+  const pendientes = porCobrar(facturas), fueraDePlazo = vencidas(facturas);
   const desde = new Intl.DateTimeFormat("es-ES", { month: "long", year: "numeric" }).format(new Date(cliente.projects.map(p => p.created_at).sort()[0]));
   const tabs: { id: Pestana; label: string; n: number }[] = [
-    { id: "proyectos", label: "Proyectos", n: cliente.projects.length }, { id: "presupuestos", label: "Presupuestos", n: presupuestos.length }, { id: "cobros", label: "Cobros", n: cobros.length }, { id: "documentos", label: "Documentos", n: documentos.length }, { id: "historial", label: "Historial", n: historial.length }
+    { id: "proyectos", label: "Proyectos", n: cliente.projects.length }, { id: "presupuestos", label: "Presupuestos", n: presupuestos.length }, { id: "facturas", label: "Facturas", n: facturas.length }, { id: "documentos", label: "Documentos", n: documentos.length }, { id: "historial", label: "Historial", n: historial.length }
   ];
   const tono = (approved: boolean, status: string): Tone => (approved ? "success" : status === "issued" ? "info" : status === "draft" ? "warning" : "muted");
   return (
@@ -48,8 +49,8 @@ export default function ClientePage() {
       <div className="stat-row stat-row-4">
         <div className="pl-card stat"><span>Proyectos</span><strong className="pl-mono">{cliente.projects.length}</strong><small>{cliente.activos} en marcha</small></div>
         <div className="pl-card stat"><span>Presupuestado (actual)</span><strong className="pl-mono">{money(presupuestado)}</strong><small>con IVA</small></div>
-        <div className="pl-card stat"><span>Aceptado</span><strong className="pl-mono">{money(cliente.aprobadoTotal)}</strong><small>con IVA</small></div>
-        <div className="pl-card stat"><span>Pendiente de cobro</span><strong className="pl-mono" data-tone="warning">{money(Math.max(0, aceptadoBase - preparado))}</strong><small>sin IVA · {cobros.length} {cobros.length === 1 ? "cobro preparado" : "cobros preparados"}</small></div>
+        <div className="pl-card stat"><span>Facturado</span><strong className="pl-mono">{money(sumaTotal(emitidas(facturas)))}</strong><small>con IVA · {emitidas(facturas).length} {emitidas(facturas).length === 1 ? "factura" : "facturas"}</small></div>
+        <div className="pl-card stat"><span>Pendiente de cobro</span><strong className="pl-mono" data-tone={fueraDePlazo.length ? "danger" : "warning"}>{money(sumaTotal(pendientes))}</strong><small>con IVA{fueraDePlazo.length ? ` · ${fueraDePlazo.length} ${fueraDePlazo.length === 1 ? "vencida" : "vencidas"}` : ""}</small></div>
       </div>
       <div className="client-grid">
         <section className="pl-card client-data" aria-label="Datos del cliente">
@@ -67,7 +68,7 @@ export default function ClientePage() {
           {pestana === "presupuestos" && presupuestos.map(({ v, b, approvedId, actual }) => (
             <Link key={v.id} href={`/proyectos/${b.project_id}?s=budget&p=${b.id}&v=${v.id}`} className="client-line"><span><strong>V{v.number} · {v.change_reason || b.title}{actual && <span className="mini-chip" data-tone="success" style={{ marginLeft: 8 }}>La actual</span>}</strong><small>{nombreProyecto(b.project_id)} · {dateLabel(v.updated_at)}</small></span><Pill label={versionState(v, approvedId)} tone={tono(v.id === approvedId, v.status)} /><span className="pl-mono">{money(totals(v.items).total)}</span></Link>
           ))}
-          {pestana === "cobros" && cobros.map(c => <Link key={c.id} href={`/proyectos/${c.project_id}?s=cobros`} className="client-line"><span><strong>{c.title}</strong><small>{nombreProyecto(c.project_id)} · {dateLabel(c.created_at)}</small></span><Pill label="Borrador" /><span className="pl-mono">{money(c.amount)}</span></Link>)}
+          {pestana === "facturas" && facturas.map(f => { const e = etiquetaFactura(f); return <Link key={f.id} href={`/finanzas?factura=${f.id}`} className="client-line"><span><strong>{f.number ?? "Sin número"} · {f.concept}</strong><small>{nombreProyecto(f.project_id)}{f.issue_date ? ` · ${dateLabel(f.issue_date)}` : ""}</small></span><Pill label={e.label} tone={e.tone} /><span className="pl-mono">{money(f.total)}</span></Link>; })}
           {pestana === "documentos" && documentos.map(d => <Link key={d.id} href={`/proyectos/${d.project_id}?s=documents`} className="client-line"><span><strong>{d.name}</strong><small>{nombreProyecto(d.project_id)} · {categoryNames[d.category]} · {dateLabel(d.created_at)}</small></span></Link>)}
           {pestana === "historial" && historial.slice(0, 40).map(a => <div key={a.id} className="client-line"><span><strong>{textoMovimiento(a.text)}</strong><small>{nombreProyecto(a.project_id)} · {a.actor_name} · {dateLabel(a.created_at)}</small></span></div>)}
           {tabs.find(t => t.id === pestana)?.n === 0 && <p className="muted text-sm" style={{ padding: "14px 18px", margin: 0 }}>Todavía no hay nada aquí.</p>}

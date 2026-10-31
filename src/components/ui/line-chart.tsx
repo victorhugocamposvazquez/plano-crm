@@ -50,7 +50,7 @@ export function LineChart({ labels, series, format, formatAxis, ariaLabel }: { l
         </>}
         <div className="line-chart-hits">{labels.map((l, i) => <div key={`${l}-${i}`} onMouseEnter={() => setHover(i)} onTouchStart={() => setHover(i)} />)}</div>
       </div>
-      <div className="line-chart-labels" aria-hidden="true">{labels.map((l, i) => <span key={`${l}-${i}`} style={{ left: `${x(i)}%` }} data-edge={i === 0 ? "start" : i === labels.length - 1 ? "end" : undefined}>{l}</span>)}</div>
+      <div className="line-chart-labels" data-densa={labels.length > 7 || undefined} aria-hidden="true">{labels.map((l, i) => <span key={`${l}-${i}`} style={{ left: `${x(i)}%` }} data-edge={i === 0 ? "start" : i === labels.length - 1 ? "end" : undefined}>{l}</span>)}</div>
     </div>
   );
 }

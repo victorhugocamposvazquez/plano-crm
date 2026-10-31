@@ -1,10 +1,11 @@
 import { budgetHistory } from "./budget-history";
+import { emitidas, etiquetaFactura, facturasDe, porCobrar, sumaBase, sumaTotal, vencidas } from "./facturas";
 import { localDate } from "./hoy";
 import { totals, type Workspace } from "./domain";
 
 /**
- * Finanzas por periodo con lo que hay en el dominio: lo aceptado, los cobros preparados y lo enviado.
- * Importes sin IVA. Facturas y gastos no existen todavía (docs/PREGUNTAS.md): no se aproximan ni se inventan.
+ * Finanzas por periodo: lo facturado, lo cobrado y lo aceptado, sin IVA; lo pendiente de cobro, con IVA.
+ * Los gastos no existen todavía (docs/PREGUNTAS.md): no se aproximan ni se inventan.
  */
 export type Periodo = "semana" | "mes" | "trimestre" | "ano";
 export const periodos: { id: Periodo; label: string }[] = [{ id: "semana", label: "Semana" }, { id: "mes", label: "Mes" }, { id: "trimestre", label: "Trimestre" }, { id: "ano", label: "Año" }];
@@ -51,21 +52,22 @@ export function rangoPeriodo(periodo: Periodo, desplazamiento = 0, hoy = localDa
   return { desde: tramos[0].desde, hasta: tramos[11].hasta, etiqueta: String(a.getFullYear()), tramos };
 }
 
-export type Serie = "aceptado" | "cobros" | "enviado";
+export type Serie = "facturado" | "cobrado" | "aceptado";
 export const seriesFinanzas: { id: Serie; label: string; color: string }[] = [
-  { id: "aceptado", label: "Aceptado", color: "var(--pl-series-1)" },
-  { id: "cobros", label: "Cobros preparados", color: "var(--pl-series-2)" },
-  { id: "enviado", label: "Enviado al cliente", color: "var(--pl-series-3)" }
+  { id: "facturado", label: "Facturado", color: "var(--pl-series-1)" },
+  { id: "cobrado", label: "Cobrado", color: "var(--pl-series-2)" },
+  { id: "aceptado", label: "Aceptado", color: "var(--pl-series-3)" }
 ];
 
 type Evento = { fecha: string; importe: number };
 export function eventos(data: Workspace, projectId = ""): Record<Serie, Evento[]> {
   const delProyecto = (id: string) => !projectId || id === projectId;
   const proyectoDe = (budgetId: string) => data.budgets.find(b => b.id === budgetId)?.project_id ?? "";
+  const facturas = facturasDe(data, projectId);
   return {
-    aceptado: data.versions.filter(v => v.approved_at && delProyecto(proyectoDe(v.budget_id))).map(v => ({ fecha: v.approved_at!.slice(0, 10), importe: totals(v.items).base })),
-    cobros: data.certifications.filter(c => delProyecto(c.project_id)).map(c => ({ fecha: c.created_at.slice(0, 10), importe: c.amount })),
-    enviado: data.versions.filter(v => v.status === "issued" && delProyecto(proyectoDe(v.budget_id))).map(v => ({ fecha: v.updated_at.slice(0, 10), importe: totals(v.items).base }))
+    facturado: emitidas(facturas).map(f => ({ fecha: f.issue_date!, importe: f.base })),
+    cobrado: facturas.filter(f => f.status === "paid").map(f => ({ fecha: f.paid_on!, importe: f.base })),
+    aceptado: data.versions.filter(v => v.approved_at && delProyecto(proyectoDe(v.budget_id))).map(v => ({ fecha: v.approved_at!.slice(0, 10), importe: totals(v.items).base }))
   };
 }
 
@@ -77,16 +79,17 @@ export function resumenPeriodo(data: Workspace, periodo: Periodo, desplazamiento
   const total = (serie: Serie, r: Rango) => sumaEntre(ev[serie], r.desde, r.hasta);
   const budgets = data.budgets.filter(b => !projectId || b.project_id === projectId).map(b => ({ b, h: budgetHistory(b, data.versions) }));
   const aceptadoHoy = budgets.reduce((s, { h }) => s + (h.approved ? totals(h.approved.items).base : 0), 0);
-  const preparadoHoy = data.certifications.filter(c => !projectId || c.project_id === projectId).reduce((s, c) => s + c.amount, 0);
+  const facturas = facturasDe(data, projectId), pendientes = porCobrar(facturas), fueraDePlazo = vencidas(facturas);
   return {
     rango, nombreAnterior: anterior.etiqueta,
-    series: { aceptado: valores("aceptado"), cobros: valores("cobros"), enviado: valores("enviado") },
+    series: { facturado: valores("facturado"), cobrado: valores("cobrado"), aceptado: valores("aceptado") },
+    facturado: { ahora: total("facturado", rango), antes: total("facturado", anterior) },
+    cobrado: { ahora: total("cobrado", rango), antes: total("cobrado", anterior) },
     aceptado: { ahora: total("aceptado", rango), antes: total("aceptado", anterior) },
-    cobros: { ahora: total("cobros", rango), antes: total("cobros", anterior) },
-    pendiente: Math.max(0, aceptadoHoy - preparadoHoy),
-    porcentaje: aceptadoHoy ? Math.round((100 * preparadoHoy) / aceptadoHoy) : 0,
-    sinRespuesta: budgets.reduce((s, { h }) => s + (h.working?.status === "issued" ? totals(h.working.items).base : 0), 0),
-    borradores: budgets.reduce((s, { h }) => s + (h.working?.status === "draft" ? totals(h.working.items).base : 0), 0)
+    pendiente: sumaTotal(pendientes), pendientes: pendientes.length,
+    vencido: sumaTotal(fueraDePlazo), vencidas: fueraDePlazo.length,
+    sinFacturar: Math.max(0, aceptadoHoy - sumaBase(emitidas(facturas))),
+    sinRespuesta: budgets.reduce((s, { h }) => s + (h.working?.status === "issued" ? totals(h.working.items).base : 0), 0)
   };
 }
 
@@ -97,13 +100,13 @@ export function comparar(ahora: number, antes: number) {
   return p === 0 ? "Igual que el periodo anterior" : `${p > 0 ? "+" : "−"}${Math.abs(p)} % que el periodo anterior`;
 }
 
-/** CSV para la gestoría: separador «;» y coma decimal, como lo abre Excel en España. */
+/** CSV para la gestoría: las facturas con número. Separador «;» y coma decimal, como lo abre Excel en España. */
 export function csvGestoria(data: Workspace, projectId = "") {
   const euros = (c: number) => (c / 100).toFixed(2).replace(".", ",");
   const celda = (t: string) => `"${t.replace(/"/g, '""')}"`;
-  const filas = data.certifications.filter(c => !projectId || c.project_id === projectId).map(c => {
-    const p = data.projects.find(x => x.id === c.project_id);
-    return [c.created_at.slice(0, 10), celda(p?.client_name ?? ""), celda(p?.name ?? ""), celda(c.title), "Borrador", euros(c.amount)].join(";");
+  const filas = emitidas(facturasDe(data, projectId)).sort((a, b) => (a.number ?? "").localeCompare(b.number ?? "")).map(f => {
+    const p = data.projects.find(x => x.id === f.project_id);
+    return [f.number, f.issue_date, f.due_date, celda(f.client_name), celda(p?.name ?? ""), celda(f.concept), etiquetaFactura(f).label, euros(f.base), `${f.vat_rate}`.replace(".", ","), euros(f.tax), euros(f.total), f.paid_on ?? ""].join(";");
   });
-  return ["Fecha;Cliente;Proyecto;Concepto;Estado;Base sin IVA", ...filas].join("\n");
+  return ["Número;Fecha;Vence;Cliente;Proyecto;Concepto;Estado;Base;IVA %;IVA;Total;Cobrada el", ...filas].join("\n");
 }
