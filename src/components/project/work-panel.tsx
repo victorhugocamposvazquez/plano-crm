@@ -47,31 +47,34 @@ export function WorkPanel({ projectId, tasks, progress, meterTone, approved, onN
 
   return (
     <section className="work-panel" aria-label="Tareas y avance">
-      <div className="pl-head">
+      <div className="work-phone-progress solo-movil-flex-box"><Meter value={progress} label="Avance de la obra" tone={meterTone} /><span className="pl-mono">{progress} %</span></div>
+      <div className="pl-head work-head">
         <div><strong className="panel-title">Tareas</strong> <span className="muted">· {hechas.length} de {tasks.length} hechas · {progress} % del avance</span></div>
         {puedeCrear && <div className="pl-head-actions">
           {approved && propuesta.length > 0 && <Button onClick={abrirPropuesta} aria-haspopup="dialog"><Sparkles size={15} strokeWidth={1.7} aria-hidden="true" />Proponer desde las partidas aceptadas</Button>}
           <Button variant="primary" onClick={onNueva}><Plus size={16} strokeWidth={1.8} aria-hidden="true" />Nueva tarea</Button>
         </div>}
       </div>
-      <Meter value={progress} label="Avance de la obra" tone={meterTone} />
+      <div className="work-meter"><Meter value={progress} label="Avance de la obra" tone={meterTone} /></div>
       {tasks.length === 0 && <div className="empty"><strong>Todavía no hay tareas</strong><span className="muted text-sm">{approved ? "Propónlas desde las partidas aceptadas o créalas una a una." : "Cuando el cliente acepte, podrás proponerlas desde las partidas."}</span></div>}
       {grupos.map(g => (
         <section key={g.id} className="pl-card task-group" aria-label={g.nombre}>
-          <h3 className="task-group-title" data-tone={g.tone}>{g.nombre} <span className="pl-mono">{g.tareas.length}</span></h3>
+          <h3 className="task-group-title" data-tone={g.tone}>{g.nombre}{g.tareas.length > 1 ? ` · ${g.tareas.length}` : ""}</h3>
           {g.tareas.map(t => (
             <div key={t.id} className="task-line" data-late={g.id === "atrasadas" || undefined} data-done={t.status === "done" || undefined}>
               <input type="checkbox" checked={t.status === "done"} disabled={!puedeMarcar || pendiente === t.id} onChange={() => onToggle(t)} aria-label={`${t.status === "done" ? "Reabrir" : "Completar"} ${t.title}`} />
               <button type="button" className="task-line-main" onClick={() => onAbrir(t)} aria-haspopup="dialog">
                 <strong>{t.title}</strong>
-                <small>{t.trade}{t.assignee ? ` · ${t.assignee}` : " · sin asignar"}</small>
+                <small><span className="solo-escritorio-inline">{t.trade} · </span>{t.assignee || "Sin asignar"}<span className="solo-movil-inline"> · {t.status === "done" ? `Hecha, era el ${dateLabel(t.due_date)}` : g.id === "atrasadas" ? `Venció el ${dateLabel(t.due_date)}` : g.id === "hoy" ? "Hoy" : dateLabel(t.due_date)}</span></small>
               </button>
-              <span className="task-line-date">{dateLabel(t.due_date)}</span>
+              <span className="task-line-who">{t.trade}{t.assignee ? ` · ${t.assignee}` : ""}</span>
+              <span className="task-line-date" data-hoy={g.id === "hoy" || undefined}>{g.id === "hoy" ? "Hoy" : dateLabel(t.due_date)}</span>
               <span className="task-line-weight pl-mono" title="Cuánto cuenta en el avance">{t.weight} %</span>
             </div>
           ))}
         </section>
       ))}
+      {puedeCrear && approved && propuesta.length > 0 && <Button className="work-propose" onClick={abrirPropuesta} aria-haspopup="dialog"><Sparkles size={15} strokeWidth={1.7} aria-hidden="true" />Proponer desde las partidas aceptadas</Button>}
       <Modal open={proponiendo} onClose={() => setProponiendo(false)} title="Proponer tareas" footer={<><Button onClick={() => setProponiendo(false)} disabled={creando}>Cancelar</Button><Button variant="primary" onClick={crearPropuestas} disabled={!marcados.size || creando || busy}>{creando ? "Creando…" : `Crear ${marcados.size} ${marcados.size === 1 ? "tarea" : "tareas"}`}</Button></>}>
         <p className="text-sm" style={{ marginBottom: 10 }}>Una tarea por capítulo de la V{approved?.number} aceptada. Es una propuesta: marca las que quieras y luego ponles fecha y responsable. Lo que cuenta cada una sale del importe del capítulo.</p>
         <div className="proposal-list">{propuesta.map(p => (

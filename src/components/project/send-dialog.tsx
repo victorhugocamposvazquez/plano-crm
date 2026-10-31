@@ -55,7 +55,7 @@ export function SendDialog({ open, onClose, project, version, approved, previous
   );
 
   return (
-    <Modal open={open} onClose={cerrar} size="wide" title={`Enviar la V${version.number} al cliente`} footer={<><Button onClick={cerrar} disabled={enviando}>Cancelar</Button><Button variant="primary" data-accent="orange" onClick={enviar} disabled={!permitido || vacia || enviando || busy}>{enviando ? "Enviando…" : vias.find(v => v.id === via)?.id === "pdf" ? "Marcar como enviada" : `Enviar ${via === "whatsapp" ? "por WhatsApp" : "por correo"}`}</Button></>}>
+    <Modal open={open} onClose={cerrar} size="wide" title={`Enviar la V${version.number} al cliente`}>
       <div className="send-grid">
         <section className="send-doc" aria-label="Así le llega al cliente">
           <small>Presupuesto {project.code} · V{version.number}</small>
@@ -88,6 +88,7 @@ export function SendDialog({ open, onClose, project, version, approved, previous
           </div>
           {vacia && <p className="text-sm" role="alert" style={{ color: "var(--pl-danger)" }}>Añade al menos una partida con cantidad antes de enviar.</p>}
           {!permitido && <p className="muted text-sm">Tu perfil no puede enviar presupuestos.</p>}
+          <Button variant="primary" data-accent="orange" className="send-cta" onClick={enviar} disabled={!permitido || vacia || enviando || busy}>{enviando ? "Enviando…" : via === "pdf" ? "Marcar como enviada" : `Enviar ${via === "whatsapp" ? "por WhatsApp" : "por correo"}`}</Button>
         </div>
       </div>
     </Modal>

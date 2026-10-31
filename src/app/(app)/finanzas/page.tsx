@@ -67,7 +67,7 @@ export default function FinanzasPage() {
       </div>
 
       <div className="fin-controls">
-        <div className="pl-seg" role="group" aria-label="Periodo">{periodos.map(p => <button key={p.id} type="button" aria-pressed={periodo === p.id} onClick={() => { setPeriodo(p.id); setDesplazamiento(0); }}>{p.label}</button>)}</div>
+        <div className="pl-seg" role="group" aria-label="Periodo">{periodos.map(p => <button key={p.id} type="button" aria-pressed={periodo === p.id} onClick={() => { setPeriodo(p.id); setDesplazamiento(0); }}><span className="solo-escritorio-inline">{p.label}</span><span className="solo-movil-inline">{{ semana: "Sem.", mes: "Mes", trimestre: "Trim.", ano: "Año" }[p.id]}</span></button>)}</div>
         <div className="fin-nav">
           <button type="button" aria-label="Periodo anterior" onClick={() => setDesplazamiento(d => d - 1)}><ChevronLeft size={16} strokeWidth={1.8} aria-hidden="true" /></button>
           <strong aria-live="polite">{r.rango.etiqueta}</strong>

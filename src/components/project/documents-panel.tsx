@@ -1,6 +1,6 @@
 "use client";
-import { useMemo, useState, type ChangeEvent } from "react";
-import { FileText, Image as ImageIcon, Film, Upload, ArrowUpRight } from "lucide-react";
+import { useEffect, useMemo, useState, type ChangeEvent } from "react";
+import { FileText, Image as ImageIcon, Film, Upload } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
 import { Status } from "@/components/ui/status";
 import { Select } from "@/components/ui/select";
@@ -10,6 +10,25 @@ import { can, dateLabel, type Document, type Project } from "@/lib/domain";
 import { categoryNames, categoryOrder, acceptedTypes, maxBytes, formatSize, isImage, isVideo, checklist, groupByCategory, type Category } from "@/lib/documentos";
 
 const iconProps = { size: 19, strokeWidth: 1.55, "aria-hidden": true } as const;
+
+/** Miniatura de un archivo: la foto si es imagen, el icono de su tipo si no. */
+function DocTile({ doc, abriendo, onAbrir }: { doc: Document; abriendo: boolean; onAbrir: () => void }) {
+  const { fileUrl } = useWorkspace();
+  const [src, setSrc] = useState<string | null>(null);
+  useEffect(() => {
+    if (!isImage(doc)) return;
+    let activo = true;
+    fileUrl(doc).then(u => { if (activo) setSrc(u); }).catch(() => undefined);
+    return () => { activo = false; };
+  }, [doc.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  return (
+    <button type="button" className="doc-tile" onClick={onAbrir} disabled={abriendo} aria-label={`Abrir ${doc.name}`}>
+      <span className="doc-tile-image">{src ? <img src={src} alt="" /> : isVideo(doc) ? <Film size={26} strokeWidth={1.4} aria-hidden="true" /> : isImage(doc) ? <ImageIcon size={26} strokeWidth={1.4} aria-hidden="true" /> : <FileText size={26} strokeWidth={1.4} aria-hidden="true" />}</span>
+      <span className="doc-tile-name">{doc.name}</span>
+      <small>{formatSize(doc.size_bytes)} · {dateLabel(doc.created_at)}</small>
+    </button>
+  );
+}
 
 /** Documentos del expediente: lista de comprobación por tipo de proyecto, subida por categoría y apertura con enlace firmado. */
 export function DocumentsPanel({ project, documents }: { project: Project; documents: Document[] }) {
@@ -53,21 +72,15 @@ export function DocumentsPanel({ project, documents }: { project: Project; docum
 
   return (
     <section className="project-documents" aria-label="Archivos del proyecto">
-      <header className="pl-head">{documents.length === 0 ? <strong className="panel-title">Planos y fotos</strong> : <div className="pl-seg" role="group" aria-label="Filtrar archivos"><button type="button" aria-pressed={!filtro} onClick={() => setFiltro("")}>Todo {documents.length}</button>{[...groups.entries()].map(([cat, list]) => <button key={cat} type="button" aria-pressed={filtro === cat} onClick={() => setFiltro(cat)}>{categoryNames[cat]} {list.length}</button>)}</div>}{allowed && <Button variant="primary" onClick={() => setAttaching(true)} aria-haspopup="dialog"><Upload {...iconProps}/>Subir</Button>}</header>
+      <header className="docs-head">{documents.length === 0 ? <strong className="panel-title">Planos y fotos</strong> : <div className="docs-chips" role="group" aria-label="Filtrar archivos"><button type="button" className="search-chip" data-active={!filtro || undefined} aria-pressed={!filtro} onClick={() => setFiltro("")}>Todo {documents.length}</button>{[...groups.entries()].map(([cat, list]) => <button key={cat} type="button" className="search-chip" data-active={filtro === cat || undefined} aria-pressed={filtro === cat} onClick={() => setFiltro(cat)}>{categoryNames[cat]} {list.length}</button>)}</div>}{allowed && <Button variant="primary" onClick={() => setAttaching(true)} aria-haspopup="dialog"><Upload {...iconProps}/>Subir</Button>}</header>
 
       {documents.length === 0 && <div className="documents-empty"><FileText size={28} strokeWidth={1.3} aria-hidden="true"/><strong>Aún no hay archivos</strong><p className="muted">{allowed ? "Pulsa Subir, elige qué vas a subir y selecciona los archivos." : "Los archivos que adjunte el equipo aparecerán aquí."}</p></div>}
 
       {visibles.map(([cat, list]) => (
         <section key={cat} className="document-group" aria-label={categoryNames[cat]}>
-          <div className="section-label"><span>{categoryNames[cat]}</span><span className="pl-mono">{list.length}</span></div>
-          <div style={{ borderTop: "var(--pl-hairline) solid var(--pl-line)" }}>
-            {list.map(doc => (
-              <button key={doc.id} type="button" className="row-doc doc-row" onClick={() => open(doc)} disabled={opening === doc.id} aria-label={`Abrir ${doc.name}`}>
-                <span className="muted">{isImage(doc) ? <ImageIcon {...iconProps} /> : isVideo(doc) ? <Film {...iconProps} /> : <FileText {...iconProps} />}</span>
-                <span style={{ minWidth: 0, flex: 1, textAlign: "left" }}><span style={{ display: "block", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{doc.name}</span><small>{formatSize(doc.size_bytes)} · {dateLabel(doc.created_at)}</small></span>
-                <ArrowUpRight size={15} strokeWidth={1.6} aria-hidden="true" className="muted" />
-              </button>
-            ))}
+          <h3 className="docs-group-title">{categoryNames[cat]}</h3>
+          <div className="docs-grid" data-cat={cat}>
+            {list.map(doc => <DocTile key={doc.id} doc={doc} abriendo={opening === doc.id} onAbrir={() => open(doc)} />)}
           </div>
         </section>
       ))}

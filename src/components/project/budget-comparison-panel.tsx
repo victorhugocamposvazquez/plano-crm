@@ -1,10 +1,10 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { useWorkspace } from "@/components/workspace-provider";
 import type { BudgetItemEdit, BudgetVersion } from "@/lib/domain";
 import { BudgetComparison } from "./budget-comparison";
 
-export function BudgetComparisonPanel({ before, after }: { before: BudgetVersion; after: BudgetVersion }) {
+export function BudgetComparisonPanel({ before, after, cabecera, pie }: { before: BudgetVersion; after: BudgetVersion; cabecera?: ReactNode; pie?: ReactNode }) {
   const { data, mode } = useWorkspace();
   const [result, setResult] = useState<{ key: string; edits: BudgetItemEdit[]; status: "ready" | "unavailable" | "error" }>();
   const key = `${after.id}:${after.draft_revision}`;
@@ -21,5 +21,5 @@ export function BudgetComparisonPanel({ before, after }: { before: BudgetVersion
   }, [mode, key, after.id, after.budget_id, after.draft_revision]);
   const edits = mode === "demo" ? (data.budget_item_events ?? []).filter(edit => edit.version_id === after.id) : result?.key === key ? result.edits : [];
   const status = mode === "demo" ? "ready" : result?.key === key ? result.status : "loading";
-  return <BudgetComparison before={before} after={after} edits={edits} editStatus={status}/>;
+  return <BudgetComparison before={before} after={after} edits={edits} editStatus={status} cabecera={cabecera} pie={pie}/>;
 }

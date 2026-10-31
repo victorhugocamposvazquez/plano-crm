@@ -32,3 +32,16 @@ Lista de datos necesarios para completar lo pendiente: `docs/PREGUNTAS.md`, entr
 Secciones que dejan el menú: Presupuestos, Compras y Documentos. En móvil, Clientes, Catálogo y Finanzas pasan a Más. Viven en cada proyecto y sus vistas de todos los proyectos siguen accesibles desde Ajustes y Más.
 
 Comprobación: `npm run check` y el recorrido `tests/usabilidad/presupuesto.browser-check.cjs` en modo demostración.
+
+## Segunda pasada de fidelidad (31 oct 2026)
+
+Móvil y escritorio se han comparado pantalla a pantalla con los prototipos. Quedan distintos, a propósito, porque el dato no existe y no se simula:
+
+- Agenda: sin rejilla por horas ni tipos de evento; las tareas solo tienen fecha.
+- Partidas: sin columna «De dónde sale»; la partida no guarda su origen.
+- Catálogo: sin fotos, stock ni proveedor por artículo.
+- Cliente: sin «Llamar» ni teléfono o NIF; no hay ficha propia de cliente.
+- Presupuesto: sin «Descartar este borrador», porque no hay comando para ello.
+- Chat: sin citas ni marcas de leído.
+
+«Editar partidas» sigue en la columna derecha aunque el prototipo no lo muestra: es la entrada real a la edición. En «Ver qué cambia» se mantiene el detalle de antes y después, plegado, para conservar las fechas de edición.
