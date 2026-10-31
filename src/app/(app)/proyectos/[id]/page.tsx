@@ -1,50 +1,53 @@
 "use client";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useParams, useSearchParams } from "next/navigation";
-import { MessageSquare, Plus, Check } from "lucide-react";
+import Link from "next/link";
+import { Check, ChevronLeft, ChevronRight, Euro, Image as ImageIcon, MessageCircle, MessageSquare, Package, Plus, Receipt, Users } from "lucide-react";
 import { Drawer } from "@/components/ui/drawer";
 import { BackLink } from "@/components/ui/back-link";
-import { TaskRow } from "@/components/project/task-row";
 import { TaskDialog } from "@/components/project/task-dialog";
 import { useQueryPatch } from "@/lib/use-query-state";
 import { useWorkspace } from "@/components/workspace-provider";
 import { Tabs } from "@/components/ui/tabs";
 import { Button, LinkButton } from "@/components/ui/button";
-import { Meter, progressTone, type Tone } from "@/components/ui/status";
+import { Meter, progressTone } from "@/components/ui/status";
 import { localDate } from "@/lib/hoy";
 import { DocumentsPanel } from "@/components/project/documents-panel";
 import { ChatPanel } from "@/components/project/chat-panel";
 import { PurchasesPanel } from "@/components/project/purchases-panel";
 import { BudgetEditor } from "@/components/project/budget-editor";
 import { BudgetWorkspace } from "@/components/project/budget-workspace";
-import { BudgetVersionIdentity } from "@/components/project/budget-version-identity";
+import { CobrosPanel } from "@/components/project/cobros-panel";
 import { ProjectMenu } from "@/components/project/project-menu";
-import { NextStep } from "@/components/project/next-step";
+import { ProjectStepper } from "@/components/project/project-stepper";
+import { ResponseDialog } from "@/components/project/response-dialog";
+import { SendDialog } from "@/components/project/send-dialog";
+import { WorkPanel } from "@/components/project/work-panel";
 import { AddToBudget } from "@/components/plan/add-to-budget";
-import { BudgetDoors } from "@/components/plan/budget-doors";
 import { cargarBorrador } from "@/lib/plano-flujo";
-import { budgetHistory, versionTimestamp } from "@/lib/budget-history";
-import { siguientePaso, type TipoAccion } from "@/lib/siguiente-paso";
-import { projectProgress, projectStatus, money, totals, dateLabel, kindNames, can, type Task, type Command } from "@/lib/domain";
+import { budgetHistory, versionState } from "@/lib/budget-history";
+import { marcarVisto, sinLeerPorProyecto } from "@/lib/chat-visto";
+import { pasoVisible, type TipoAccion } from "@/lib/siguiente-paso";
+import { pasoDe, pasos, quienActua, quienEtiqueta, textoMovimiento } from "@/lib/pasos";
+import { projectProgress, projectStatus, money, totals, dateLabel, kindNames, can, purchaseStatus, type Task, type Command } from "@/lib/domain";
 import "@/styles/project-workspace.css";
 
-type Section = "overview" | "budget" | "work" | "documents" | "purchases";
-const sections:Section[]=["overview","budget","work","documents","purchases"];
+type Section = "overview" | "budget" | "work" | "purchases" | "documents" | "cobros";
+const sections:Section[]=["overview","budget","work","purchases","documents","cobros"];
 const subscribe=()=>()=>{},clientSnapshot=()=>true,serverSnapshot=()=>false;
-const signed=(value:number)=>`${value<0?"−":"+"}${money(Math.abs(value))}`;
-/** Tono del chip de fase: el mismo que `ProjectStatus` (docs/sistema-diseno.md §7). */
-const faseTone=(status:keyof typeof projectStatus):Tone=>status==="active"?"info":status==="completed"?"success":"muted";
+const haceDias=(iso:string)=>{const d=Math.round((Date.now()-new Date(iso).getTime())/864e5);return d<=0?"hoy":d===1?"hace 1 día":`hace ${d} días`;};
 
-export default function ObraPage() {
+export default function ProyectoPage() {
   const hydrated=useSyncExternalStore(subscribe,clientSnapshot,serverSnapshot);
   const {id}=useParams<{id:string}>(),params=useSearchParams(),navigate=useQueryPatch();
   const {data,loading,actor,busy,send,notify}=useWorkspace();
   const requested=params.get("s") as Section|null;
   const section:Section=requested && sections.includes(requested)?requested:params.get("editar")==="1"?"budget":"overview";
-  const selectSection=(s:Section)=>navigate({s:s==="overview"?null:s,editar:null});
-  const budgetId=params.get("p"),chatAbierto=params.get("chat")==="1";
+  const selectSection=(s:Section)=>navigate({s:s==="overview"?null:s,editar:null,accion:null});
+  const budgetId=params.get("p"),chatAbierto=params.get("chat")==="1",accion=params.get("accion");
   const [abierta,setAbierta]=useState<Task|null>(null),[pendingTask,setPendingTask]=useState<string|null>(null);
   const [solicitud,setSolicitud]=useState<"tarea"|"certificacion"|"estado"|null>(null);
+  const [cobroSugerido,setCobroSugerido]=useState<{title:string;amount:number}|null>(null);
   const [creatingBudget,setCreatingBudget]=useState(false),[borradorPlano,setBorradorPlano]=useState(false);
   const project=data.projects.find(p=>p.id===id),canBudget=can(actor.role,"budget.create"),canToggle=can(actor.role,"task.toggle");
   const budgets=useMemo(()=>data.budgets.filter(b=>b.project_id===id).sort((a,b)=>a.created_at.localeCompare(b.created_at)),[data.budgets,id]);
@@ -54,6 +57,10 @@ export default function ObraPage() {
   const editable=working?.status==="draft"?working:undefined;
   const editando=params.get("editar")==="1" && Boolean(editable) && can(actor.role,"budget.save");
   useEffect(()=>{setBorradorPlano(Boolean(cargarBorrador(id)));},[id]);
+  const mensajes=data.messages.filter(m=>m.project_id===id);
+  useEffect(()=>{if(chatAbierto)marcarVisto(id);},[chatAbierto,id,mensajes.length]);
+  const [sinLeerChat,setSinLeerChat]=useState(0);
+  useEffect(()=>{const contar=()=>setSinLeerChat(sinLeerPorProyecto(data.messages,actor.name).get(id) ?? 0);contar();window.addEventListener("plano:chat-visto",contar);return()=>window.removeEventListener("plano:chat-visto",contar);},[data.messages,actor.name,id]);
   const editBudget=()=>{if(editable)navigate({s:"budget",v:editable.id,vista:"items",editar:"1"});};
 
   async function crearPresupuesto() {
@@ -75,43 +82,45 @@ export default function ObraPage() {
     catch(error){notify(error instanceof Error?error.message:"No se ha podido actualizar la tarea.");}
     finally{setPendingTask(null);}
   }
+  async function moverAManana(task:Task) {
+    const siguiente=new Date(`${localDate()}T12:00:00`);siguiente.setDate(siguiente.getDate()+1);
+    try{await send({type:"task.update",id:task.id,due_date:localDate(siguiente)});notify(`«${task.title}» pasa a mañana`,{label:"Deshacer",run:()=>send({type:"task.update",id:task.id,due_date:task.due_date})});}
+    catch(error){notify(error instanceof Error?error.message:"No se ha podido mover la tarea.");}
+  }
   async function cambiarFase(status:"planning"|"active"|"completed",aviso:string) {
     if(!project || busy)return;
     try{await send({type:"project.status",id:project.id,status});notify(aviso);}
     catch(error){notify(error instanceof Error?error.message:"No se ha podido cambiar la fase.");}
   }
-  const paso=project?siguientePaso(data,project):null;
+  const paso=project?pasoVisible(data,project,localDate()):null;
   const commandFor:Partial<Record<TipoAccion,Command["type"]>>={presupuesto:"budget.create",editar:"budget.save",cerrar:"budget.issue",aprobar:"budget.approve",planificar:"project.status","iniciar-obra":"project.status",finalizar:"project.status",tareas:"task.create",certificar:"certification.create"};
   const puedePaso=paso?(!commandFor[paso.accion] || can(actor.role,commandFor[paso.accion]!)):false;
+  function prepararCobro(sugerido?:{title:string;amount:number}) {setCobroSugerido(sugerido ?? null);setSolicitud("certificacion");}
   function accionPaso(tipo:TipoAccion) {
     if(!puedePaso)return;
     if(tipo==="presupuesto"){void crearPresupuesto();return;}
     if(tipo==="editar" || tipo==="cerrar" || tipo==="aprobar"){
       const target=budgets.find(b=>b.id===paso?.budget_id) ?? budget;
       const h=target?budgetHistory(target,data.versions):null;
-      navigate({s:"budget",p:target?.id,v:h?.current?.id,vista:"items",editar:tipo==="editar" && h?.working?.status==="draft"?"1":null});return;
+      navigate({s:"budget",p:target?.id,v:h?.current?.id,vista:"items",editar:tipo==="editar" && h?.working?.status==="draft"?"1":null,accion:tipo==="cerrar"?"enviar":tipo==="aprobar"?"respuesta":null});return;
     }
     if(tipo==="planificar"){void cambiarFase("planning","Proyecto en planificación");return;}
     if(tipo==="iniciar-obra"){void cambiarFase("active","Proyecto en obra");return;}
-    if(tipo==="finalizar"){void cambiarFase("completed","Proyecto finalizado");return;}
+    if(tipo==="finalizar"){void cambiarFase("completed","Proyecto entregado");return;}
     if(tipo==="tareas"){setSolicitud("tarea");return;}
-    if(tipo==="certificar"){setSolicitud("certificacion");return;}
+    if(tipo==="certificar"){selectSection("cobros");return;}
     if(tipo==="tarea" && paso?.tarea)setAbierta(paso.tarea);
   }
   const tasks=data.tasks.filter(t=>t.project_id===id).sort((a,b)=>a.due_date.localeCompare(b.due_date));
   const pendingTasks=tasks.filter(t=>t.status==="pending"),doneTasks=tasks.filter(t=>t.status==="done");
-  const documents=data.documents.filter(d=>d.project_id===id),messages=data.messages.filter(m=>m.project_id===id),purchases=data.purchases.filter(p=>p.project_id===id);
+  const documents=data.documents.filter(d=>d.project_id===id),purchases=data.purchases.filter(p=>p.project_id===id),cobros=data.certifications.filter(c=>c.project_id===id);
   const activities=data.activities.filter(a=>a.project_id===id);
-  const approvedProjectBase=budgets.reduce((sum,b)=>{const v=budgetHistory(b,data.versions).approved;return sum+(v?totals(v.items).base:0);},0);
-  const certificationsDraft=data.certifications.filter(c=>c.project_id===id).reduce((sum,c)=>sum+c.amount,0);
   if(!hydrated || loading)return <p className="muted">Cargando el proyecto…</p>;
   if(!project)return <div className="empty"><strong>Proyecto no encontrado</strong><LinkButton href="/proyectos" variant="ghost">Volver a proyectos</LinkButton></div>;
-  const progress=projectProgress(data,project.id),meterTone=progressTone({overdue:pendingTasks.filter(t=>t.due_date<localDate()).length,done:project.status==="completed" || progress>=100});
+  const hoy=localDate();
+  const progress=projectProgress(data,project.id),meterTone=progressTone({overdue:pendingTasks.filter(t=>t.due_date<hoy).length,done:project.status==="completed" || progress>=100});
   const planoHref=`/proyectos/${project.id}/plano${budget?`?p=${budget.id}`:""}`,fotosHref=`/proyectos/nueva?proyecto=${project.id}`;
   const aMano=()=>{if(!budget)void crearPresupuesto();else if(editable)editBudget();else{navigate({s:"budget",vista:"items",v:current?.id});}};
-  const add=<AddToBudget planoHref={planoHref} visitaHref={fotosHref} haPresupuesto={budgets.length>0} borradorPlano={borradorPlano} onManual={aMano}/>;
-  const taskRows=(rows:Task[])=>rows.map(task=><TaskRow key={task.id} task={task} canToggle={canToggle} pending={pendingTask===task.id} showDate compact onToggle={toggleTask} onOpen={setAbierta}/>);
-  // Antes de la obra, la tarjeta de avance no dice nada («0 de 0 tareas»): en su lugar, qué falta para poder presupuestar.
   const enObra=project.status==="planning" || project.status==="active" || project.status==="completed" || tasks.length>0;
   const fotosVisita=documents.filter(d=>d.category==="before").length;
   const requisitos=[
@@ -121,66 +130,143 @@ export default function ObraPage() {
     {id:"presupuesto",label:"Presupuesto abierto",hint:budgets.length?(budgets.length===1?"1 presupuesto":`${budgets.length} presupuestos`):"A mano, desde un plano o desde fotos",done:budgets.length>0}
   ];
   const puedeFase=can(actor.role,"project.status");
+  const quien=quienActua(data,project,hoy),etiqueta=quienEtiqueta[quien];
+  const baseAceptada=approved?totals(approved.items).base:0,preparado=cobros.reduce((s,c)=>s+c.amount,0);
+  const sinPedir=purchases.filter(p=>p.status==="planned").length,esperando=purchases.filter(p=>p.status==="ordered"),enObraMat=purchases.filter(p=>p.status==="delivered").length;
+  const materialTitulo=!purchases.length?"Sin materiales":esperando.length?"Esperando proveedor":sinPedir?`${sinPedir} por pedir`:enObraMat===purchases.length?"Todo en obra":purchaseStatus.received;
+  const materialDetalle=esperando[0]?`${esperando[0].name} · llegan ${esperando[0].received_quantity} de ${esperando[0].quantity} ${esperando[0].unit}`:purchases.length?`${purchases.length} material${purchases.length===1?"":"es"} en la lista`:"Salen de las partidas aceptadas";
+  const tocaHoy=pendingTasks.find(t=>t.due_date<=hoy);
+  const enviada=history?.working?.status==="issued"?history.working:undefined;
+  const recordatorio=enviada?`Hola. ¿Has podido ver el presupuesto de ${project.name} (V${enviada.number}, ${money(totals(enviada.items).total)} con IVA)? Dime si tienes cualquier duda.`:"";
+  const verSiguiente=paso && paso.accion!=="ninguna";
+  const shownParam=history?.versions.find(v=>v.id===params.get("v"));
+  // Tras enviarla sigue siendo la misma versión: el diálogo necesita seguir montado para enseñar el último paso.
+  const versionEnviar=shownParam ?? working;
+  const anteriorEnviada=history?.versions.find(v=>v.status==="issued" && (!approved || v.number>approved.number) && v.id!==versionEnviar?.id);
 
-  return <div className="page project-workspace">
-    <header className="project-head">
+  return <div className="page project-workspace" data-seccion={section}>
+    <button type="button" className="phone-back ficha-subback" onClick={()=>selectSection("overview")}><ChevronLeft size={18} strokeWidth={1.8} aria-hidden="true"/>{project.name}</button>
+    <header className="ficha-head">
       <BackLink fallback="/proyectos" compact>Proyectos</BackLink>
-      <div className="project-head-text">
-        <h1 className="h1">{project.name}</h1>
-        <p className="subtitle"><span className="pl-mono">{project.code}</span>{[project.client_name,project.location].filter(Boolean).map(t=><span key={t}> · {t}</span>)}</p>
+      <div className="ficha-title">
+        <div className="ficha-name"><h1 className="pl-title">{project.name}</h1><span className="kind-tag">{kindNames[project.kind]}</span></div>
+        <p className="pl-sub">{[project.client_name,project.location,project.code].filter(Boolean).join(" · ")}</p>
+        <ol className="step-bars" aria-label="Camino del proyecto">{pasos.map((p,i)=>{const actual=pasos.findIndex(x=>x.id===pasoDe(project.status));return <li key={p.id} data-state={project.status==="completed" || i<actual?"done":i===actual?"current":"todo"}>{p.label}</li>;})}</ol>
       </div>
-      <button type="button" className="pill project-phase" data-tone={faseTone(project.status)} aria-haspopup="dialog" title={puedeFase?"Cambiar de fase":"Fase del proyecto"} disabled={!puedeFase} onClick={()=>setSolicitud("estado")}>{projectStatus[project.status]}</button>
-      <div className="head-actions">
-        {canBudget && <BudgetDoors planoHref={planoHref} fotosHref={fotosHref} onManual={aMano}/>}
-        <Button variant="secondary" className="chat-launcher" onClick={()=>navigate({chat:"1"})} aria-haspopup="dialog" aria-expanded={chatAbierto} aria-label="Chat del proyecto"><MessageSquare size={17} aria-hidden="true"/><span className="chat-launcher-text">Chat</span></Button>
-        <ProjectMenu project={project} approvedVersion={approved} puedeEstimar={canBudget} onChat={()=>navigate({chat:"1"})} solicitud={solicitud} onAtendida={()=>setSolicitud(null)} planoHref={planoHref} fotosHref={fotosHref} onManual={aMano} borrador={editable}/>
+      <div className="ficha-tools">
+        <ProjectStepper status={project.status} progress={progress} onCambiar={puedeFase?()=>setSolicitud("estado"):undefined}/>
+        <button type="button" className="pill ficha-phase" data-tone={project.status==="completed"?"success":pasoDe(project.status)==="obra"?"info":"muted"} disabled={!puedeFase} aria-haspopup="dialog" aria-label={`Fase del proyecto: ${projectStatus[project.status]}. Cambiar de fase`} onClick={()=>setSolicitud("estado")}>{pasos.find(p=>p.id===pasoDe(project.status))?.label}</button>
+        <ProjectMenu project={project} approvedVersion={approved} puedeEstimar={canBudget} onChat={()=>navigate({chat:"1"})} solicitud={solicitud} onAtendida={()=>setSolicitud(null)} planoHref={planoHref} fotosHref={fotosHref} onManual={aMano} borrador={editable} cobroSugerido={cobroSugerido}/>
       </div>
     </header>
-    <Tabs label="Secciones del proyecto" value={section} onChange={selectSection} options={[{id:"overview",label:"Resumen"},{id:"budget",label:"Presupuesto"},{id:"work",label:"Obra"},{id:"documents",label:"Documentos"},{id:"purchases",label:"Compras"}]}/>
+    <Tabs label="Secciones del proyecto" value={section} onChange={selectSection} options={[
+      {id:"overview",label:"Resumen"},
+      {id:"budget",label:"Presupuesto",dot:working?.status==="draft"?"warning":working?.status==="issued"?"info":undefined},
+      {id:"work",label:"Obra",hint:enObra?`${progress} %`:undefined,dot:pendingTasks.some(t=>t.due_date<hoy)?"danger":undefined},
+      {id:"purchases",label:"Materiales",dot:esperando.length?"info":sinPedir?"warning":undefined},
+      {id:"documents",label:"Planos y fotos",hint:documents.length?String(documents.length):undefined},
+      {id:"cobros",label:"Cobros"}
+    ]}/>
 
-    {section==="overview" && <section className="project-overview" aria-label="Resumen del proyecto">
-      {paso && <NextStep paso={paso} busy={busy} allowed={puedePaso} compact onAccion={accionPaso}/>}
-      <div className="project-overview-grid">
+    {section==="overview" && <section className="ficha-resumen ficha-enter" aria-label="Resumen del proyecto">
+      {verSiguiente && paso && <section className="first-card" data-tone={etiqueta.tone==="success"?"warning":etiqueta.tone} aria-label="Siguiente paso">
+        <div className="first-card-kicker kicker-split"><span>Siguiente paso · {quien==="cliente"?"en manos del cliente":quien==="atrasado"?"va atrasado":"te toca a ti"}</span>{enviada && <span>{haceDias(enviada.updated_at)}</span>}</div>
+        <div className="first-card-body">
+          <div><strong>{paso.titulo}</strong><p>{enviada && approved && enviada.id!==approved.id?<><span className="pl-mono">{money(totals(enviada.items).total)}</span> con IVA · {totals(enviada.items).total>=totals(approved.items).total?"sube":"baja"} <span className="pl-mono">{money(Math.abs(totals(enviada.items).total-totals(approved.items).total))}</span> sobre lo aceptado. </>:null}{paso.detalle}</p></div>
+          <div className="first-card-actions">
+            {enviada && paso.accion==="aprobar" && <a className="btn btn-secondary" href={`https://wa.me/?text=${encodeURIComponent(recordatorio)}`} target="_blank" rel="noopener"><MessageCircle size={16} strokeWidth={1.7} aria-hidden="true"/>Recordar por WhatsApp</a>}
+            {puedePaso ? <Button variant="primary" data-accent="orange" disabled={busy} onClick={()=>accionPaso(paso.accion)}>{paso.label}</Button> : <span className="muted text-sm">Lo completa otro perfil.</span>}
+          </div>
+        </div>
+      </section>}
+      <nav className="pl-card ficha-list" aria-label="Apartados del proyecto">
+        {[
+          {id:"budget" as const,icon:Euro,tone:"warning",label:"Presupuesto",hint:current?`V${current.number} · ${versionState(current,approved?.id)} · ${history?.versions.length} ${history?.versions.length===1?"versión":"versiones"}`:"Todavía no hay",valor:current?money(totals(current.items).total):"",actual:Boolean(current)},
+          {id:"work" as const,icon:Check,tone:"success",label:"Obra",hint:`${progress} % · ${doneTasks.length} de ${tasks.length} tareas hechas`},
+          {id:"purchases" as const,icon:Package,tone:"danger",label:"Materiales",hint:materialDetalle},
+          {id:"documents" as const,icon:ImageIcon,tone:"muted",label:"Planos y fotos",hint:documents.length?`${documents.length} archivo${documents.length===1?"":"s"}`:"Sin archivos"},
+          {id:"cobros" as const,icon:Receipt,tone:"info",label:"Cobros",hint:approved?`Preparados · puedes cobrar hasta el ${progress} %`:"Cuando el cliente acepte",valor:approved?money(preparado):""}
+        ].map(a=>{const Icon=a.icon;return <button key={a.id} type="button" className="ficha-list-row" onClick={()=>selectSection(a.id)}>
+          <span className="ficha-list-icon" data-tone={a.tone}><Icon size={17} strokeWidth={1.8} aria-hidden="true"/></span>
+          <span className="ficha-list-text"><strong>{a.label}{a.actual && <span className="pulse-dot" aria-hidden="true"/>}</strong><small>{a.hint}</small></span>
+          {a.valor && <span className="pl-mono ficha-list-value">{a.valor}</span>}
+          <ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" className="muted"/>
+        </button>;})}
+        <Link href={`/clientes/${encodeURIComponent(project.client_name.normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().trim())}`} className="ficha-list-row">
+          <span className="ficha-list-icon" data-tone="info"><Users size={17} strokeWidth={1.8} aria-hidden="true"/></span>
+          <span className="ficha-list-text"><strong>Cliente</strong><small>{project.client_name}</small></span>
+          <ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" className="muted"/>
+        </Link>
+      </nav>
+      <div className="ficha-cards">
+        <button type="button" className="pl-card ficha-card" onClick={()=>selectSection("budget")} aria-label={current?`Presupuesto: ${money(totals((approved??current).items).total)} con IVA. Ver presupuesto y versiones`:"Presupuesto: todavía no hay. Ver opciones para presupuestar"}>
+          <span>Presupuesto</span>
+          {current ? <>
+            <strong className="pl-mono">{money(totals((approved??current).items).total)}</strong>
+            <span className="ficha-card-chips">
+              {approved && <span className="mini-chip" data-tone="success">Aceptado V{approved.number}</span>}
+              {history?.versions.filter(v=>v.status==="issued" && v.id===working?.id).map(v=><span key={v.id} className="mini-chip" data-tone="info">Enviado V{v.number}</span>)}
+              {editable && <span className="mini-chip" data-tone="warning">Borrador V{editable.number}</span>}
+            </span>
+          </> : <><strong className="ficha-card-text">Todavía no hay</strong><small>Ver opciones para presupuestar</small></>}
+        </button>
         {enObra
-          ? <button type="button" className="workspace-card overview-card overview-card-work" onClick={()=>selectSection("work")} aria-label={`Obra: ${progress} % · ${doneTasks.length} de ${tasks.length} tareas hechas. Ver tareas y avance`}>
-              <span className="overview-kicker"><span>Obra</span><span className="status" data-tone={faseTone(project.status)}>{projectStatus[project.status]}</span></span>
-              <strong className="overview-figure pl-mono">{progress} %</strong>
+          ? <button type="button" className="pl-card ficha-card" onClick={()=>selectSection("work")} aria-label={`Obra: ${progress} %, ${doneTasks.length} de ${tasks.length} tareas hechas. Ver tareas y avance`}>
+              <span>Obra</span>
+              <strong className="pl-mono">{progress} %</strong>
               <Meter value={progress} label={`Avance de ${project.name}`} tone={meterTone}/>
-              <span className="muted text-sm">{doneTasks.length} de {tasks.length} tareas hechas</span>
+              <small>{doneTasks.length} de {tasks.length} tareas{pendingTasks[0]?` · siguiente ${pendingTasks[0].due_date===hoy?"hoy":dateLabel(pendingTasks[0].due_date)}`:""}</small>
             </button>
-          : <section className="workspace-card overview-card" aria-labelledby="para-presupuestar">
-              <span className="overview-kicker"><span id="para-presupuestar">Para poder presupuestar</span><span className="muted">{requisitos.filter(r=>r.done).length} de {requisitos.length}</span></span>
+          : <section className="pl-card ficha-card ficha-check" aria-labelledby="para-presupuestar">
+              <span id="para-presupuestar">Para poder presupuestar · {requisitos.filter(r=>r.done).length} de {requisitos.length}</span>
               <ul className="overview-checklist">{requisitos.map(r=><li key={r.id} data-done={r.done}><span className="overview-check" aria-hidden="true">{r.done && <Check size={12} strokeWidth={2.6}/>}</span><span><span>{r.label}</span><small className="muted">{r.hint}</small></span></li>)}</ul>
             </section>}
-        <button type="button" className="workspace-card overview-card overview-card-budget" onClick={()=>selectSection("budget")} aria-label={current?`Presupuesto: ${money(totals(current.items).total)} con IVA. Ver presupuesto y versiones`:"Presupuesto: todavía no hay. Ver opciones para presupuestar"}>
-          <span className="overview-kicker"><span>Presupuesto actual</span>{budgets.length>1 && <span className="muted">{budgets.length} presupuestos</span>}</span>
-          {current ? <>
-            <BudgetVersionIdentity version={current} currentId={current.id} approvedId={approved?.id} showUpdated/>
-            <strong className="overview-figure pl-mono">{money(totals(current.items).total)}<small>con IVA</small></strong>
-            {approved && working && <span className="budget-approved-reference"><span>Para ejecutar la obra se usa</span><strong>V{approved.number} · Aprobada para obra</strong><span><span className="pl-mono">{money(totals(approved.items).total)}</span> con IVA</span>{approved.approved_at && <span>Aprobada <time dateTime={approved.approved_at}>{versionTimestamp(approved.approved_at)}</time></span>}<span>La V{working.number} supone {signed(totals(working.items).total-totals(approved.items).total)} con IVA respecto a V{approved.number}.</span></span>}
-            {!approved && <span className="budget-current-note">Todavía no hay una versión aprobada para obra.</span>}
-          </> : <>
-            <span className="overview-empty">Todavía no hay presupuesto</span>
-            <span className="link-inline">Ver opciones para presupuestar</span>
-          </>}
+        <button type="button" className="pl-card ficha-card" onClick={()=>selectSection("purchases")} aria-label={`Materiales: ${materialTitulo}. Ver materiales`}>
+          <span>Materiales</span>
+          <strong className="ficha-card-text" data-tone={esperando.length?"info":undefined}>{materialTitulo}</strong>
+          <small>{materialDetalle}</small>
+        </button>
+        <button type="button" className="pl-card ficha-card" onClick={()=>selectSection("cobros")} aria-label={`Cobros: ${money(preparado)} preparados. Ver cobros`}>
+          <span>Cobros</span>
+          <strong className="pl-mono">{money(preparado)}</strong>
+          <small>{approved?<>de <span className="pl-mono">{money(baseAceptada)}</span> sin IVA · puedes cobrar hasta el {progress} %</>:"Cuando el cliente acepte el presupuesto"}</small>
         </button>
       </div>
-      {pendingTasks.length>0 && <section className="workspace-card"><header><h2>Próximas tareas</h2><span className="muted text-sm">{pendingTasks.length} pendientes</span></header><div>{taskRows(pendingTasks.slice(0,3))}</div>{pendingTasks.length>3 && <Button variant="ghost" onClick={()=>selectSection("work")}>Ver las {pendingTasks.length} pendientes</Button>}</section>}
-      {activities.length>0 && <details className="budget-notes"><summary>Actividad reciente del proyecto</summary>{activities.slice(0,5).map(a=><div className="row-doc" key={a.id}><span>{a.text}<small>{a.actor_name} · {dateLabel(a.created_at)}</small></span></div>)}</details>}
+      <div className="ficha-two">
+        {tocaHoy
+          ? <section className="pl-card today-task" data-late={tocaHoy.due_date<hoy||undefined} aria-label="Lo de hoy">
+              <div className="today-task-head"><strong>{tocaHoy.due_date<hoy?`Atrasada desde el ${dateLabel(tocaHoy.due_date)}`:"Hoy · te toca a ti"}</strong><span>cuenta un {tocaHoy.weight} %</span></div>
+              <button type="button" className="today-task-title" onClick={()=>setAbierta(tocaHoy)} aria-haspopup="dialog">{tocaHoy.title}</button>
+              <div className="today-task-actions">
+                {canToggle && <Button disabled={busy} onClick={()=>toggleTask(tocaHoy)}><Check size={15} strokeWidth={2} aria-hidden="true"/>Hecha</Button>}
+                {can(actor.role,"task.update") && <Button disabled={busy} onClick={()=>moverAManana(tocaHoy)}>Mañana</Button>}
+              </div>
+            </section>
+          : <section className="pl-card today-task" aria-label="Tareas"><div className="today-task-head"><strong>Tareas</strong></div><p className="muted text-sm" style={{margin:0}}>{pendingTasks.length?`La siguiente es «${pendingTasks[0].title}», el ${dateLabel(pendingTasks[0].due_date)}.`:"No hay tareas pendientes."}</p>{can(actor.role,"task.create") && <div className="today-task-actions"><Button onClick={()=>setSolicitud("tarea")}><Plus size={15} strokeWidth={1.8} aria-hidden="true"/>Nueva tarea</Button></div>}</section>}
+        <section className="pl-card moves" aria-label="Últimos movimientos">
+          <strong>Últimos movimientos</strong>
+          {activities.length===0 && <p className="muted text-sm">Aún no hay movimientos.</p>}
+          {activities.slice(0,4).map(a=><p key={a.id}><span>{dateLabel(a.created_at)}</span> · {a.actor_name} · {textoMovimiento(a.text)}</p>)}
+        </section>
+      </div>
     </section>}
 
-    {section==="budget" && <section className="project-budget-section" aria-label="Presupuesto del proyecto">
+    {section==="budget" && <section className="project-budget-section ficha-enter" aria-label="Presupuesto del proyecto">
       {budgets.length>1 && <label className="field"><span>Presupuesto del proyecto</span><select className="workspace-select" value={budget?.id} onChange={e=>navigate({p:e.target.value,v:null,desde:null,hasta:null,editar:null})}>{budgets.map(b=><option value={b.id} key={b.id}>{b.title}</option>)}</select></label>}
       {!budget && <div className="empty"><strong>Abre el primer presupuesto</strong><span className="muted">Elige cómo aportar los trabajos: catálogo, planos o fotos de la visita.</span>{canBudget && <Button variant="primary" disabled={busy || creatingBudget} onClick={crearPresupuesto}><Plus size={17} aria-hidden="true"/>{creatingBudget?"Abriendo…":"Nuevo presupuesto"}</Button>}</div>}
-      {!budget && canBudget && add}
-      {budget && <BudgetWorkspace key={budget.id} budget={budget} versions={data.versions} onNavigate={patch=>navigate({s:"budget",...patch})} onEdit={editBudget} canEdit={canBudget} adding={add}/>}
+      {!budget && canBudget && <AddToBudget planoHref={planoHref} visitaHref={fotosHref} haPresupuesto={false} borradorPlano={borradorPlano} onManual={aMano}/>}
+      {budget && <BudgetWorkspace key={budget.id} project={project} budget={budget} versions={data.versions} onNavigate={patch=>navigate({s:"budget",...patch})} onEdit={editBudget} canEdit={canBudget} planoHref={planoHref} fotosHref={fotosHref}/>}
     </section>}
 
-    {section==="work" && <section className="project-work-section" aria-label="Tareas y avance"><div className="workspace-section-heading"><div><h2>Tareas y avance</h2><p className="muted">{pendingTasks.length} pendientes · {progress}% completado</p></div>{can(actor.role,"task.create") && <Button variant="primary" onClick={()=>setSolicitud("tarea")}><Plus size={16} aria-hidden="true"/>Nueva tarea</Button>}</div><Meter value={progress} label="Avance ponderado por tarea" tone={meterTone}/>{tasks.length===0 && <p className="workspace-callout">Todavía no hay tareas planificadas.</p>}<div>{taskRows(pendingTasks)}</div>{doneTasks.length>0 && <details className="budget-notes"><summary>Completadas ({doneTasks.length})</summary>{taskRows(doneTasks)}</details>}<details className="budget-notes"><summary>Importes y certificaciones del proyecto</summary><dl className="workspace-facts"><div><dt>Aprobado en todos los presupuestos · sin IVA</dt><dd className="pl-mono">{money(approvedProjectBase)}</dd></div><div><dt>Certificaciones en preparación · sin IVA</dt><dd className="pl-mono">{money(certificationsDraft)}</dd></div></dl>{can(actor.role,"certification.create") && approved && <Button variant="secondary" onClick={()=>setSolicitud("certificacion")}>Preparar certificación</Button>}<p className="muted text-sm">Las certificaciones actuales son borradores; no son facturas emitidas.</p></details></section>}
-    {section==="documents" && <DocumentsPanel project={project} documents={documents}/>}
-    {section==="purchases" && <PurchasesPanel projectId={project.id} purchases={purchases}/>}
+    {section==="work" && <div className="ficha-enter"><WorkPanel projectId={project.id} tasks={tasks} progress={progress} meterTone={meterTone==="warning"?"warning":"success"} approved={approved} onNueva={()=>setSolicitud("tarea")} onAbrir={setAbierta} onToggle={toggleTask} pendiente={pendingTask}/></div>}
+    {section==="purchases" && <div className="ficha-enter"><PurchasesPanel projectId={project.id} purchases={purchases} approvedLabel={approved?`V${approved.number}`:undefined}/></div>}
+    {section==="documents" && <div className="ficha-enter"><DocumentsPanel project={project} documents={documents}/></div>}
+    {section==="cobros" && <div className="ficha-enter"><CobrosPanel cobros={cobros} approved={approved} progress={progress} onPreparar={prepararCobro}/></div>}
+    <button type="button" className="ficha-fab" onClick={()=>navigate({chat:"1"})} aria-label={sinLeerChat?`Chat, ${sinLeerChat} sin leer`:"Chat"} aria-haspopup="dialog"><MessageSquare size={18} strokeWidth={1.8} aria-hidden="true"/>Chat{sinLeerChat>0 && <span className="avatar-count">{sinLeerChat}</span>}</button>
     <TaskDialog task={abierta?data.tasks.find(t=>t.id===abierta.id) ?? null:null} onClose={()=>setAbierta(null)}/>
     {editable && <BudgetEditor open={editando} onClose={()=>navigate({editar:null})} project={project} version={editable} guiaInicial={editable.items.length===0}/>}
-    <Drawer open={chatAbierto} onClose={()=>navigate({chat:null})} title={project.name} subtitle={[project.location,project.code].filter(Boolean).join(" · ")}><ChatPanel projectId={project.id} messages={messages}/></Drawer>
+    {versionEnviar && <SendDialog open={accion==="enviar"} onClose={()=>navigate({accion:null})} project={project} version={versionEnviar} approved={approved} previousSent={anteriorEnviada}/>}
+    {enviada && <ResponseDialog open={accion==="respuesta"} onClose={()=>navigate({accion:null})} project={project} version={enviada} approved={approved} onNuevaVersion={v=>navigate({s:"budget",v,vista:"items",accion:null})}/>}
+    <Drawer floating open={chatAbierto} onClose={()=>navigate({chat:null})} title={`Chat · ${project.name}`}><ChatPanel projectId={project.id} messages={mensajes} title={project.name} subtitle={project.location || project.code} onClose={()=>navigate({chat:null})}/></Drawer>
   </div>;
 }

@@ -47,7 +47,7 @@ export const comandos: Comando[] = [
   },
   {
     id: "aprobado", formas: ["/aprobado", "presupuesto aprobado", "ver aprobado", "que esta aprobado", "aprobado"],
-    descripcion: "El presupuesto aprobado para obra, si lo hay.",
+    descripcion: "El presupuesto aceptado, si lo hay.",
     abrir: ({ data, projectId }) => { const x = versiones(data, projectId).find(x => x.b.approved_version_id === x.v.id); return x ? { kind: "presupuesto", versionId: x.v.id } : { kind: "aviso", texto: "Todavía no hay ningún presupuesto aprobado para obra." }; }
   },
   {
@@ -66,7 +66,7 @@ export const comandos: Comando[] = [
     abrir: () => ({ kind: "tareas" })
   },
   {
-    id: "compras", acceso: "Compras", formas: ["/compras", "compras", "compras pendientes", "materiales", "que falta por pedir", "pedidos"],
+    id: "compras", acceso: "Materiales", formas: ["/compras", "compras", "compras pendientes", "materiales", "que falta por pedir", "pedidos"],
     descripcion: "Los materiales: por pedir, pedidos y recibidos.",
     abrir: () => ({ kind: "compras" })
   },

@@ -77,7 +77,7 @@ export function BudgetDocument({ branding, project, budget, version, ambito, cov
           <div><dt>Cliente</dt><dd>{project.client_name}</dd></div>
           <div><dt>Obra</dt><dd>{project.name}{project.location ? ` · ${project.location}` : ""}</dd></div>
           <div><dt>Tipo</dt><dd>{kindNames[project.kind]}</dd></div>
-          <div><dt>Revisión</dt><dd>V{version.number} · {version.change_reason}</dd></div>
+          <div><dt>Versión</dt><dd>V{version.number} · {version.change_reason}</dd></div>
           {presentacion.client_logo_data_url && <div className="doc-meta-logo"><img src={presentacion.client_logo_data_url} alt="" className="doc-client-logo" /></div>}
         </dl>
 
@@ -163,7 +163,7 @@ export function BudgetDocument({ branding, project, budget, version, ambito, cov
         {version.status === "approved" && version.approval_reference && (
           <section className="doc-aside">
             <h2>Aceptación</h2>
-            <p>Aprobado para obra el {fechaDocumento(version.approved_at ?? version.updated_at)} · {version.approval_reference}</p>
+            <p>Aceptado el {fechaDocumento(version.approved_at ?? version.updated_at)} · {version.approval_reference}</p>
           </section>
         )}
 

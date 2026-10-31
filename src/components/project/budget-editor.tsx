@@ -68,7 +68,7 @@ export function BudgetEditor({ open, onClose, project, version, guiaInicial }: {
       notify(`V${version.number} guardada · ${money(total.base)} sin IVA`);
       onClose();
     } catch (e) {
-      notify(e instanceof Error ? e.message : "No se ha podido guardar la revisión.");
+      notify(e instanceof Error ? e.message : "No se ha podido guardar el borrador.");
     } finally {
       setSaving(false);
     }

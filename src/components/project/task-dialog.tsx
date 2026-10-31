@@ -64,7 +64,7 @@ export function TaskDialog({ task, onClose }: { task: Task | null; onClose: () =
   );
 
   return (
-    <Modal open={Boolean(task)} onClose={onClose} title={modo === "editar" ? "Editar tarea" : modo === "eliminar" ? "Eliminar tarea" : "Tarea"} footer={footer}>
+    <Modal open={Boolean(task)} onClose={onClose} panel="md" title={modo === "editar" ? "Editar tarea" : modo === "eliminar" ? "Eliminar tarea" : "Tarea"} footer={footer}>
       {task && modo === "editar" && (
         <form id="editar-tarea" className="form" onSubmit={guardar} style={{ maxWidth: "none" }}>
           <label className="field"><span>Tarea</span><input type="text" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} required maxLength={500} autoFocus /></label>

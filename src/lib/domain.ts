@@ -51,11 +51,11 @@ export const commandSchema = z.discriminatedUnion("type", [
 ]);
 export type Command = z.infer<typeof commandSchema>;
 export const roleNames: Record<Role, string> = { admin: "Administración", office: "Oficina", manager: "Jefe de obra", site: "Equipo de obra", viewer: "Consulta" };
-export const projectStatus = { lead: "Primera visita", estimating: "Presupuestando", planning: "Planificación", active: "En obra", completed: "Finalizado" };
+export const projectStatus = { lead: "Visita", estimating: "Presupuesto", planning: "Obra · planificando", active: "Obra", completed: "Entregado" };
 export const kindNames = { integral: "Reforma integral", partial: "Reforma parcial", carpentry: "Carpintería" };
-export const versionStatus = { draft: "Borrador", issued: "Terminada · pendiente de aprobar", approved: "Aprobada para obra", superseded: "Aprobación anterior" };
+export const versionStatus = { draft: "Borrador", issued: "Enviado", approved: "Aceptado", superseded: "Archivada" };
 export const purchaseStatus = { planned: "Por pedir", ordered: "Pedido", received: "Recibido", delivered: "En obra" };
-export const money = (cents: number) => new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR" }).format(cents / 100);
+export const money = (cents: number) => new Intl.NumberFormat("es-ES", { style: "currency", currency: "EUR", useGrouping: "always" }).format(cents / 100);
 export const dateLabel = (value: string) => new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short" }).format(new Date(value.length === 10 ? `${value}T12:00:00` : value));
 function roundRatio(numerator: bigint, denominator: bigint) {
   const rounded = Number((numerator + denominator / 2n) / denominator);

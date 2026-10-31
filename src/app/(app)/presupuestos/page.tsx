@@ -24,8 +24,8 @@ export default function PresupuestosPage() {
     <div className="page">
       <div>
         <div className="eyebrow"><FileText size={13} strokeWidth={1.8} aria-hidden="true" /><span>{data.organization_name || "Espacio de trabajo"}</span></div>
-        <h1 className="h1">Presupuestos.</h1>
-        <p className="subtitle">{loading ? "Cargando…" : `${filas.length} presupuestos · ${enRevision} en revisión · ${money(aprobado)} aprobados en total, con IVA`}</p>
+        <h1 className="pl-title">Todos los presupuestos</h1>
+        <p className="subtitle">{loading ? "Cargando…" : `${filas.length} presupuestos · ${enRevision} en curso · ${money(aprobado)} aceptados en total, con IVA`}</p>
       </div>
 
       <Tabs label="Filtrar presupuestos" value={filtro} onChange={setFiltro} options={filtrosPresupuesto.map(f => ({ id: f.id, label: f.label, count: filtrarPresupuestos(filas, f.id).length }))} />

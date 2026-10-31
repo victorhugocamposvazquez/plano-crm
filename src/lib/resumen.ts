@@ -12,7 +12,7 @@ const norm = (s: string) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCa
 
 export type FiltroPresupuesto = "all" | "review" | "approved" | "empty";
 export const filtrosPresupuesto: { id: FiltroPresupuesto; label: string }[] = [
-  { id: "all", label: "Todos" }, { id: "review", label: "En revisión" }, { id: "approved", label: "Aprobados" }, { id: "empty", label: "Sin partidas" }
+  { id: "all", label: "Todos" }, { id: "review", label: "En curso" }, { id: "approved", label: "Aceptados" }, { id: "empty", label: "Sin partidas" }
 ];
 
 export type FilaPresupuesto = {
@@ -46,7 +46,7 @@ export function filtrarPresupuestos(filas: FilaPresupuesto[], filtro: FiltroPres
 }
 
 export const estadoPresupuesto: Record<FilaPresupuesto["estado"], string> = {
-  empty: "Sin partidas", draft: "Borrador", issued: "Terminada · por aprobar", approved: "Aprobado para obra", changes: "Aprobado · cambios en preparación"
+  empty: "Sin partidas", draft: "Borrador", issued: "Enviado", approved: "Aceptado", changes: "Aceptado · cambios en preparación"
 };
 
 /* ---------- Clientes ---------- */

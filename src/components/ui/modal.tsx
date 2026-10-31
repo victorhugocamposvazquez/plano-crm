@@ -4,9 +4,10 @@ import { X } from "lucide-react";
 
 /**
  * Diálogo sobre la pantalla actual: no cambia de ruta, así que al cerrarlo sigues donde estabas.
- * En móvil se presenta como hoja inferior; en escritorio, centrado. Usa <dialog> nativo (foco y Escape).
+ * En móvil se presenta como hoja inferior; en escritorio, centrado o, con `panel`, como panel lateral derecho.
+ * Usa <dialog> nativo (foco y Escape).
  */
-export function Modal({ open, onClose, title, children, footer, size = "md" }: { open: boolean; onClose: () => void; title: string; children: ReactNode; footer?: ReactNode; size?: "md" | "wide" }) {
+export function Modal({ open, onClose, title, children, footer, size = "md", panel, kicker }: { open: boolean; onClose: () => void; title: string; children: ReactNode; footer?: ReactNode; size?: "md" | "wide"; panel?: "md" | "wide"; kicker?: string }) {
   const ref = useRef<HTMLDialogElement>(null);
 
   useEffect(() => {
@@ -17,11 +18,11 @@ export function Modal({ open, onClose, title, children, footer, size = "md" }: {
   }, [open]);
 
   return (
-    <dialog ref={ref} className="modal" data-size={size} onClose={e => { if (e.target === e.currentTarget) onClose(); }} onClick={e => { if (e.target === e.currentTarget) onClose(); }} aria-label={title}>
+    <dialog ref={ref} className="modal" data-size={size} data-panel={panel} onClose={e => { if (e.target === e.currentTarget) onClose(); }} onClick={e => { if (e.target === e.currentTarget) onClose(); }} aria-label={title}>
       <div className="modal-body">
         <span className="modal-handle" aria-hidden="true" />
         <header className="modal-head">
-          <h2 className="h3">{title}</h2>
+          <div className="modal-title">{kicker && <small>{kicker}</small>}<h2 className="h3">{title}</h2></div>
           <button type="button" className="search-clear" aria-label="Cerrar" onClick={onClose}><X size={15} strokeWidth={1.8} aria-hidden="true" /></button>
         </header>
         <div className="modal-content">{children}</div>

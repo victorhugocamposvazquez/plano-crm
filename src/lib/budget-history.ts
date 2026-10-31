@@ -9,10 +9,9 @@ export function budgetHistory(budget: Pick<Budget,"id"|"approved_version_id">, a
 }
 
 export function versionLabel(version:BudgetVersion, history:ReturnType<typeof budgetHistory>) {
-  if(version.id===history.approved?.id)return "Aprobada para obra";
-  if(version.id===history.working?.id)return version.status==="draft"?"Borrador actual":"Terminada · pendiente de aprobar";
-  if(version.status==="superseded" || version.status==="approved")return "Aprobación anterior";
-  return version.status==="issued"?"Terminada · anterior":"Borrador anterior";
+  if(version.id===history.approved?.id)return "Aceptado";
+  if(version.id===history.working?.id)return version.status==="draft"?"Borrador":"Enviado";
+  return "Archivada";
 }
 
 /** Fecha estable de creación; no se confunde con la última edición del borrador. */
@@ -24,10 +23,29 @@ export function versionTimestamp(value:string) {
 
 /** La aprobación la determina el presupuesto, no el color ni el estado histórico de una fila. */
 export function versionState(version:BudgetVersion,approvedId:string|null|undefined) {
-  if(version.id===approvedId)return "Aprobada para obra";
-  if(version.status==="draft")return "Borrador · no aprobado";
-  if(version.status==="issued")return "Terminada · pendiente de aprobar";
-  return "Versión anterior";
+  if(version.id===approvedId)return "Aceptado";
+  if(version.status==="draft")return "Borrador";
+  if(version.status==="issued")return "Enviado";
+  return "Archivada";
+}
+
+/** Una frase con lo que pasó con la versión; el estado solo no se lo explica a quien no lo vivió. */
+export function versionSentence(version:BudgetVersion,history:ReturnType<typeof budgetHistory>) {
+  const day=(value:string)=>new Intl.DateTimeFormat("es-ES",{day:"numeric",month:"short",timeZone:"Europe/Madrid"}).format(new Date(value));
+  if(version.id===history.approved?.id)return "Aceptada por el cliente. La obra se hace con esta.";
+  if(version.id===history.working?.id)return version.status==="draft"?"La estás preparando. Todavía no la ha visto el cliente.":`Enviada al cliente el ${day(version.updated_at)}. No ha contestado.`;
+  const next=[...history.versions].reverse().find(v=>v.number>version.number);
+  if(version.status==="superseded" || version.status==="approved")return "Se aceptó y luego la sustituyó otra versión.";
+  if(version.status==="issued")return next?`Se envió y luego se cambió por la V${next.number}.`:"Se envió y no llegó a aceptarse.";
+  return "Borrador que no se llegó a enviar.";
+}
+
+/** Fecha corta que acompaña a cada versión: cuándo se aceptó, cuándo se envió o cuándo se tocó por última vez. */
+export function versionMoment(version:BudgetVersion) {
+  const day=new Intl.DateTimeFormat("es-ES",{day:"numeric",month:"short",timeZone:"Europe/Madrid"});
+  if(version.status==="approved" || version.status==="superseded")return `aceptado ${day.format(new Date(version.approved_at ?? version.updated_at))}`;
+  if(version.status==="issued")return `enviado ${day.format(new Date(version.updated_at))}`;
+  return `editado ${day.format(new Date(version.updated_at))}`;
 }
 
 /** El motivo explica la intención; las diferencias se calculan sobre las partidas y condiciones realmente guardadas. */

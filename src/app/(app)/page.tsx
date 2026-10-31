@@ -1,28 +1,56 @@
 "use client";
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, CalendarDays, Check, ChevronRight } from "lucide-react";
+import { ArrowRight, Check } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
-import { Status, type Tone } from "@/components/ui/status";
+import { Pill } from "@/components/ui/status";
 import { Button, LinkButton } from "@/components/ui/button";
-import { TaskRow } from "@/components/project/task-row";
 import { TaskDialog } from "@/components/project/task-dialog";
 import { budgetHistory } from "@/lib/budget-history";
 import { Onboarding } from "@/components/onboarding";
 import { InstallHint } from "@/components/install-hint";
-import { queToca, etapas } from "@/lib/siguiente-paso";
-import { can, dateLabel, type Task } from "@/lib/domain";
-import { buildAgenda, buildAlerts, greeting, localDate, longDate, type AgendaTask } from "@/lib/hoy";
+import { queToca } from "@/lib/siguiente-paso";
+import { enlacePaso, quienActua, quienEtiqueta, textoMovimiento } from "@/lib/pasos";
+import { veSeccion } from "@/lib/navegacion";
+import { can, dateLabel, money, totals, type Task, type Workspace } from "@/lib/domain";
+import { buildAgenda, greeting, localDate, longDate } from "@/lib/hoy";
+
+const textoMensaje = (body: string) => body.replace(/\[\[[^\]]*\]\]/g, "").trim();
+
+function novedades(data: Workspace, yo: string) {
+  const mensajes = data.messages.filter(m => !m.deleted_at && m.author_name !== yo && textoMensaje(m.body)).map(m => ({ id: m.id, when: m.created_at, project_id: m.project_id as string | null, tone: "info", texto: <>{m.author_name}: <em>«{textoMensaje(m.body)}»</em></> }));
+  const hechos = data.activities.filter(a => !a.text.startsWith("Mensaje ") && !a.text.startsWith("Reacción ")).map(a => ({ id: a.id, when: a.created_at, project_id: a.project_id, tone: "success", texto: <>{a.actor_name}: {textoMovimiento(a.text)}</> }));
+  return [...mensajes, ...hechos].sort((a, b) => b.when.localeCompare(a.when)).slice(0, 4);
+}
+
+function empresa(data: Workspace, today: string) {
+  const mes = today.slice(0, 7);
+  const historias = data.budgets.map(b => budgetHistory(b, data.versions));
+  const suma = (lista: (typeof data.versions)) => lista.reduce((s, v) => s + totals(v.items).total, 0);
+  return {
+    aceptado: suma(data.versions.filter(v => v.approved_at?.startsWith(mes))),
+    enviado: suma(historias.flatMap(h => (h.working?.status === "issued" ? [h.working] : []))),
+    borradores: suma(historias.flatMap(h => (h.working?.status === "draft" ? [h.working] : []))),
+    cobros: data.certifications.filter(c => c.created_at.startsWith(mes)).reduce((s, c) => s + c.amount, 0)
+  };
+}
 
 export default function HoyPage() {
   const { data, actor, loading, busy, send, notify } = useWorkspace();
   const today = localDate();
   const agenda = useMemo(() => buildAgenda(data, today), [data, today]);
-  const alerts = useMemo(() => buildAlerts(data, today), [data, today]);
-  const toca = useMemo(() => queToca(data, today).slice(0, 3), [data, today]);
+  const toca = useMemo(() => queToca(data, today), [data, today]);
+  const conQuien = useMemo(() => toca.map(x => ({ ...x, quien: quienActua(data, x.project, today) })).filter(x => x.quien !== "al-dia"), [toca, data, today]);
+  const orden = { atrasado: 0, "te-espera": 1, cliente: 2, "al-dia": 3 };
+  const piden = [...conQuien].sort((a, b) => orden[a.quien] - orden[b.quien]);
+  const primero = piden.find(x => x.quien === "te-espera") ?? piden.find(x => x.quien === "atrasado");
+  const nuevas = useMemo(() => novedades(data, actor.name), [data, actor.name]);
+  const cifras = useMemo(() => empresa(data, today), [data, today]);
   const [pendingId, setPendingId] = useState<string | null>(null);
+  const [abierta, setAbierta] = useState<Task | null>(null);
   const canToggle = can(actor.role, "task.toggle");
   const firstName = actor.name.split(/[\s·]+/)[0] ?? "";
+  const esperan = conQuien.filter(x => x.quien === "te-espera").length;
 
   async function toggle(task: Task) {
     if (!canToggle || busy) return;
@@ -30,129 +58,111 @@ export default function HoyPage() {
     try {
       await send({ type: "task.toggle", id: task.id, status: task.status === "done" ? "pending" : "done" });
       notify(task.status === "done" ? `Reabierta: ${task.title}` : `Completada: ${task.title}`, { label: "Deshacer", run: () => send({ type: "task.toggle", id: task.id, status: task.status }) });
-    } catch (e) {
-      notify(e instanceof Error ? e.message : "No se ha podido actualizar la tarea.");
-    } finally {
-      setPendingId(null);
-    }
+    } catch (e) { notify(e instanceof Error ? e.message : "No se ha podido actualizar la tarea."); }
+    finally { setPendingId(null); }
   }
 
-  const [abierta, setAbierta] = useState<Task | null>(null);
-  const tareaAbierta = abierta ? data.tasks.find(t => t.id === abierta.id) ?? null : null;
-
-  const TaskList = ({ tasks, empty, accion }: { tasks: AgendaTask[]; empty: string; accion?: React.ReactNode }) => (
-    tasks.length === 0
-      ? <p className="muted text-sm empty-line" style={{ padding: "10px 0" }}>{empty}{accion}</p>
-      : <div>{tasks.map(task => <TaskRow key={task.id} task={task} projectName={task.project.name} canToggle={canToggle} pending={pendingId === task.id} showDate={task.due_date !== today} compact onToggle={toggle} onOpen={setAbierta} />)}</div>
-  );
-
-  const toneFor = (tone: Tone) => tone;
-  // «Lo siguiente»: la primera tarea atrasada o de hoy; si no hay, lo que toca en el proyecto más urgente.
-  const siguiente = agenda.overdue[0] ?? agenda.today[0] ?? null;
-  const siguienteToca = !siguiente && toca.length ? toca[0] : null;
-  const resumen = loading ? "Cargando el espacio de trabajo…" : [
-    `${agenda.today.length} ${agenda.today.length === 1 ? "tarea" : "tareas"} hoy`,
-    toca.length ? `${toca.length} ${toca.length === 1 ? "proyecto pide" : "proyectos piden"} algo` : "",
-    agenda.overdue.length ? `${agenda.overdue.length} ${agenda.overdue.length === 1 ? "atrasada" : "atrasadas"}` : "nada atrasado"
+  const resumen = loading ? "Cargando…" : [
+    longDate(today).replace(/^./, c => c.toUpperCase()),
+    esperan ? `${esperan} ${esperan === 1 ? "cosa te espera" : "cosas te esperan"}` : "nada te espera",
+    agenda.overdue.length ? `${agenda.overdue.length} ${agenda.overdue.length === 1 ? "tarea atrasada" : "tareas atrasadas"}` : ""
   ].filter(Boolean).join(" · ");
+  const tareasHoy = [...agenda.overdue, ...agenda.today];
+  const verEmpresa = veSeccion(actor.role, "/finanzas");
 
   return (
-    <div className="page">
-      <div>
-        <div className="eyebrow"><CalendarDays size={13} strokeWidth={1.8} aria-hidden="true" /><span>{longDate(today).replace(/^./, c => c.toUpperCase())}</span></div>
-        <h1 className="h1">{greeting()}{firstName ? `, ${firstName}` : ""}.</h1>
-        <p className="subtitle">{resumen}</p>
-      </div>
+    <div className="page today">
+      <div className="today-main">
+        <div className="solo-escritorio"><h1 className="pl-title">{greeting()}{firstName ? `, ${firstName}` : ""}</h1><p className="pl-sub">{resumen}</p></div>
+        <div className="solo-movil today-phone-head"><small>{longDate(today).replace(/^./, c => c.toUpperCase())}</small><h1 className="pl-title">Hoy</h1></div>
+        <Onboarding />
+        <InstallHint />
 
-      <Onboarding />
-      <InstallHint />
+        {piden.length > 0 && <section className="solo-movil phone-todo" aria-label="Te esperan a ti">
+          <h2 className="phone-section"><span>Te esperan a ti</span><span className="pl-mono">{piden.filter(x => x.quien !== "cliente").length}</span></h2>
+          {piden.filter(x => x.quien !== "cliente").slice(0, 4).map(({ project, paso, quien }) => (
+            <article key={project.id} className="todo-card" data-tone={quienEtiqueta[quien].tone}>
+              <header><strong>{project.name}</strong><span>{quienEtiqueta[quien].label}</span></header>
+              <small>{[project.client_name, project.location].filter(Boolean).join(" · ")}</small>
+              <p>{paso.titulo}</p>
+              <LinkButton variant="primary" href={enlacePaso(project.id, paso)}>{paso.label || "Ver proyecto"}</LinkButton>
+            </article>
+          ))}
+        </section>}
 
-      <div className="detail">
-        <section style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-          {siguiente && (
-            <section className="next-card" aria-label="Lo siguiente" style={{ marginBottom: 14 }}>
-              <span className="next-card-kicker">{siguiente.due_date < today ? `Lo siguiente · atrasada desde el ${dateLabel(siguiente.due_date)}` : "Lo siguiente · hoy"}</span>
-              <span className="next-card-title">{siguiente.title}</span>
-              <span className="next-card-meta"><span className="chip-mini">{siguiente.project.name}</span>{siguiente.trade}{siguiente.assignee ? ` · ${siguiente.assignee}` : ""}</span>
-              <div className="next-card-actions">
-                <Button variant="primary" onClick={() => setAbierta(siguiente)} aria-haspopup="dialog">Abrir tarea<ArrowRight size={16} strokeWidth={1.7} aria-hidden="true" /></Button>
-                {canToggle && <Button variant="icon" aria-label={`Marcar como hecha: ${siguiente.title}`} title="Marcar como hecha" disabled={busy || pendingId === siguiente.id} onClick={() => toggle(siguiente)}><Check size={19} strokeWidth={1.7} aria-hidden="true" /></Button>}
-              </div>
-            </section>
-          )}
-          {siguienteToca && (
-            <section className="next-card" aria-label="Lo siguiente" style={{ marginBottom: 14 }}>
-              <span className="next-card-kicker">Lo siguiente</span>
-              <span className="next-card-title">{siguienteToca.paso.titulo}</span>
-              <span className="next-card-meta"><span className="chip-mini">{siguienteToca.project.name}</span>{etapas.find(e => e.id === siguienteToca.paso.etapa)?.label}</span>
-              <div className="next-card-actions"><LinkButton variant="primary" href={`/proyectos/${siguienteToca.project.id}`}>{siguienteToca.paso.label}<ArrowRight size={16} strokeWidth={1.7} aria-hidden="true" /></LinkButton></div>
-            </section>
-          )}
-          {toca.length > 0 && (
-            <>
-              <div className="section-label" style={{ marginTop: 0 }}><span>Qué toca en cada proyecto</span><span className="pl-mono">{toca.length}</span></div>
-              <div className="toca-list">
-                {toca.map(({ project, paso }) => (
-                  <Link key={project.id} href={`/proyectos/${project.id}`} className="toca-row" data-urgencia={paso.urgencia} title={paso.label}>
-                    <span style={{ minWidth: 0 }}><strong>{paso.titulo}</strong><small><span className="chip-mini">{project.name}</span>{etapas.find(e => e.id === paso.etapa)?.label}</small></span>
-                    <ChevronRight size={19} strokeWidth={1.55} aria-hidden="true" />
-                  </Link>
-                ))}
-              </div>
-            </>
-          )}
-          {agenda.overdue.length > 0 && (
-            <>
-              <div className="section-label"><span className="warning">Atrasadas</span><span className="pl-mono">{agenda.overdue.length}</span></div>
-              <TaskList tasks={agenda.overdue} empty="" />
-            </>
-          )}
-          <div className="section-label"><span>Hoy</span><span className="pl-mono">{agenda.today.length}</span></div>
-          <TaskList tasks={agenda.today} empty={agenda.overdue.length ? "Nada más previsto para hoy." : "Sin tareas previstas para hoy."} accion={can(actor.role, "task.create") ? <Link href="/agenda?nueva=1" className="link-inline">Planificar una tarea</Link> : undefined} />
-          {agenda.doneToday.length > 0 && (
-            <>
-              <details className="home-disclosure"><summary>Hechas hoy ({agenda.doneToday.length})</summary><div className="section-label"><span>Hechas hoy</span><span className="pl-mono">{agenda.doneToday.length}</span></div>
-              <TaskList tasks={agenda.doneToday} empty="" /></details>
-            </>
-          )}
-          <Link href="/agenda" className="home-link-row">Próximos 7 días<span className="muted">{agenda.upcoming.length ? `${agenda.upcoming.length} ${agenda.upcoming.length === 1 ? "tarea" : "tareas"}` : "semana despejada"}</span><ChevronRight size={19} strokeWidth={1.55} aria-hidden="true" /></Link>
-          {!canToggle && <p className="muted text-xs" style={{ marginTop: 8 }}>Tu perfil puede consultar la agenda pero no marcar tareas.</p>}
-          <details className="home-disclosure" style={{ marginTop: 10 }}><summary>Resumen de la empresa</summary><div className="summary">
-            <Link href="/proyectos?f=active"><strong>{data.projects.filter(p => p.status === "active").length}</strong><small>proyectos en obra</small></Link>
-            <Link href="/presupuestos?f=review"><strong>{data.budgets.filter(b => budgetHistory(b, data.versions).working).length}</strong><small>presupuestos en revisión</small></Link>
-            <Link href="/compras?f=ordered"><strong>{data.purchases.filter(p => p.status === "ordered").length}</strong><small>pedidos sin recibir</small></Link>
-          </div></details>
-        </section>
+        {primero && (
+          <section className="first-card solo-escritorio" data-tone={quienEtiqueta[primero.quien].tone} aria-label="Lo primero">
+            <div className="first-card-kicker">Lo primero · {quienEtiqueta[primero.quien].label.toLowerCase()}</div>
+            <div className="first-card-body">
+              <div><strong>{primero.paso.titulo}</strong><p>{primero.project.name}{primero.project.location ? ` · ${primero.project.location}` : ""}. {primero.paso.detalle}</p></div>
+              <LinkButton variant="primary" data-accent="orange" href={enlacePaso(primero.project.id, primero.paso)}>{primero.paso.label}</LinkButton>
+            </div>
+          </section>
+        )}
+        {!primero && !loading && <section className="first-card today-calm" data-tone="success" aria-label="Lo primero"><div className="first-card-body"><div><strong>Hoy no hay nada urgente</strong><p>Ningún proyecto te está esperando.</p></div></div></section>}
 
-        <details className="zone home-disclosure"><summary>Avisos y actividad ({alerts.length})</summary>
-          <div>
-            <div className="section-label" style={{ marginTop: 0 }}><span>Atención</span><span className="pl-mono">{String(alerts.length).padStart(2, "0")}</span></div>
-            <div className="panel">
-              {alerts.length === 0 && <div className="panel-body muted text-sm">Nada que requiera atención ahora mismo.</div>}
-              {alerts.slice(0, 8).map(alert => (
-                <Link key={alert.id} href={alert.href} className="alert-row">
-                  <span style={{ minWidth: 0 }}><strong>{alert.title}</strong><small>{alert.detail}</small></span>
-                  <Status tone={toneFor(alert.tone)} label={alert.kind === "task" ? "Plazo" : alert.kind === "approval" ? "Aprobar" : alert.kind === "draft" ? "Revisión" : alert.kind === "purchase" ? "Pedido" : "Estimar"} />
+        {piden.length > 0 && (
+          <section className="pl-card solo-escritorio" aria-label="Proyectos que piden algo">
+            <header className="pl-card-head"><strong>Proyectos que piden algo</strong><Link href="/proyectos">Ver todos →</Link></header>
+            <div className="need-list">
+              {piden.slice(0, 6).map(({ project, paso, quien }) => (
+                <Link key={project.id} href={enlacePaso(project.id, paso)} className="need-row">
+                  <span className="need-text"><strong>{project.name}{project.location ? <span> · {project.location}</span> : null}</strong><small>{paso.titulo}</small></span>
+                  <Pill label={quienEtiqueta[quien].label} tone={quienEtiqueta[quien].tone} />
+                  <span className="need-action">{paso.label || "Ver proyecto"} <ArrowRight size={14} strokeWidth={1.8} aria-hidden="true" /></span>
                 </Link>
               ))}
-              {alerts.length > 8 && <div className="panel-row muted text-xs">y {alerts.length - 8} más</div>}
             </div>
-          </div>
-          <div>
-            <div className="section-label" style={{ marginTop: 0 }}><span>Actividad reciente</span></div>
-            {data.activities.slice(0, 5).map(activity => {
-              const project = data.projects.find(p => p.id === activity.project_id);
-              return (
-                <Link key={activity.id} href={project ? `/proyectos/${project.id}` : "/proyectos"} className="row-doc">
-                  <span>{activity.text}<small>{project ? `${project.name} · ` : ""}{activity.actor_name} · {dateLabel(activity.created_at)}</small></span>
-                </Link>
-              );
-            })}
-            {data.activities.length === 0 && <p className="muted text-sm">Aún no hay actividad.</p>}
-          </div>
-        </details>
+          </section>
+        )}
+
+        <section className="pl-card" aria-label="Hoy en obra">
+          <header className="pl-card-head"><strong><span className="solo-movil-inline">Agenda de hoy</span><span className="solo-escritorio-inline">Hoy en obra</span> <span className="muted" style={{ fontWeight: 400 }}>· {tareasHoy.length} {tareasHoy.length === 1 ? "tarea" : "tareas"}</span></strong><Link href="/agenda">Ver la semana →</Link></header>
+          {tareasHoy.length === 0 && <p className="muted text-sm" style={{ padding: "14px 18px" }}>Sin tareas para hoy.{can(actor.role, "task.create") && <> <Link href="/agenda?nueva=1" className="link-inline">Planificar una tarea</Link></>}</p>}
+          {tareasHoy.map(task => {
+            const tarde = task.due_date < today;
+            return (
+              <div key={task.id} className="work-row" data-late={tarde || undefined}>
+                <input type="checkbox" checked={false} disabled={!canToggle || pendingId === task.id} onChange={() => toggle(task)} aria-label={`Completar ${task.title}`} />
+                <button type="button" className="work-row-text" onClick={() => setAbierta(task)} aria-haspopup="dialog">
+                  <strong>{task.title}</strong>
+                  <small>{tarde ? `Venció el ${dateLabel(task.due_date)} · ` : ""}{task.project.name} · {task.trade}{task.assignee ? ` · ${task.assignee}` : ""}</small>
+                </button>
+                {tarde && can(actor.role, "task.update") && <Button onClick={() => setAbierta(task)}>Mover fecha</Button>}
+              </div>
+            );
+          })}
+          {agenda.doneToday.length > 0 && <p className="work-done"><Check size={14} strokeWidth={2} aria-hidden="true" />{agenda.doneToday.length} {agenda.doneToday.length === 1 ? "hecha" : "hechas"} hoy</p>}
+        </section>
       </div>
-      <TaskDialog task={tareaAbierta} onClose={() => setAbierta(null)} />
+
+      <aside className="today-side" aria-label="Novedades y cifras">
+        {piden.some(x => x.quien === "cliente") && <section className="pl-card side-card solo-movil" aria-label="Esperando al cliente">
+          <strong>Esperando al cliente</strong>
+          {piden.filter(x => x.quien === "cliente").map(({ project, paso }) => <Link key={project.id} href={enlacePaso(project.id, paso)} className="news-row" data-tone="info"><span>{project.name}<small>{paso.titulo}</small></span></Link>)}
+        </section>}
+        <section className="pl-card side-card">
+          <strong>Novedades</strong>
+          {nuevas.length === 0 && <p className="muted text-sm">Aún no hay novedades.</p>}
+          {nuevas.map(n => { const p = data.projects.find(x => x.id === n.project_id); return (
+            <Link key={n.id} href={p ? `/proyectos/${p.id}` : "/proyectos"} className="news-row" data-tone={n.tone}>
+              <span>{n.texto}<small>{p ? `${p.name} · ` : ""}{dateLabel(n.when)}</small></span>
+            </Link>
+          ); })}
+        </section>
+        {verEmpresa && (
+          <section className="pl-card side-card">
+            <strong>La empresa este mes</strong>
+            <dl className="figures">
+              <div><dt>Aceptado</dt><dd className="pl-mono">{money(cifras.aceptado)}</dd></div>
+              <div><dt>Enviado, sin respuesta</dt><dd className="pl-mono" data-tone="info">{money(cifras.enviado)}</dd></div>
+              <div><dt>Borradores sin enviar</dt><dd className="pl-mono" data-tone="warning">{money(cifras.borradores)}</dd></div>
+              <div data-rule><dt>Cobros preparados · sin IVA</dt><dd className="pl-mono" data-tone="success">{money(cifras.cobros)}</dd></div>
+            </dl>
+          </section>
+        )}
+      </aside>
+      <TaskDialog task={abierta ? data.tasks.find(t => t.id === abierta.id) ?? null : null} onClose={() => setAbierta(null)} />
     </div>
   );
 }

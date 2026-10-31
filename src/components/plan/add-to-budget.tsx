@@ -9,7 +9,7 @@ import { Footprints, LayoutTemplate, Plus, ChevronRight } from "lucide-react";
 export function AddToBudget({ planoHref, visitaHref, onManual, haPresupuesto, borradorPlano }: { planoHref: string; visitaHref?: string; onManual: () => void; haPresupuesto: boolean; borradorPlano?: boolean }) {
   return (
     <section className="add-budget" aria-label="Añadir al presupuesto">
-      <div className="section-label" style={{ marginTop: 0 }}><span>Añadir al presupuesto</span><span className="muted text-xs">{haPresupuesto ? "a la revisión abierta" : "se abrirá la V1"}</span></div>
+      <div className="section-label" style={{ marginTop: 0 }}><span>Añadir al presupuesto</span><span className="muted text-xs">{haPresupuesto ? "al borrador abierto" : "se abrirá la V1"}</span></div>
       <Link href={planoHref} className="opt-row">
         <span className="opt-ico" data-tone="blue"><LayoutTemplate size={18} strokeWidth={1.7} aria-hidden="true" /></span>
         <span className="opt-text"><strong>Desde un plano</strong><small>{borradorPlano ? "Tienes un plano a medias · continuar" : "Sube el PDF: Plano mide las paredes y propone partidas. Tú las revisas antes de añadirlas."}</small></span>

@@ -1,80 +1,54 @@
 "use client";
 import { useState } from "react";
-import { Lock, Stamp, GitBranch, Printer, Pencil, GitCompareArrows } from "lucide-react";
+import { FileText, GitBranch, MessageCircle, Pencil, Plus } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
-import { Menu, type MenuItem } from "@/components/ui/menu";
 import { Button } from "@/components/ui/button";
 import { useWorkspace } from "@/components/workspace-provider";
-import { can, money, totals, type Budget, type BudgetVersion } from "@/lib/domain";
-import { accionesPresupuesto } from "@/lib/presupuesto";
-
-const signed = (cents: number) => `${cents < 0 ? "−" : "+"}${money(Math.abs(cents))}`;
+import { can, money, totals, type Budget, type BudgetVersion, type Project } from "@/lib/domain";
 
 /**
- * Acciones del presupuesto según su estado. Una sola acción principal («Editar partidas» en borrador,
- * «Aprobar Vn para obra» cuando está cerrada) en una barra que en móvil queda fija abajo; el resto
- * (imprimir, cerrar la revisión, abrir una nueva) en el menú «···» de la versión. Cerrar y aprobar
- * confirman siempre en un diálogo sobre la ficha, porque no tienen vuelta atrás.
+ * Lo que se puede hacer con la versión que se está viendo. Cambia con su estado: el borrador se envía,
+ * el enviado espera respuesta y las demás solo se leen. En móvil la acción principal queda fija abajo.
  */
-export function BudgetActions({ budget, approved, working, shown, onEdit, onRevisionCreated, onCompare, compareLabel }: { budget: Budget; approved?: BudgetVersion; working?: BudgetVersion; shown?: BudgetVersion; onEdit: () => void; onRevisionCreated?: (version: BudgetVersion) => void; onCompare?: () => void; compareLabel?: string }) {
+export function BudgetActions({ project, budget, approved, working, shown, onEdit, onSend, onResponse, onAdd, onRevisionCreated }: { project: Project; budget: Budget; approved?: BudgetVersion; working?: BudgetVersion; shown: BudgetVersion; onEdit: () => void; onSend: () => void; onResponse: () => void; onAdd?: () => void; onRevisionCreated?: (version: BudgetVersion) => void }) {
   const { actor, busy, send, notify } = useWorkspace();
-  const permisos = { guardar: can(actor.role, "budget.save"), aprobar: can(actor.role, "budget.approve") };
-  const acciones = accionesPresupuesto(approved, working, permisos);
-  const [dialogo, setDialogo] = useState<"" | "cerrar" | "aprobar" | "revisar">("");
-  const [texto, setTexto] = useState("");
+  const [revisando, setRevisando] = useState(false);
+  const [motivo, setMotivo] = useState("");
   const [pending, setPending] = useState(false);
-  const base = working ?? approved;
-  const delta = approved && working ? totals(working.items).base - totals(approved.items).base : 0;
+  const esBorrador = shown.status === "draft" && shown.id === working?.id;
+  const esEnviado = shown.status === "issued" && shown.id === working?.id;
+  const puedeEditar = can(actor.role, "budget.save"), puedeRevisar = can(actor.role, "budget.revise"), puedeEnviar = can(actor.role, "budget.issue");
+  const hayBorrador = working?.status === "draft";
+  const pdf = shown.items.length > 0 ? `/imprimir/presupuesto/${shown.id}` : null;
+  const recordatorio = `Hola. ¿Has podido ver el presupuesto de ${project.name} (V${shown.number}, ${money(totals(shown.items).total)} con IVA)? Dime si tienes cualquier duda.`;
 
-  function cerrarDialogo() { setDialogo(""); setTexto(""); }
-
-  async function ejecutar() {
-    if (pending || busy) return;
+  async function crearVersion() {
+    if (pending || busy || motivo.trim().length < 3) return;
     setPending(true);
     try {
-      if (dialogo === "cerrar" && working) { await send({ type: "budget.issue", version_id: working.id, expected_revision: working.draft_revision }); notify(`V${working.number} terminada · lista para que el cliente la apruebe`); }
-      if (dialogo === "aprobar" && working) { await send({ type: "budget.approve", version_id: working.id, reference: texto.trim() }); notify(`V${working.number} aprobada para obra`); }
-      if (dialogo === "revisar" && base) { const ws = await send({ type: "budget.revise", version_id: base.id, reason: texto.trim() }); const draft = ws.versions.find(v => v.budget_id === budget.id && v.status === "draft"); if (draft) onRevisionCreated?.(draft); notify(`Versión nueva creada desde la V${base.number}`); }
-      cerrarDialogo();
-    } catch (e) {
-      notify(e instanceof Error ? e.message : "No se ha podido completar la acción.");
-    } finally {
-      setPending(false);
-    }
+      const ws = await send({ type: "budget.revise", version_id: shown.id, reason: motivo.trim() });
+      const draft = ws.versions.find(v => v.budget_id === budget.id && v.status === "draft");
+      if (draft) onRevisionCreated?.(draft);
+      notify(`Versión nueva creada desde la V${shown.number}`);
+      setRevisando(false); setMotivo("");
+    } catch (e) { notify(e instanceof Error ? e.message : "No se ha podido crear la versión."); }
+    finally { setPending(false); }
   }
 
-  const imprimible = shown && shown.items.length > 0 ? shown : undefined;
-  const items: MenuItem[] = [
-    ...(onCompare ? [{ id: "cambios", label: "Ver cambios", hint: `Qué cambió ${compareLabel ?? "entre versiones"}`, icon: <GitCompareArrows size={16} strokeWidth={1.7} />, onSelect: onCompare }] : []),
-    ...(imprimible ? [{ id: "imprimir", label: imprimible.status === "draft" ? `Imprimir borrador V${imprimible.number}` : `PDF de la V${imprimible.number}`, hint: "Se abre en otra pestaña", icon: <Printer size={16} strokeWidth={1.7} />, onSelect: () => { window.open(`/imprimir/presupuesto/${imprimible.id}`, "_blank", "noopener"); } }] : []),
-    ...(acciones.includes("revisar") ? [{ id: "revisar", label: "Hacer una versión nueva", hint: `Copia la V${base?.number ?? ""} a una versión que puedes editar`, icon: <GitBranch size={16} strokeWidth={1.7} />, onSelect: () => setDialogo("revisar") }] : []),
-    ...(acciones.includes("cerrar") && working ? [{ id: "cerrar", label: `Terminar la V${working.number} para enviarla…`, hint: "Ya no se podrá editar; para cambios, versión nueva", icon: <Lock size={16} strokeWidth={1.7} />, onSelect: () => setDialogo("cerrar") }] : [])
-  ];
-  const principal = acciones.includes("editar") ? "editar" : acciones.includes("aprobar") && working ? "aprobar" : null;
-  if (!items.length && !principal && working?.status !== "issued") return null;
-
   return (
-    <>
-      {items.length > 0 && <span className="budget-actions-menu"><Menu items={items} label={`Más opciones de la V${shown?.number ?? ""}`} /></span>}
-      {principal === "editar" && <div className="budget-actions-bar"><Button variant="primary" onClick={onEdit}><Pencil size={16} strokeWidth={1.7} aria-hidden="true" />Editar partidas</Button></div>}
-      {principal === "aprobar" && working && <div className="budget-actions-bar"><Button variant="primary" onClick={() => setDialogo("aprobar")}><Stamp size={16} strokeWidth={1.7} aria-hidden="true" />Aprobar V{working.number} para obra</Button></div>}
-      {working?.status === "issued" && !principal && <span className="muted text-xs budget-actions-note">Terminada · la aprueba oficina o administración.</span>}
+    <div className="budget-side-actions">
+      {esBorrador && puedeEnviar && shown.items.length > 0 && <div className="budget-actions-bar">{onAdd && <Button className="solo-movil-flex" onClick={onAdd}><Plus size={16} strokeWidth={1.9} aria-hidden="true" />Añadir</Button>}<Button variant="primary" data-accent="orange" onClick={onSend}>Enviar V{shown.number} al cliente</Button></div>}
+      {esBorrador && puedeEditar && <Button variant={shown.items.length > 0 ? "secondary" : "primary"} onClick={onEdit}><Pencil size={16} strokeWidth={1.7} aria-hidden="true" />Editar partidas</Button>}
+      {esEnviado && <div className="budget-actions-bar"><Button variant="primary" data-accent="orange" onClick={onResponse}>Registrar respuesta del cliente</Button></div>}
+      {esEnviado && <a className="btn btn-secondary" href={`https://wa.me/?text=${encodeURIComponent(recordatorio)}`} target="_blank" rel="noopener"><MessageCircle size={16} strokeWidth={1.7} aria-hidden="true" />Recordar al cliente</a>}
+      {pdf && <a className="btn btn-secondary" href={pdf} target="_blank" rel="noopener"><FileText size={16} strokeWidth={1.7} aria-hidden="true" />{esBorrador ? "Ver el PDF" : `PDF de la V${shown.number}`}</a>}
+      {!esBorrador && !hayBorrador && puedeRevisar && <Button onClick={() => setRevisando(true)}><GitBranch size={16} strokeWidth={1.7} aria-hidden="true" />Partir de esta versión</Button>}
+      {!esBorrador && <p className="budget-side-note">{esEnviado ? "Enviada: ya no se edita. Si hay cambios, se hacen en una versión nueva." : "Solo lectura. Una versión enviada o aceptada no se edita nunca."}</p>}
 
-      <Modal open={dialogo === "cerrar"} onClose={cerrarDialogo} title={`Terminar la V${working?.number ?? ""}`} footer={<><Button variant="secondary" onClick={cerrarDialogo} disabled={pending}>Cancelar</Button><Button variant="primary" onClick={ejecutar} disabled={pending || busy}>{pending ? "Terminando…" : `Terminar la V${working?.number ?? ""}`}</Button></>}>
-        <p className="text-sm">Al terminarla, las partidas ya no se pueden editar y la V{working?.number} queda lista para el PDF y para que el cliente la apruebe. Si después hace falta cambiar algo, se hace una versión nueva{approved ? `; la V${approved.number} sigue aprobada para obra mientras tanto` : ""}.</p>
-        {working && <p className="muted text-sm" style={{ marginTop: 8 }}>{working.items.filter(i => i.inclusion === "included").length} partidas incluidas · {money(totals(working.items).base)} sin IVA · {money(totals(working.items).total)} con IVA</p>}
+      <Modal open={revisando} onClose={() => setRevisando(false)} title={`Versión nueva desde la V${shown.number}`} footer={<><Button onClick={() => setRevisando(false)} disabled={pending}>Cancelar</Button><Button variant="primary" onClick={crearVersion} disabled={pending || busy || motivo.trim().length < 3}>{pending ? "Creando…" : "Crear la versión nueva"}</Button></>}>
+        <p className="text-sm">Se copia la V{shown.number} tal cual a una versión nueva que puedes editar{approved ? `; la V${approved.number} sigue aceptada hasta que el cliente acepte la nueva` : ""}.</p>
+        <label className="field" style={{ marginTop: 12 }}><span>Motivo del cambio</span><input type="text" value={motivo} onChange={e => setMotivo(e.target.value)} placeholder="Cambio de pavimento · el cliente añade el baño pequeño" autoFocus maxLength={500} /></label>
       </Modal>
-
-      <Modal open={dialogo === "aprobar"} onClose={cerrarDialogo} title={`Aprobar la V${working?.number ?? ""} para obra`} footer={<><Button variant="secondary" onClick={cerrarDialogo} disabled={pending}>Cancelar</Button><Button variant="primary" onClick={ejecutar} disabled={pending || busy || texto.trim().length < 3}>{pending ? "Aprobando…" : "Aprobar para obra"}</Button></>}>
-        <p className="text-sm">La aprobación fija el importe de referencia de la obra{approved ? ` y sustituye a la V${approved.number}` : ""}. Deja constancia de cómo ha aceptado el cliente: no es una firma electrónica, es tu registro.</p>
-        <label className="field" style={{ marginTop: 12 }}><span>Referencia de la aceptación</span><input type="text" value={texto} onChange={e => setTexto(e.target.value)} placeholder="Correo del 27 oct · presupuesto firmado en papel · transferencia de señal" autoFocus maxLength={500} /></label>
-        {approved && working && <p className="muted text-sm" style={{ marginTop: 10 }}>Diferencia con la aprobada: <strong className="pl-mono">{signed(delta)}</strong> sin IVA.</p>}
-      </Modal>
-
-      <Modal open={dialogo === "revisar"} onClose={cerrarDialogo} title={`Versión nueva desde la V${base?.number ?? ""}`} footer={<><Button variant="secondary" onClick={cerrarDialogo} disabled={pending}>Cancelar</Button><Button variant="primary" onClick={ejecutar} disabled={pending || busy || texto.trim().length < 3}>{pending ? "Creando…" : "Crear la versión nueva"}</Button></>}>
-        <p className="text-sm">Se copia la V{base?.number} tal cual a una versión nueva que puedes editar{approved ? "; la aprobada sigue valiendo hasta que el cliente apruebe la nueva" : ""}.</p>
-        <label className="field" style={{ marginTop: 12 }}><span>Motivo del cambio</span><input type="text" value={texto} onChange={e => setTexto(e.target.value)} placeholder="Cambio de pavimento · el cliente añade el baño pequeño" autoFocus maxLength={500} /></label>
-      </Modal>
-    </>
+    </div>
   );
 }

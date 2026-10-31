@@ -190,7 +190,7 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
   function salir() { router.push(salida); }
   function empezarDeNuevo() { borrarBorrador(project.id); setB(borradorNuevo(project.id, budgetId)); setDecisiones({}); }
 
-  const cabeceraDestino = destino ? `Añadiendo al presupuesto · V${destino.number} · ${destino.status === "draft" ? "borrador" : destino.status === "issued" ? "revisión cerrada, se abrirá una nueva" : "aprobada, se abrirá una revisión nueva"}` : "Se abrirá el presupuesto · V1";
+  const cabeceraDestino = destino ? `Añadiendo al presupuesto · V${destino.number} · ${destino.status === "draft" ? "borrador" : destino.status === "issued" ? "enviada, se abrirá una versión nueva" : "aceptada, se abrirá una versión nueva"}` : "Se abrirá el presupuesto · V1";
   const indice = Math.max(0, pasos.findIndex(p => p.n === b.paso));
   const actual = pasos[indice];
   const vista: Vista = { medida: Boolean(b.medida.start && b.medida.end) };
