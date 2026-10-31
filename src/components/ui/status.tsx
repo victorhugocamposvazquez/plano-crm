@@ -14,12 +14,12 @@ export function Status({ label, tone = "muted" }: { label: string; tone?: Tone }
 }
 
 /** Píldora con fondo tintado: para estados que deben destacar en listas densas. */
-export function Pill({ label, tone = "muted" }: { label: string; tone?: Tone }) {
-  return <span className="pill" data-tone={tone === "blue" ? "info" : tone}>{label}</span>;
+export function Pill({ label, tone = "muted", dot = false }: { label: string; tone?: Tone; dot?: boolean }) {
+  return <span className="pill" data-tone={tone === "blue" ? "info" : tone} data-dot={dot || undefined}>{label}</span>;
 }
 
 export function ProjectStatus({ status }: { status: Project["status"] }) {
-  const tone: Tone = status === "active" ? "info" : status === "completed" ? "success" : "muted";
+  const tone: Tone = status === "active" || status === "planning" ? "info" : status === "completed" ? "success" : "muted";
   return <Status label={projectStatus[status]} tone={tone} />;
 }
 

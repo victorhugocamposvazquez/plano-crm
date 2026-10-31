@@ -1,4 +1,4 @@
-export type TabOption<T extends string> = { id: T; label: string; count?: number };
+export type TabOption<T extends string> = { id: T; label: string; count?: number; hint?: string; dot?: "warning" | "info" | "danger" | "success" };
 
 /** Pestañas de filtro: subrayado en Workspace, píldora en Grafito (ver ui.css). */
 export function Tabs<T extends string>({ options, value, onChange, label }: { options: TabOption<T>[]; value: T; onChange: (id: T) => void; label: string }) {
@@ -16,6 +16,8 @@ export function Tabs<T extends string>({ options, value, onChange, label }: { op
         <button key={option.id} type="button" role="tab" className="tab" aria-selected={option.id === value} tabIndex={option.id === value ? 0 : -1} onClick={() => onChange(option.id)}>
           {option.label}
           {option.count !== undefined && <small className="tab-count">{option.count}</small>}
+          {option.hint && <small className="tab-hint">{option.hint}</small>}
+          {option.dot && <span className="tab-dot" data-tone={option.dot} aria-hidden="true" />}
         </button>
       ))}
     </div>

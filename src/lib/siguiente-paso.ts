@@ -29,7 +29,7 @@ export function siguientePaso(data: Workspace, project: Project, hoy = new Date(
   const atrasadas = pendientes.filter(t => t.due_date < hoy);
   const certificado = data.certifications.filter(c => c.project_id === project.id).reduce((s, c) => s + c.amount, 0);
 
-  if (project.status === "completed") return { etapa: "entrega", titulo: "Proyecto finalizado", detalle: "Queda el histórico de presupuestos, documentos y conversación.", accion: "ninguna", label: "", urgencia: 0 };
+  if (project.status === "completed") return { etapa: "entrega", titulo: "Proyecto entregado", detalle: "Queda el histórico de presupuestos, documentos y conversación.", accion: "ninguna", label: "", urgencia: 0 };
 
   // Si la empresa ya está planificando o en obra, manda la obra aunque el presupuesto siga en revisión.
   const enObra = project.status === "planning" || project.status === "active";
@@ -40,35 +40,48 @@ export function siguientePaso(data: Workspace, project: Project, hoy = new Date(
   }
 
   if (!approved && !enObra) {
-    if (working?.status === "draft") return { etapa: "presupuesto", titulo: `Cerrar la V${working.number} y enviarla al cliente`, detalle: `${totals(working.items).base / 100 > 0 ? "" : ""}Revisa partidas y condiciones; al cerrarla queda lista para el PDF y la aprobación.`, accion: "cerrar", budget_id: working.budget_id, label: `Cerrar V${working.number}`, urgencia: 1 };
-    if (working?.status === "issued") return { etapa: "aprobacion", titulo: `V${working.number} enviada · pendiente de aprobación`, detalle: "Cuando el cliente acepte, apruébala para obra con la referencia (correo, firma, señal).", accion: "aprobar", budget_id: working.budget_id, label: `Aprobar V${working.number}`, urgencia: 2 };
+    if (working?.status === "draft") return { etapa: "presupuesto", titulo: `Enviar la V${working.number} al cliente`, detalle: "Revisa las partidas y las condiciones. Al enviarla ya no se puede editar: los cambios van en una versión nueva.", accion: "cerrar", budget_id: working.budget_id, label: "Revisar y enviar", urgencia: 1 };
+    if (working?.status === "issued") return { etapa: "aprobacion", titulo: `El cliente tiene la V${working.number} y no ha respondido`, detalle: "Cuando conteste, registra su respuesta: si acepta, si pide cambios o si dice que no.", accion: "aprobar", budget_id: working.budget_id, label: "Registrar respuesta", urgencia: 2 };
   }
 
-  if (approved && working?.status === "issued" && !enObra) return { etapa: "aprobacion", titulo: `V${working.number} cerrada con cambios · pendiente de aprobar`, detalle: `Sustituirá a la V${approved.number} aprobada cuando el cliente acepte.`, accion: "aprobar", budget_id: working.budget_id, label: `Aprobar V${working.number}`, urgencia: 2 };
+  if (approved && working?.status === "issued" && !enObra) return { etapa: "aprobacion", titulo: `El cliente tiene la V${working.number} y no ha respondido`, detalle: `Mientras tanto sigue valiendo la V${approved.number} aceptada.`, accion: "aprobar", budget_id: working.budget_id, label: "Registrar respuesta", urgencia: 2 };
 
-  if (approved && (project.status === "lead" || project.status === "estimating")) return { etapa: "aprobacion", titulo: "Presupuesto aprobado · planifica la obra", detalle: "Pasa el proyecto a planificación y reparte las tareas por oficio y fecha.", accion: "planificar", label: "Pasar a planificación", urgencia: 1 };
+  if (approved && (project.status === "lead" || project.status === "estimating")) return { etapa: "aprobacion", titulo: "Presupuesto aceptado · planifica la obra", detalle: "Pasa el proyecto a planificación y reparte las tareas por oficio y fecha.", accion: "planificar", label: "Pasar a planificación", urgencia: 1 };
 
   if (project.status === "planning") {
     if (!tasks.length) return { etapa: "obra", titulo: "Crea las tareas de la obra", detalle: "Demoliciones, albañilería, instalaciones… con oficio, responsable, fecha y peso en el avance.", accion: "tareas", label: "Planificar tarea", urgencia: 1 };
-    return { etapa: "obra", titulo: "Planificación lista · arranca la obra", detalle: `${tasks.length} tareas planificadas. Al arrancar, el proyecto pasa a «En obra» y aparece en Hoy.`, accion: "iniciar-obra", label: "Arrancar la obra", urgencia: 1 };
+    return { etapa: "obra", titulo: "Planificación lista · arranca la obra", detalle: `${tasks.length} tareas planificadas. Al arrancar, el proyecto pasa a «Obra» y aparece en Hoy.`, accion: "iniciar-obra", label: "Arrancar la obra", urgencia: 1 };
   }
 
   if (project.status === "active") {
     if (atrasadas.length) return { etapa: "obra", titulo: `${atrasadas.length} tarea${atrasadas.length === 1 ? "" : "s"} con el plazo vencido`, detalle: `La más antigua: ${atrasadas[0].title} (${atrasadas[0].trade}).`, accion: "tarea", label: "Ver tarea", tarea: atrasadas[0], urgencia: 2 };
     if (pendientes.length) return { etapa: "obra", titulo: `Siguiente: ${pendientes[0].title}`, detalle: `${pendientes[0].trade}${pendientes[0].assignee ? ` · ${pendientes[0].assignee}` : ""} · ${pendientes.length} pendiente${pendientes.length === 1 ? "" : "s"} en total.`, accion: "tarea", label: "Ver tarea", tarea: pendientes[0], urgencia: 0 };
     if (!tasks.length) return { etapa: "obra", titulo: "En obra sin tareas planificadas", detalle: "Sin tareas no hay avance que medir ni agenda por oficios.", accion: "tareas", label: "Planificar tarea", urgencia: 1 };
-    if (approved && certificado < totals(approved.items).base) return { etapa: "entrega", titulo: "Tareas completadas · certifica lo ejecutado", detalle: `Certificado ${(certificado / 100).toLocaleString("es-ES", { style: "currency", currency: "EUR" })} de ${(totals(approved.items).base / 100).toLocaleString("es-ES", { style: "currency", currency: "EUR" })} aprobados.`, accion: "certificar", label: "Nueva certificación", urgencia: 1 };
-    return { etapa: "entrega", titulo: "Obra terminada y certificada", detalle: "Marca el proyecto como finalizado para cerrarlo.", accion: "finalizar", label: "Finalizar proyecto", urgencia: 0 };
+    if (approved && certificado < totals(approved.items).base) return { etapa: "entrega", titulo: "Tareas completadas · prepara el cobro", detalle: `Preparado para cobrar ${(certificado / 100).toLocaleString("es-ES", { style: "currency", currency: "EUR" })} de ${(totals(approved.items).base / 100).toLocaleString("es-ES", { style: "currency", currency: "EUR" })} aceptados, sin IVA.`, accion: "certificar", label: "Preparar cobro", urgencia: 1 };
+    return { etapa: "entrega", titulo: "Obra terminada y cobros preparados", detalle: "Marca el proyecto como entregado para cerrarlo.", accion: "finalizar", label: "Marcar como entregado", urgencia: 0 };
   }
 
   return { etapa: "presupuesto", titulo: "Presupuesto en marcha", detalle: "Revisa la revisión en curso desde la pestaña Presupuesto.", accion: "editar", budget_id: working?.budget_id ?? budgets[0]?.id, label: "Ver presupuesto", urgencia: 0 };
+}
+
+/**
+ * Lo que enseña la ficha y Hoy: si el cliente tiene una versión sin contestar y la obra no va atrasada,
+ * eso es lo siguiente aunque el proyecto ya esté en obra. El resto lo decide `siguientePaso`.
+ */
+export function pasoVisible(data: Workspace, project: Project, hoy = new Date().toISOString().slice(0, 10)): SiguientePaso {
+  const paso = siguientePaso(data, project, hoy);
+  if (project.status === "completed" || paso.urgencia === 2) return paso;
+  const enviada = data.budgets.filter(b => b.project_id === project.id).map(b => budgetHistory(b, data.versions)).find(h => h.working?.status === "issued");
+  if (!enviada?.working) return paso;
+  const v = enviada.working;
+  return { etapa: "aprobacion", titulo: `El cliente tiene la V${v.number} y no ha respondido`, detalle: enviada.approved ? `Mientras tanto la obra sigue con la V${enviada.approved.number}.` : "Cuando conteste, registra su respuesta.", accion: "aprobar", budget_id: v.budget_id, label: "Registrar respuesta", urgencia: 1 };
 }
 
 /** Los proyectos con algo que hacer, los más urgentes primero y los finalizados fuera. */
 export function queToca(data: Workspace, hoy?: string) {
   return data.projects
     .filter(p => p.status !== "completed")
-    .map(project => ({ project, paso: siguientePaso(data, project, hoy) }))
+    .map(project => ({ project, paso: pasoVisible(data, project, hoy) }))
     .filter(x => x.paso.accion !== "ninguna")
     .sort((a, b) => b.paso.urgencia - a.paso.urgencia || a.project.name.localeCompare(b.project.name, "es"));
 }

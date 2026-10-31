@@ -1,3 +1,4 @@
+import { coincidePalabra, leerConsulta, normalizar } from "./busqueda";
 import { kindNames, projectStatus, type Project, type Workspace } from "./domain";
 
 /** Normaliza para buscar: minúsculas, sin acentos ni signos. «C/ Mayor» y «calle mayor» coinciden. */
@@ -42,13 +43,13 @@ export function matchesTerm(normalizedField: string, term: string) {
  * Devuelve en qué campos ha coincidido para explicárselo a quien busca.
  */
 export function searchProjects(data: Workspace, projects: Project[], query: string): SearchHit[] {
-  const terms = normalize(query).split(" ").filter(Boolean);
+  const terms = leerConsulta(normalize(query)).terminos;
   if (!terms.length) return projects.map(project => ({ project, matchedIn: [] }));
   return projects.flatMap(project => {
-    const fields = projectFields(data, project).map(f => ({ ...f, norm: normalize(f.text) }));
+    const fields = projectFields(data, project).map(f => ({ ...f, norm: normalize(f.text), words: normalizar(normalize(f.text)).split(/[^a-z0-9ñ]+/).filter(Boolean) }));
     const matched = new Set<string>();
     for (const term of terms) {
-      const hits = fields.filter(f => matchesTerm(f.norm, term));
+      const hits = fields.filter(f => matchesTerm(f.norm, term) || f.words.some(w => coincidePalabra(term, w)));
       if (!hits.length) return [];
       hits.forEach(h => matched.add(h.label));
     }

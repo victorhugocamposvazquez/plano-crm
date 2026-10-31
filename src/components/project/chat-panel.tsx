@@ -1,12 +1,15 @@
 "use client";
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import Link from "next/link";
-import { ArrowUp, Hash, FileText, ListChecks, Package, Receipt, X, Paperclip, Pencil, Trash2, Check, SmilePlus, Loader2, Image as ImageIcon, ExternalLink, Download, Search, Info, CircleHelp, ArrowLeft, Users, Layers2, Link2, ChevronRight, Slash, Sparkles, Activity } from "lucide-react";
+import { LayoutGrid, AtSign, Camera, MapPin, ListPlus, ArrowUp, Hash, FileText, ListChecks, Package, Receipt, X, Paperclip, Pencil, Trash2, Check, SmilePlus, Loader2, Image as ImageIcon, ExternalLink, Download, Search, Info, CircleHelp, ArrowLeft, Users, Layers2, Link2, ChevronRight, Slash, Sparkles, Activity } from "lucide-react";
 import { Menu } from "@/components/ui/menu";
 import { Modal } from "@/components/ui/modal";
+import { Popover } from "@/components/ui/popover";
 import { useWorkspace } from "@/components/workspace-provider";
 import { TaskDialog } from "@/components/project/task-dialog";
 import { ChatPeek } from "@/components/project/chat-peek";
+import { iniciales as inicialesProyecto } from "@/lib/pasos";
+import { localDate } from "@/lib/hoy";
 import { can, dateLabel, type Document, type Message, type Task } from "@/lib/domain";
 import { isImage, formatSize } from "@/lib/documentos";
 import { parseMessage, encodeRef, referenciables, filtrarReferencias, destinoRef, categorias, nombreCategoria, type Ref, type RefOption, type RefType } from "@/lib/chat-refs";
@@ -32,7 +35,7 @@ type Peek = Exclude<VistaChat, { kind: "buscar" } | { kind: "ayuda" } | { kind: 
  * algo del proyecto por categoría y accesos rápidos / «/» para consultar (presupuesto, tareas, compras…)
  * en un modal encima del chat: lo mismo que se vería en la ficha, sin salir de la conversación.
  */
-export function ChatPanel({ projectId, messages }: { projectId: string; messages: Message[] }) {
+export function ChatPanel({ projectId, messages, title, subtitle, onClose }: { projectId: string; messages: Message[]; title?: string; subtitle?: string; onClose?: () => void }) {
   const { data, actor, busy, send, notify, fileUrl, upload } = useWorkspace();
   const allowed = can(actor.role, "message.send");
   const puedeBorrarAjenos = actor.role === "admin" || actor.role === "office";
@@ -52,6 +55,10 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
   const [sending, setSending] = useState(false);
   const [picker, setPicker] = useState<Picker>(pickerCerrado);
   const [cmdActive, setCmdActive] = useState(0);
+  const [adjuntarAbierto, setAdjuntarAbierto] = useState(false);
+  const [mencionAbierta, setMencionAbierta] = useState(false);
+  const fotoInput = useRef<HTMLInputElement>(null);
+  const chipsRef = useRef<HTMLElement>(null);
   const [openTask, setOpenTask] = useState<Task | null>(null);
   const lightbox = useRef<HTMLDialogElement>(null);
   const attachInput = useRef<HTMLInputElement>(null);
@@ -64,6 +71,8 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
   const matches = useMemo(() => filtrarReferencias(options, picker.query, picker.cat).slice(0, 10), [options, picker.query, picker.cat]);
   const conteoCat = useMemo(() => Object.fromEntries(categorias.map(c => [c.type, options.filter(o => o.type === c.type).length])) as Record<RefType, number>, [options]);
   const gente = useMemo(() => listarParticipantes(messages), [messages]);
+  // A quién se puede mencionar: quien ya ha escrito y quien tiene tareas en esta obra.
+  const equipo = useMemo(() => [...new Set([...gente.map(p => p.name.split(" · ")[0]), ...data.tasks.filter(t => t.project_id === projectId && t.assignee).map(t => t.assignee)])].filter(n => n !== actor.name.split(" · ")[0]), [gente, data.tasks, projectId, actor.name]);
   const compartidos = useMemo(() => elementosCompartidos(messages, data), [messages, data]);
   const coincidencias = useMemo(() => (buscando ? buscarMensajes(messages, consulta) : null), [buscando, consulta, messages]);
   const sugerencias = useMemo(() => (body.trim().startsWith("/") && !picker.open ? sugerir(body, 8) : []), [body, picker.open]);
@@ -185,6 +194,33 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
     if ("document" in dest) { const doc = data.documents.find(d => d.id === dest.document); if (!doc) { notify("Ese documento ya no está en el proyecto."); return; } void previsualizar(doc); }
   }
 
+  function mencionar(nombre: string) {
+    setMencionAbierta(false);
+    setBody(b => `${b}${b && !b.endsWith(" ") ? " " : ""}@${nombre} `);
+    setTimeout(() => textarea.current?.focus(), 0);
+  }
+  function compartir(tipo: RefType) {
+    setAdjuntarAbierto(false);
+    setPicker({ open: true, query: "", cat: tipo, active: 0 });
+    setBody(b => `${b}${b && !b.endsWith(" ") ? " " : ""}#`);
+    setTimeout(() => textarea.current?.focus(), 0);
+  }
+  function compartirUbicacion() {
+    setAdjuntarAbierto(false);
+    const lugar = data.projects.find(p => p.id === projectId)?.location;
+    if (!lugar) { notify("Este proyecto no tiene dirección."); return; }
+    setBody(b => `${b}${b && !b.endsWith(" ") ? " " : ""}${lugar} · https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lugar)} `);
+    setTimeout(() => textarea.current?.focus(), 0);
+  }
+  async function hacerTarea(m: Message) {
+    const titulo = parseMessage(m.body).map(part => (part.kind === "text" ? part.text : part.ref.label)).join("").trim().slice(0, 200);
+    if (!titulo) return;
+    try {
+      await send({ type: "task.create", project_id: projectId, title: titulo, trade: "Coordinación", assignee: "", due_date: localDate(), weight: 10 });
+      notify(`Tarea creada para hoy: ${titulo}`);
+    } catch (e) { notify(e instanceof Error ? e.message : "No se ha podido crear la tarea."); }
+  }
+
   /** Miniatura de una foto adjunta: la URL se resuelve igual que al abrir el documento. */
   const DocThumb = ({ doc, size = "md" }: { doc: Document; size?: "md" | "sm" }) => {
     const [src, setSrc] = useState<string | null>(null);
@@ -231,17 +267,21 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
         {vista === "info" ? (
           <button type="button" className="chat-top-back" onClick={() => setVista("chat")}><ArrowLeft size={16} strokeWidth={1.8} aria-hidden="true" />Volver al chat</button>
         ) : (
-          <button type="button" className="chat-top-people" onClick={() => setVista("info")} title="Participantes y elementos compartidos"><AvatarStack /><span className="chat-top-names"><strong>{gente.length} participante{gente.length === 1 ? "" : "s"}</strong><small className="muted">{nombres}</small></span></button>
+          <button type="button" className="chat-top-people" onClick={() => setVista("info")} title="Participantes y lo compartido">
+            {title ? <span className="avatar avatar-ink chat-top-avatar" aria-hidden="true">{inicialesProyecto(title)}</span> : <AvatarStack />}
+            <span className="chat-top-names"><strong>{title ?? `${gente.length} participante${gente.length === 1 ? "" : "s"}`}</strong><small className="muted">{nombres}</small>{subtitle && <small className="sr-only">{subtitle}</small>}</span>
+          </button>
         )}
         <span className="chat-top-tools">
           {/* La lupa siempre a la vista, en la conversación y en la información: abre la búsqueda por palabra. */}
           <button type="button" className="composer-tool" aria-label="Buscar en la conversación" title="Buscar en la conversación" aria-pressed={buscando && vista === "chat"} onClick={() => { if (buscando && vista === "chat") { setBuscando(false); setConsulta(""); return; } setVista("chat"); setBuscando(true); }}><Search size={18} strokeWidth={1.7} aria-hidden="true" /></button>
+          <button type="button" className="composer-tool" aria-label="Fotos, archivos y enlaces" title="Fotos, archivos y enlaces" aria-pressed={vista === "info"} onClick={() => setVista(v => (v === "info" ? "chat" : "info"))}><LayoutGrid size={18} strokeWidth={1.7} aria-hidden="true" /></button>
           <Menu label="Más opciones del chat" align="end" items={[
-            { id: "info", label: "Fotos, documentos y participantes", hint: "Todo lo compartido aquí", icon: <Info size={16} strokeWidth={1.7} />, onSelect: () => setVista("info") },
             { id: "mencionar", label: "Mencionar algo del proyecto", hint: "Presupuesto, documento, tarea…", icon: <Hash size={16} strokeWidth={1.7} />, onSelect: () => { setVista("chat"); setPicker({ open: true, query: "", cat: null, active: 0 }); setBody(b => `${b}${b && !b.endsWith(" ") ? " " : ""}#`); setTimeout(() => textarea.current?.focus(), 0); } },
             { id: "consultar", label: "Consultar escribiendo", hint: "Escribe / y elige", icon: <Slash size={16} strokeWidth={1.7} />, onSelect: () => { setVista("chat"); setBody("/"); setTimeout(() => textarea.current?.focus(), 0); } },
             { id: "ayuda", label: "Cómo se usa el chat", icon: <CircleHelp size={16} strokeWidth={1.7} />, onSelect: () => setAyuda(true) }
           ]} />
+          {onClose && <button type="button" className="composer-tool" aria-label={buscando ? "Cerrar la búsqueda" : vista === "info" ? "Volver al chat" : "Cerrar el chat"} title={buscando ? "Cerrar la búsqueda" : vista === "info" ? "Volver al chat" : "Cerrar el chat"} onClick={() => { if (buscando) { setBuscando(false); setConsulta(""); } else if (vista === "info") setVista("chat"); else onClose(); }}><X size={18} strokeWidth={1.7} aria-hidden="true" /></button>}
         </span>
       </div>
 
@@ -296,6 +336,7 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
                     {g.items.map((m, i) => {
                       const borrado = Boolean(m.deleted_at);
                       const acciones = borrado ? [] : [
+                        ...(can(actor.role, "task.create") ? [{ id: "tarea", label: "Hacer tarea", hint: "La crea para hoy con este texto", icon: <ListPlus size={15} strokeWidth={1.7} />, onSelect: () => void hacerTarea(m) }] : []),
                         ...(g.mine ? [{ id: "editar", label: "Editar", icon: <Pencil size={15} strokeWidth={1.7} />, onSelect: () => setEditing({ id: m.id, body: m.body }) }] : []),
                         ...(g.mine || puedeBorrarAjenos ? [{ id: "borrar", label: "Borrar", hint: "Queda constancia de que hubo un mensaje", icon: <Trash2 size={15} strokeWidth={1.7} />, danger: true, onSelect: () => void borrar(m.id) }] : [])
                       ];
@@ -334,9 +375,12 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
       )}
 
       {vista === "chat" && (
-        <nav className="chat-quick" aria-label="Consultar sin salir del chat">
-          {accesosRapidos.map(c => { const Icon = iconoAcceso[c.id] ?? Sparkles; return <button key={c.id} type="button" className="chip" title={c.descripcion} onClick={() => consultar(c)}><Icon size={14} strokeWidth={1.8} aria-hidden="true" />{c.acceso}</button>; })}
-        </nav>
+        <div className="chat-quick-wrap">
+          <nav ref={chipsRef} className="chat-quick" aria-label="Consultar sin salir del chat">
+            {accesosRapidos.map(c => { const Icon = iconoAcceso[c.id] ?? Sparkles; return <button key={c.id} type="button" className="chip" title={c.descripcion} onClick={() => consultar(c)}><Icon size={14} strokeWidth={1.8} aria-hidden="true" />{c.acceso}</button>; })}
+          </nav>
+          <button type="button" className="chat-quick-more" aria-label="Ver más" title="Ver más" onClick={() => chipsRef.current?.scrollBy({ left: 160, behavior: "smooth" })}><ChevronRight size={15} strokeWidth={1.9} aria-hidden="true" /></button>
+        </div>
       )}
 
       {allowed && vista === "chat" ? (
@@ -384,9 +428,25 @@ export function ChatPanel({ projectId, messages }: { projectId: string; messages
             </div>
           )}
           <div className="composer">
-            <button type="button" className="composer-tool" aria-label="Adjuntar foto o PDF" title="Adjuntar foto o PDF" disabled={uploading} onClick={() => attachInput.current?.click()}>{uploading ? <Loader2 size={16} strokeWidth={1.8} aria-hidden="true" className="spin" /> : <Paperclip size={16} strokeWidth={1.7} aria-hidden="true" />}</button>
-            <input ref={attachInput} type="file" accept={adjuntables.join(",")} capture="environment" onChange={e => { void adjuntar(e.target.files?.[0]); e.target.value = ""; }} style={{ display: "none" }} aria-hidden="true" tabIndex={-1} />
-            <textarea ref={textarea} value={body} onChange={e => onChange(e.target.value)} onKeyDown={onKey} rows={1} placeholder={uploading ? "Subiendo el archivo…" : "Mensaje"} aria-label="Nuevo mensaje" maxLength={5000} />
+            <Popover open={adjuntarAbierto} onClose={() => setAdjuntarAbierto(false)} side="top" panelClassName="composer-pop" trigger={
+              <button type="button" className="composer-tool" aria-label="Adjuntar" title="Adjuntar" aria-expanded={adjuntarAbierto} disabled={uploading} onClick={() => setAdjuntarAbierto(v => !v)}>{uploading ? <Loader2 size={18} strokeWidth={1.8} aria-hidden="true" className="spin" /> : <Paperclip size={18} strokeWidth={1.7} aria-hidden="true" />}</button>
+            }>
+              <button type="button" className="composer-pop-item" onClick={() => { setAdjuntarAbierto(false); attachInput.current?.click(); }}><ImageIcon size={16} strokeWidth={1.7} aria-hidden="true" />Fotos o documento</button>
+              <button type="button" className="composer-pop-item" onClick={() => { setAdjuntarAbierto(false); fotoInput.current?.click(); }}><Camera size={16} strokeWidth={1.7} aria-hidden="true" />Cámara</button>
+              <button type="button" className="composer-pop-item" disabled={!conteoCat.v} onClick={() => compartir("v")}><Receipt size={16} strokeWidth={1.7} aria-hidden="true" />Presupuesto</button>
+              <button type="button" className="composer-pop-item" disabled={!conteoCat.t} onClick={() => compartir("t")}><ListChecks size={16} strokeWidth={1.7} aria-hidden="true" />Tarea</button>
+              <button type="button" className="composer-pop-item" onClick={compartirUbicacion}><MapPin size={16} strokeWidth={1.7} aria-hidden="true" />Ubicación de la obra</button>
+            </Popover>
+            <input ref={attachInput} type="file" accept={adjuntables.join(",")} onChange={e => { void adjuntar(e.target.files?.[0]); e.target.value = ""; }} style={{ display: "none" }} aria-hidden="true" tabIndex={-1} />
+            <input ref={fotoInput} type="file" accept="image/*" capture="environment" onChange={e => { void adjuntar(e.target.files?.[0]); e.target.value = ""; }} style={{ display: "none" }} aria-hidden="true" tabIndex={-1} />
+            <Popover open={mencionAbierta} onClose={() => setMencionAbierta(false)} side="top" panelClassName="composer-pop" trigger={
+              <button type="button" className="composer-tool" aria-label="Mencionar a alguien" title="Mencionar a alguien" aria-expanded={mencionAbierta} onClick={() => setMencionAbierta(v => !v)}><AtSign size={18} strokeWidth={1.7} aria-hidden="true" /></button>
+            }>
+              <span className="composer-pop-title">Mencionar a</span>
+              {equipo.length === 0 && <p className="muted text-sm" style={{ margin: 0, padding: "6px 12px 10px" }}>Todavía no hay nadie más en esta obra.</p>}
+              {equipo.map(n => <button key={n} type="button" className="composer-pop-item" onClick={() => mencionar(n)}><span className="msg-avatar" data-tone={tonoAutor(n)} aria-hidden="true">{iniciales(n)}</span>{n}</button>)}
+            </Popover>
+            <textarea ref={textarea} value={body} onChange={e => onChange(e.target.value)} onKeyDown={onKey} rows={1} placeholder={uploading ? "Subiendo el archivo…" : "Escribe un mensaje"} aria-label="Nuevo mensaje" maxLength={5000} />
             <button type="submit" className="composer-send" aria-label={body.trim().startsWith("/") || atajoExacto ? "Consultar" : "Enviar mensaje"} disabled={(!body.trim() && adjuntos.length === 0) || sending || busy}>{body.trim().startsWith("/") || atajoExacto ? <Sparkles size={16} strokeWidth={2} aria-hidden="true" /> : <ArrowUp size={17} strokeWidth={2} aria-hidden="true" />}</button>
           </div>
         </form>

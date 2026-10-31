@@ -1,117 +1,95 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { Building2, Plus, ArrowUpRight, FileText, Search, X } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
-import { Tabs } from "@/components/ui/tabs";
-import { ProjectStatus, Meter } from "@/components/ui/status";
-import { projectProgress, projectStatus, kindNames, money, totals, dateLabel, can, type Project, type Workspace } from "@/lib/domain";
+import { Pill } from "@/components/ui/status";
+import { SearchBox } from "@/components/ui/search-box";
+import { projectProgress, kindNames, money, totals, can, type Workspace } from "@/lib/domain";
 import { searchProjects } from "@/lib/search";
+import { pasoVisible } from "@/lib/siguiente-paso";
+import { iniciales, pasoDe, pasos, quienActua, quienEtiqueta, type Paso, type Quien } from "@/lib/pasos";
+import { localDate } from "@/lib/hoy";
 import { useQueryState } from "@/lib/use-query-state";
 import { NewProjectDialog } from "@/components/project/new-project-dialog";
 
-type Filter = "all" | "active" | "estimating" | "completed";
-const filters: { id: Filter; label: string; match: (p: Project) => boolean }[] = [
-  { id: "all", label: "Todas", match: () => true },
-  { id: "active", label: "En obra", match: p => p.status === "active" || p.status === "planning" },
-  { id: "estimating", label: "Presupuestando", match: p => p.status === "lead" || p.status === "estimating" },
-  { id: "completed", label: "Finalizadas", match: p => p.status === "completed" }
-];
+type Filtro = "all" | Paso;
 
-/** Aprobado con IVA sumando todos los presupuestos de la obra (la cifra que ve el cliente); null si ninguno está aprobado. */
-function approvedAmount(data: Workspace, projectId: string) {
-  const approved = data.budgets.filter(b => b.project_id === projectId).map(b => data.versions.find(v => v.id === b.approved_version_id)).filter(v => v !== undefined);
-  return approved.length ? approved.reduce((sum, v) => sum + totals(v.items).total, 0) : null;
+/** Aceptado con IVA sumando todos los presupuestos del proyecto (la cifra que ve el cliente); null si no hay ninguno. */
+function aceptado(data: Workspace, projectId: string) {
+  const v = data.budgets.filter(b => b.project_id === projectId).map(b => data.versions.find(x => x.id === b.approved_version_id)).filter(x => x !== undefined);
+  return v.length ? v.reduce((sum, x) => sum + totals(x.items).total, 0) : null;
 }
 
-export default function ObrasPage() {
+const ordenPaso: Record<Paso, number> = { presupuesto: 0, visita: 1, obra: 2, entregado: 3 };
+
+export default function ProyectosPage() {
   const { data, loading, error, actor } = useWorkspace();
-  const [filter, setFilter] = useQueryState<Filter>("f", "all");
+  const [filtro, setFiltro] = useQueryState<Filtro>("f", "all");
+  const [quien, setQuien] = useQueryState<Quien | "">("quien", "");
   const [queryParam, setQueryParam] = useQueryState<string>("q", "");
   // «?nuevo=1» abre el alta sobre la lista: recargar o volver atrás conserva el contexto.
   const [nuevo, setNuevo] = useQueryState<string>("nuevo", "");
   const [query, setQuery] = useState(queryParam);
-  // La búsqueda vive en la URL (con retardo) para que «atrás» y recargar conserven el contexto.
   useEffect(() => { const t = setTimeout(() => { if (query !== queryParam) setQueryParam(query); }, 300); return () => clearTimeout(t); }, [query, queryParam, setQueryParam]);
-  const hits = useMemo(() => searchProjects(data, data.projects.filter(filters.find(f => f.id === filter)!.match), query), [data, filter, query]);
-  const projects = hits.map(h => h.project);
-  const matchedIn = (id: string) => hits.find(h => h.project.id === id)?.matchedIn ?? [];
-  const activeCount = data.projects.filter(p => p.status === "active").length;
-  const inProgressAmount = data.projects.filter(p => p.status === "active").reduce((sum, p) => sum + (approvedAmount(data, p.id) ?? 0), 0);
-  const lastVersion = [...data.versions].sort((a, b) => b.updated_at.localeCompare(a.updated_at))[0];
-  const lastProject = lastVersion && data.projects.find(p => p.id === data.budgets.find(b => b.id === lastVersion.budget_id)?.project_id);
+  const hoy = localDate();
+  const encontrados = useMemo(() => searchProjects(data, data.projects, query).map(h => h.project), [data, query]);
+  const filas = useMemo(() => encontrados.map(project => ({ project, paso: pasoDe(project.status), quien: quienActua(data, project, hoy), siguiente: pasoVisible(data, project, hoy) })), [encontrados, data, hoy]);
+  const visibles = filas.filter(f => (filtro === "all" || f.paso === filtro) && (!quien || f.quien === quien)).sort((a, b) => ordenPaso[a.paso] - ordenPaso[b.paso] || a.project.name.localeCompare(b.project.name, "es"));
+  const vocabulario = useMemo(() => data.projects.flatMap(p => [p.name, p.client_name, p.location, kindNames[p.kind]]), [data.projects]);
+  const cuentaPaso = (id: Filtro) => filas.filter(f => (id === "all" || f.paso === id) && (!quien || f.quien === quien)).length;
+  const cuentaQuien = (id: Quien) => filas.filter(f => (filtro === "all" || f.paso === filtro) && f.quien === id).length;
+  const puedeCrear = can(actor.role, "project.create");
 
   return (
     <div className="page">
-      <div>
-        <div className="eyebrow"><FileText size={13} strokeWidth={1.8} aria-hidden="true" /><span>{data.organization_name || "Espacio de trabajo"}</span></div>
-        <div className="page-head">
-          <h1 className="h1">Tus proyectos.</h1>
-          <button type="button" className="btn btn-primary btn-new" onClick={() => setNuevo("1")}><Plus size={17} strokeWidth={1.8} aria-hidden="true" />Nuevo proyecto</button>
-        </div>
-        <p className="subtitle">
-          {loading ? "Cargando el espacio de trabajo…" : `${data.projects.length} proyectos · ${activeCount} en obra · ${money(inProgressAmount)} aprobados en curso, con IVA`}
-        </p>
+      <div className="pl-head">
+        <div><h1 className="pl-title">Proyectos</h1><p className="pl-sub">Reformas, obra nueva y carpintería, ordenados por el paso en que están.</p></div>
+        {puedeCrear && <button type="button" className="btn btn-primary" onClick={() => setNuevo("1")}><Plus size={17} strokeWidth={1.8} aria-hidden="true" />Nuevo proyecto</button>}
       </div>
 
       {error && <div className="empty" role="alert"><strong>No se ha podido cargar el espacio.</strong><span className="muted text-sm">{error}</span></div>}
 
-      <label className="search">
-        <Search size={16} strokeWidth={1.8} aria-hidden="true" />
-        <input type="search" className="search-input" value={query} onChange={e => setQuery(e.target.value)} placeholder="Calle, cliente, partida, proveedor…" aria-label="Buscar proyectos" autoComplete="off" />
-        {query && <button type="button" className="search-clear" aria-label="Borrar búsqueda" onClick={() => setQuery("")}><X size={15} strokeWidth={1.8} aria-hidden="true" /></button>}
-      </label>
+      <SearchBox seccion="proyectos" value={query} onChange={setQuery} label="Buscar proyectos" placeholder="Busca lo que sea: proyecto, cliente, calle, paso, qué falta…" count={loading ? undefined : `${visibles.length} ${visibles.length === 1 ? "proyecto" : "proyectos"}`} vocabulario={vocabulario} />
 
-      <Tabs label="Filtrar proyectos" value={filter} onChange={setFilter} options={filters.map(f => ({ id: f.id, label: f.label, count: searchProjects(data, data.projects.filter(f.match), query).length }))} />
-
-      <div>
-        <div className="row-head"><span>Proyecto</span><span>Cliente</span><span>Tipo</span><span>Avance</span><span style={{ textAlign: "right" }}>Aprobado · con IVA</span><span>Fase</span></div>
-        {projects.map(project => {
-          const progress = projectProgress(data, project.id);
-          const amount = approvedAmount(data, project.id);
-          return (
-            <Link key={project.id} href={`/proyectos/${project.id}`} className="row-project">
-              <span className="row-main">
-                <span className="row-icon"><Building2 size={16} strokeWidth={1.6} aria-hidden="true" /></span>
-                <span className="row-text">
-                  <span className="row-title">{project.name}<small className="row-code pl-mono">{project.code}</small></span>
-                  <span className="row-meta">
-                    <span>{projectStatus[project.status]}</span>
-                    <span>{kindNames[project.kind]}</span>
-                    <span>{project.client_name}</span>
-                    <span>{project.location}</span>
-                    {amount !== null && <span className="pl-mono">{money(amount)}</span>}
-                    {query && matchedIn(project.id).length > 0 && <span className="warning">coincide en {matchedIn(project.id).join(", ")}</span>}
-                  </span>
-                </span>
-              </span>
-              <span className="row-cols">
-                <span style={{ minWidth: 0 }}>{project.client_name}<small className="muted" style={{ display: "block", fontSize: "var(--pl-text-xs)" }}>{project.location}{query && matchedIn(project.id).length > 0 ? ` · coincide en ${matchedIn(project.id).join(", ")}` : ""}</small></span>
-                <span className="muted">{kindNames[project.kind]}</span>
-                <span style={{ display: "flex", alignItems: "center", gap: 10 }}><span style={{ flex: 1 }}><Meter value={progress} label={`Avance de ${project.name}`} /></span><span className="row-value">{progress}%</span></span>
-                <span className="row-value" style={{ color: "var(--pl-ink)" }}>{amount !== null ? money(amount) : "—"}</span>
-                <ProjectStatus status={project.status} />
-              </span>
-              <span className="row-value row-value-mobile">{progress}%</span>
-            </Link>
-          );
-        })}
-        {!loading && projects.length === 0 && (
-          <div className="empty" style={{ marginTop: 16 }}>
-            <strong>{query ? `Nada coincide con «${query}»` : "No hay proyectos en este filtro"}</strong>
-            <span className="muted text-sm">{query ? "Prueba con parte de la calle, el apellido del cliente o un material del presupuesto." : "Un proyecto es una obra: con su cliente, su presupuesto y sus tareas."}</span>
-            {!query && can(actor.role, "project.create") && <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><button type="button" className="btn btn-primary" onClick={() => setNuevo("1")}>Nuevo proyecto</button><Link href="/proyectos/nueva" className="btn btn-secondary">Estimar en la visita</Link></div>}
-          </div>
-        )}
+      <div className="list-filters">
+        <div className="pl-seg" role="group" aria-label="Filtrar por paso">
+          <button type="button" aria-pressed={filtro === "all"} onClick={() => setFiltro("all")}>Todos {cuentaPaso("all")}</button>
+          {pasos.map(p => <button key={p.id} type="button" aria-pressed={filtro === p.id} onClick={() => setFiltro(p.id)}>{p.plural} {cuentaPaso(p.id)}</button>)}
+        </div>
+        <div className="list-filters-who" role="group" aria-label="Filtrar por quién actúa">
+          <button type="button" className="who-chip" data-tone="warning" aria-pressed={quien === "te-espera"} onClick={() => setQuien(quien === "te-espera" ? "" : "te-espera")}>Me esperan a mí · {cuentaQuien("te-espera")}</button>
+          <button type="button" className="who-chip" data-tone="info" aria-pressed={quien === "cliente"} onClick={() => setQuien(quien === "cliente" ? "" : "cliente")}>Esperando al cliente · {cuentaQuien("cliente")}</button>
+          {cuentaQuien("atrasado") > 0 && <button type="button" className="who-chip" data-tone="danger" aria-pressed={quien === "atrasado"} onClick={() => setQuien(quien === "atrasado" ? "" : "atrasado")}>Atrasados · {cuentaQuien("atrasado")}</button>}
+        </div>
       </div>
 
-      {lastVersion && lastProject && (
-        <div>
-          <div className="section-label"><span>Último presupuesto tocado</span><ArrowUpRight size={15} strokeWidth={1.6} aria-hidden="true" /></div>
-          <Link href={`/proyectos/${lastProject.id}?s=budget&p=${lastVersion.budget_id}`} className="row-doc">
-            <FileText size={19} strokeWidth={1.55} aria-hidden="true" className="muted" />
-            <span>V{lastVersion.number} · {lastVersion.change_reason}<small>{lastProject.name} · {dateLabel(lastVersion.updated_at)} · {lastVersion.created_by_name}</small></span>
-          </Link>
+      {visibles.length > 0 && (
+        <div className="pl-card project-table">
+          <div className="project-row project-row-head" aria-hidden="true"><span>Proyecto</span><span>Paso</span><span>Avance</span><span>Aceptado</span><span>Siguiente paso</span></div>
+          {visibles.map(({ project, paso, quien: q, siguiente }) => {
+            const avance = projectProgress(data, project.id), importe = aceptado(data, project.id), enObra = paso === "obra" || paso === "entregado";
+            return (
+              <Link key={project.id} href={`/proyectos/${project.id}`} className="project-row">
+                <span className="project-who">
+                  <span className="avatar avatar-sm" aria-hidden="true">{iniciales(project.name)}</span>
+                  <span className="project-who-text"><strong>{project.name}</strong><small>{[project.client_name, project.location, kindNames[project.kind]].filter(Boolean).join(" · ")}</small></span>
+                </span>
+                <span className="project-step">{pasos.find(p => p.id === paso)?.label}</span>
+                <span className="project-progress" aria-label={enObra ? `Avance ${avance} %` : "Sin avance todavía"}><span className="mini-meter" aria-hidden="true"><span style={{ width: `${enObra ? avance : 0}%` }} /></span><small>{enObra ? `${avance} %` : "—"}</small></span>
+                <span className="project-amount pl-mono">{importe !== null ? money(importe) : "—"}</span>
+                <span className="project-next"><Pill label={quienEtiqueta[q].label} tone={quienEtiqueta[q].tone} /><small>{siguiente.titulo}</small></span>
+              </Link>
+            );
+          })}
+        </div>
+      )}
+
+      {!loading && visibles.length === 0 && (
+        <div className="empty">
+          <strong>{query ? `Nada coincide con «${query}»` : "No hay proyectos en este filtro"}</strong>
+          <span className="muted text-sm">{query ? "Prueba con parte de la calle, el apellido del cliente o un material del presupuesto." : "Un proyecto es una obra: con su cliente, su presupuesto y sus tareas."}</span>
+          {!query && puedeCrear && <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><button type="button" className="btn btn-primary" onClick={() => setNuevo("1")}>Nuevo proyecto</button><Link href="/proyectos/nueva" className="btn btn-secondary">Empezar con una visita</Link></div>}
         </div>
       )}
       <NewProjectDialog open={nuevo === "1"} onClose={() => setNuevo("")} />

@@ -21,7 +21,7 @@ const estados = Object.keys(projectStatus) as Project["status"][];
  * (nuevo presupuesto a mano / desde un plano / desde fotos · obra · proyecto), porque ahí la cabecera
  * solo tiene sitio para el nombre, la fase y dos iconos.
  */
-export function ProjectMenu({ project, approvedVersion, puedeEstimar, onChat, solicitud, onAtendida, planoHref, fotosHref, onManual, borrador }: { project: Project; approvedVersion?: BudgetVersion; puedeEstimar: boolean; onChat: () => void; solicitud?: Dialogo | null; onAtendida?: () => void; planoHref?: string; fotosHref?: string; onManual?: () => void; borrador?: BudgetVersion }) {
+export function ProjectMenu({ project, approvedVersion, puedeEstimar, onChat, solicitud, onAtendida, planoHref, fotosHref, onManual, borrador, cobroSugerido }: { project: Project; approvedVersion?: BudgetVersion; puedeEstimar: boolean; onChat: () => void; solicitud?: Dialogo | null; onAtendida?: () => void; planoHref?: string; fotosHref?: string; onManual?: () => void; borrador?: BudgetVersion; cobroSugerido?: { title: string; amount: number } | null }) {
   const router = useRouter();
   const { data, actor, busy, send, notify } = useWorkspace();
   const [dialogo, setDialogo] = useState<Dialogo>("");
@@ -37,13 +37,13 @@ export function ProjectMenu({ project, approvedVersion, puedeEstimar, onChat, so
 
   function abrir(d: Dialogo) { setEstado(project.status); setDialogo(d); }
   // La ficha puede pedir que se abra un diálogo (desde «Siguiente paso»).
-  useEffect(() => { if (solicitud) { setEstado(project.status); setDialogo(solicitud); onAtendida?.(); } }, [solicitud]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { if (solicitud) { setEstado(project.status); if (solicitud === "certificacion" && cobroSugerido) setCert({ title: cobroSugerido.title, amount: (cobroSugerido.amount / 100).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }); setDialogo(solicitud); onAtendida?.(); } }, [solicitud]); // eslint-disable-line react-hooks/exhaustive-deps
   function cerrar() { setDialogo(""); setPending(false); }
 
   async function cambiarEstado() {
     if (pending || busy || estado === project.status) return;
     setPending(true);
-    try { await send({ type: "project.status", id: project.id, status: estado }); notify(`Proyecto en ${projectStatus[estado].toLowerCase()}`); setDialogo(""); }
+    try { await send({ type: "project.status", id: project.id, status: estado }); notify(`Fase del proyecto: ${projectStatus[estado]}`); setDialogo(""); }
     catch (e) { notify(e instanceof Error ? e.message : "No se ha podido cambiar el estado."); }
     finally { setPending(false); }
   }
@@ -67,17 +67,17 @@ export function ProjectMenu({ project, approvedVersion, puedeEstimar, onChat, so
     setPending(true);
     try {
       await send({ type: "certification.create", project_id: project.id, budget_version_id: approvedVersion.id, title: cert.title.trim(), amount: importe });
-      notify(`Borrador de certificación: ${money(importe)}`);
+      notify(`Cobro preparado: ${money(importe)} sin IVA`);
       setCert({ title: "", amount: "" });
       setDialogo("");
-    } catch (e) { notify(e instanceof Error ? e.message : "No se ha podido crear la certificación."); }
+    } catch (e) { notify(e instanceof Error ? e.message : "No se ha podido preparar el cobro."); }
     finally { setPending(false); }
   }
 
   const items = [
     { id: "estado", label: "Cambiar de fase", hint: `Ahora: ${projectStatus[project.status]}`, icon: <ArrowLeftRight size={16} strokeWidth={1.7} />, disabled: !can(actor.role, "project.status"), onSelect: () => abrir("estado") },
     { id: "tarea", label: "Planificar tarea", hint: "Oficio, responsable y fecha", icon: <ListPlus size={16} strokeWidth={1.7} />, disabled: !can(actor.role, "task.create"), onSelect: () => abrir("tarea") },
-    { id: "certificacion", label: "Nueva certificación", hint: approvedVersion ? `Saldo ${money(saldo)} de la V${approvedVersion.number}` : "Necesita un presupuesto aprobado", icon: <Receipt size={16} strokeWidth={1.7} />, disabled: !approvedVersion || !can(actor.role, "certification.create"), onSelect: () => abrir("certificacion") },
+    { id: "certificacion", label: "Preparar cobro", hint: approvedVersion ? `Quedan ${money(saldo)} sin IVA de la V${approvedVersion.number}` : "Necesita un presupuesto aceptado", icon: <Receipt size={16} strokeWidth={1.7} />, disabled: !approvedVersion || !can(actor.role, "certification.create"), onSelect: () => abrir("certificacion") },
     ...(puedeEstimar ? [{ id: "visita", label: "Desde fotos", hint: "Fotos de la obra, notas y una cifra orientativa", icon: <Footprints size={16} strokeWidth={1.7} />, onSelect: () => router.push(`/proyectos/nueva?proyecto=${project.id}`) }] : []),
     { id: "chat", label: "Abrir el chat", hint: "Conversación del equipo", icon: <MessageSquare size={16} strokeWidth={1.7} />, onSelect: onChat }
   ];
@@ -94,7 +94,7 @@ export function ProjectMenu({ project, approvedVersion, puedeEstimar, onChat, so
         <div className="action-sheet">
           <button type="button" className="opt-row" onClick={() => { setDialogo(""); onChat(); }}><span className="opt-ico"><MessageSquare size={18} strokeWidth={1.7} aria-hidden="true" /></span><span className="opt-text"><strong>Abrir el chat</strong><small>Conversación del equipo.</small></span><ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" className="muted" /></button>
           {puedeEstimar && <div className="action-group" role="group" aria-labelledby="acciones-presupuesto">
-            <span className="section-label" id="acciones-presupuesto"><span>{borrador ? `Añadir al presupuesto · V${borrador.number} en borrador` : approvedVersion ? "Nueva revisión del presupuesto" : "Nuevo presupuesto"}</span></span>
+            <span className="section-label" id="acciones-presupuesto"><span>{borrador ? `Añadir al presupuesto · V${borrador.number} en borrador` : approvedVersion ? "Versión nueva del presupuesto" : "Nuevo presupuesto"}</span></span>
             <button type="button" className="opt-row" onClick={() => { setDialogo(""); onManual?.(); }}><span className="opt-ico" data-tone="ink"><Pencil size={18} strokeWidth={1.7} aria-hidden="true" /></span><span className="opt-text"><strong>A mano, con el catálogo</strong><small>{borrador ? `Partidas del catálogo o libres en la V${borrador.number}.` : "Partidas del catálogo o libres, con la guía por capítulos."}</small></span><ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" className="muted" /></button>
             {planoHref && <button type="button" className="opt-row" onClick={() => ir(planoHref)}><span className="opt-ico" data-tone="blue"><LayoutTemplate size={18} strokeWidth={1.7} aria-hidden="true" /></span><span className="opt-text"><strong>Desde un plano</strong><small>Sube el PDF: Plano mide las paredes y propone partidas.</small></span><ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" className="muted" /></button>}
             {fotosHref && <button type="button" className="opt-row" onClick={() => ir(fotosHref)}><span className="opt-ico" data-tone="warning"><Camera size={18} strokeWidth={1.7} aria-hidden="true" /></span><span className="opt-text"><strong>Desde fotos</strong><small>Fotos de la obra, notas y una cifra orientativa.</small></span><ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" className="muted" /></button>}
@@ -102,7 +102,7 @@ export function ProjectMenu({ project, approvedVersion, puedeEstimar, onChat, so
           <div className="action-group" role="group" aria-labelledby="acciones-obra">
             <span className="section-label" id="acciones-obra"><span>Obra</span></span>
             <button type="button" className="opt-row" disabled={!puedeTarea} onClick={() => abrir("tarea")}><span className="opt-ico"><ListPlus size={18} strokeWidth={1.7} aria-hidden="true" /></span><span className="opt-text"><strong>Planificar tarea</strong><small>Oficio, responsable y fecha.</small></span><ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" className="muted" /></button>
-            <button type="button" className="opt-row" disabled={!puedeCert} onClick={() => abrir("certificacion")}><span className="opt-ico"><Receipt size={18} strokeWidth={1.7} aria-hidden="true" /></span><span className="opt-text"><strong>Nueva certificación</strong><small>{approvedVersion ? <>Lo ejecutado que ya puedes facturar · quedan <span className="pl-mono">{money(saldo)}</span> de la V{approvedVersion.number}.</> : "Lo ejecutado que ya puedes facturar · necesita un presupuesto aprobado."}</small></span><ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" className="muted" /></button>
+            <button type="button" className="opt-row" disabled={!puedeCert} onClick={() => abrir("certificacion")}><span className="opt-ico"><Receipt size={18} strokeWidth={1.7} aria-hidden="true" /></span><span className="opt-text"><strong>Preparar cobro</strong><small>{approvedVersion ? <>Lo hecho que ya puedes cobrar · quedan <span className="pl-mono">{money(saldo)}</span> sin IVA de la V{approvedVersion.number}.</> : "Lo hecho que ya puedes cobrar · necesita un presupuesto aceptado."}</small></span><ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" className="muted" /></button>
           </div>
           <div className="action-group" role="group" aria-labelledby="acciones-proyecto">
             <span className="section-label" id="acciones-proyecto"><span>Proyecto</span></span>
@@ -112,7 +112,7 @@ export function ProjectMenu({ project, approvedVersion, puedeEstimar, onChat, so
       </Modal>
 
       <Modal open={dialogo === "estado"} onClose={cerrar} title="Cambiar de fase" footer={<><Button variant="secondary" onClick={cerrar} disabled={pending}>Cancelar</Button><Button variant="primary" onClick={cambiarEstado} disabled={pending || busy || estado === project.status}>{pending ? "Guardando…" : "Cambiar"}</Button></>}>
-        <p className="text-sm">La fase ordena la lista de proyectos y los avisos de Hoy. La aprobación del presupuesto y las tareas no cambian solas con ella.</p>
+        <p className="text-sm">La fase ordena la lista de proyectos y los avisos de Hoy. La aceptación del presupuesto y las tareas no cambian solas con ella.</p>
         <div className="segments" style={{ marginTop: 12 }} role="radiogroup" aria-label="Fase">
           {estados.map(s => <button key={s} type="button" role="radio" className="segment" aria-checked={estado === s} aria-pressed={estado === s} onClick={() => setEstado(s)}><span>{projectStatus[s]}</span>{s === project.status && <small className="muted">actual</small>}</button>)}
         </div>
@@ -136,12 +136,12 @@ export function ProjectMenu({ project, approvedVersion, puedeEstimar, onChat, so
         </form>
       </Modal>
 
-      <Modal open={dialogo === "certificacion"} onClose={cerrar} title="Nueva certificación" footer={<><Button variant="secondary" onClick={cerrar} disabled={pending}>Cancelar</Button><Button variant="primary" type="submit" form="nueva-cert" disabled={pending || busy || !cert.title.trim() || importe === null || importe <= 0 || importe > saldo}>{pending ? "Guardando…" : "Crear borrador"}</Button></>}>
+      <Modal open={dialogo === "certificacion"} onClose={cerrar} title="Preparar cobro" footer={<><Button variant="secondary" onClick={cerrar} disabled={pending}>Cancelar</Button><Button variant="primary" type="submit" form="nueva-cert" disabled={pending || busy || !cert.title.trim() || importe === null || importe <= 0 || importe > saldo}>{pending ? "Guardando…" : "Crear borrador"}</Button></>}>
         <form id="nueva-cert" className="form" onSubmit={crearCertificacion} style={{ maxWidth: "none" }}>
-          <p className="text-sm">Borrador sobre la V{approvedVersion?.number} aprobada ({approvedVersion ? money(totals(approvedVersion.items).base) : "—"} sin IVA). Queda <strong className="pl-mono">{money(saldo)}</strong> por certificar.</p>
-          <label className="field"><span>Concepto</span><input type="text" value={cert.title} onChange={e => setCert({ ...cert, title: e.target.value })} placeholder="Certificación 1 · demoliciones y albañilería" required maxLength={500} autoFocus /></label>
+          <p className="text-sm">Borrador sobre la V{approvedVersion?.number} aceptada ({approvedVersion ? money(totals(approvedVersion.items).base) : "—"} sin IVA). Quedan <strong className="pl-mono">{money(saldo)}</strong> por cobrar. Todavía no es una factura.</p>
+          <label className="field"><span>Concepto</span><input type="text" value={cert.title} onChange={e => setCert({ ...cert, title: e.target.value })} placeholder="Cobro 1 · demoliciones y albañilería" required maxLength={500} autoFocus /></label>
           <label className="field"><span>Importe sin IVA</span><span className="unit-input"><input type="text" inputMode="decimal" value={cert.amount} onChange={e => setCert({ ...cert, amount: e.target.value })} placeholder="4.500,00" required aria-invalid={cert.amount !== "" && (importe === null || importe > saldo) ? true : undefined} /><span>€</span></span></label>
-          {importe !== null && importe > saldo && <p className="text-xs" role="alert" style={{ color: "var(--pl-danger)" }}>Supera el saldo del presupuesto aprobado.</p>}
+          {importe !== null && importe > saldo && <p className="text-xs" role="alert" style={{ color: "var(--pl-danger)" }}>Supera lo que queda por cobrar del presupuesto aceptado.</p>}
         </form>
       </Modal>
     </>

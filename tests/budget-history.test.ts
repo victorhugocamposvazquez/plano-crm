@@ -15,7 +15,7 @@ describe("Historial y revisión actual del presupuesto",()=>{
   it("una cerrada antigua no reaparece como pendiente tras aprobar la siguiente",()=>{
     const first=version(1,"issued"),approved=version(2,"approved"),b={...budget,approved_version_id:approved.id};
     const h=budgetHistory(b,[first,approved]);expect(h.working).toBeUndefined();expect(h.current?.id).toBe(approved.id);
-    expect(versionLabel(first,h)).toBe("Terminada · anterior");
+    expect(versionLabel(first,h)).toBe("Archivada");
     const state={...demo,budgets:[b],versions:[first,approved]};
     expect(filasPresupuesto(state)[0].estado).toBe("approved");expect(buildAlerts(state).some(a=>a.id===`issued-${first.id}`)).toBe(false);
   });

@@ -29,8 +29,11 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   useEffect(() => { if (!notice) return; const timer = setTimeout(() => { setNotice(""); setNoticeAction(null); }, noticeAction ? 7000 : 5500); return () => clearTimeout(timer); }, [notice, noticeAction]);
   const refresh = useCallback(async () => {
     try {
-      if (mode === "demo") { const next = savedDemo(); if (!localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify(next)); setData(next); }
-      else {
+      if (mode === "demo") {
+        // La demostración se lee al instante: se espera un momento para no adelantarse a la hidratación de la página.
+        await new Promise(resolve => setTimeout(resolve, 60));
+        const next = savedDemo(); if (!localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify(next)); setData(next);
+      } else {
         const response = await fetch("/api/workspace", { cache: "no-store" });
         if (response.status === 401) { window.location.assign("/login"); return; }
         const body = await response.json(); if (!response.ok) throw new Error(body.error || "No se ha podido cargar el espacio.");

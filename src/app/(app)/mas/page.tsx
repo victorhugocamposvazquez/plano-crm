@@ -12,11 +12,11 @@ import { veSeccion } from "@/lib/navegacion";
 const entradas = [
   { href: "/ayuda", label: "Ayuda", hint: "Cómo se hace un presupuesto, qué es una versión, cómo apunto lo de hoy…", icon: CircleHelp },
   { href: "/instalar", label: "Instalar Plano en el móvil", hint: "Icono en la pantalla de inicio y pantalla completa", icon: Smartphone },
-  { href: "/presupuestos", label: "Presupuestos", hint: "Todos los presupuestos, por estado", icon: FileText },
+  { href: "/finanzas", label: "Finanzas", hint: "Lo aceptado, lo cobrado y lo que falta por cobrar", icon: Wallet },
   { href: "/catalogo", label: "Catálogo", hint: "Artículos y precios por categoría", icon: BookOpen },
-  { href: "/compras", label: "Compras", hint: "Materiales por pedir, pedidos y en obra", icon: Package },
-  { href: "/documentos", label: "Documentos", hint: "Planos, contratos, fotos y vídeos", icon: FolderOpen },
-  { href: "/finanzas", label: "Finanzas", hint: "Aprobado, certificado y pendiente", icon: Wallet },
+  { href: "/presupuestos", label: "Todos los presupuestos", hint: "De todos los proyectos, por estado", icon: FileText },
+  { href: "/compras", label: "Todos los materiales", hint: "De todos los proyectos: por pedir, pedidos y en obra", icon: Package },
+  { href: "/documentos", label: "Todos los documentos", hint: "De todos los proyectos: planos, contratos y fotos", icon: FolderOpen },
   { href: "/configuracion/identidad", label: "Identidad de la empresa", hint: "Logo, colores, portada y datos legales de los documentos", icon: Palette },
   { href: "/configuracion/importar", label: "Importar expedientes", hint: "Carga proyectos, presupuestos y documentos desde una carpeta", icon: FolderDown },
   { href: "/configuracion/ejemplos", label: "Proyectos de ejemplo", hint: "Cinco proyectos ficticios para ver Plano con contenido", icon: Sparkles }

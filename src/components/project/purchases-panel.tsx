@@ -11,7 +11,7 @@ import { unidades, unidadNombres, type Unidad } from "@/lib/catalogo";
 import { pedidosPorProveedor } from "@/lib/hoja-pedido";
 
 /** Lista de materiales de un proyecto con su flujo: por pedir → pedido → recibido → en obra. */
-export function PurchasesPanel({ projectId, purchases, showAdd = true }: { projectId: string; purchases: Purchase[]; showAdd?: boolean }) {
+export function PurchasesPanel({ projectId, purchases, showAdd = true, approvedLabel }: { projectId: string; purchases: Purchase[]; showAdd?: boolean; approvedLabel?: string }) {
   const { actor, busy, send, notify } = useWorkspace();
   const canCreate = can(actor.role, "purchase.create");
   const canUpdate = can(actor.role, "purchase.update");
@@ -44,11 +44,10 @@ export function PurchasesPanel({ projectId, purchases, showAdd = true }: { proje
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      {showAdd && canCreate && (
-        <div style={{ display: "flex", justifyContent: "flex-end" }}>
-          <Button variant="secondary" onClick={() => setAdding(v => !v)} aria-expanded={adding}>{adding ? <X size={16} strokeWidth={1.8} aria-hidden="true" /> : <Plus size={16} strokeWidth={1.8} aria-hidden="true" />}{adding ? "Cancelar" : "Añadir material"}</Button>
-        </div>
-      )}
+      <div className="pl-head">
+        <div><strong className="panel-title">Materiales</strong> <span className="muted">· {approvedLabel ? `para la ${approvedLabel} aceptada` : "de este proyecto"}</span></div>
+        {showAdd && canCreate && <Button variant="primary" onClick={() => setAdding(v => !v)} aria-expanded={adding}>{adding ? <X size={16} strokeWidth={1.8} aria-hidden="true" /> : <Plus size={16} strokeWidth={1.8} aria-hidden="true" />}{adding ? "Cancelar" : "Material"}</Button>}
+      </div>
 
       {adding && canCreate && (
         <form className="form line" onSubmit={create} style={{ maxWidth: "none" }}>
@@ -69,10 +68,10 @@ export function PurchasesPanel({ projectId, purchases, showAdd = true }: { proje
         </div>
       )}
 
-      {purchases.length === 0 && <div className="empty"><strong>Sin materiales previstos</strong><span className="muted text-sm">La lista de compras se vincula al presupuesto aprobado: pavimentos, sanitarios, carpinterías, iluminación…</span></div>}
+      {purchases.length === 0 && <div className="empty"><strong>Sin materiales previstos</strong><span className="muted text-sm">La lista de materiales sale del presupuesto aceptado: pavimentos, sanitarios, carpinterías, iluminación…</span></div>}
 
       {purchases.length > 0 && (
-        <div style={{ borderTop: "var(--pl-hairline) solid var(--pl-line)" }}>
+        <div className="pl-card material-list">
           {purchases.map(p => {
             const acciones = canUpdate ? accionesPara(p) : [];
             const falta = pendienteDeRecibir(p);

@@ -59,8 +59,8 @@ describe("Comparación comprensible y fechas verificables",()=>{
     const {before,after}=versions();after.status="draft";
     const current=renderToStaticMarkup(<BudgetVersionIdentity version={after} currentId={after.id} approvedId={before.id}/>);
     const approved=renderToStaticMarkup(<BudgetVersionIdentity version={before} currentId={after.id} approvedId={before.id}/>);
-    expect(current).toContain("Actual");expect(current).toContain("Borrador · no aprobado");expect(current).toContain("20/10/2026");
-    expect(approved).toContain("Aprobada para obra");expect(approved).not.toContain("Actual");expect(approved).toContain("10/10/2026");
+    expect(current).toContain("Actual");expect(current).toContain("Borrador");expect(current).toContain("20/10/2026");
+    expect(approved).toContain("Aceptado");expect(approved).not.toContain("Actual");expect(approved).toContain("10/10/2026");
     expect(versionTimestamp("inválida")).toBe("Fecha no disponible");
   });
 });
