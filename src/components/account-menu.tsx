@@ -6,7 +6,7 @@ import { AtSign, CalendarClock, CircleAlert, CircleHelp, LogOut, MessageCircleQu
 import { useWorkspace } from "@/components/workspace-provider";
 import { ThemePicker } from "@/components/ui/theme-toggle";
 import { TextSizeSwitch } from "@/components/ui/text-size-toggle";
-import { construirAvisos, leerLeidos, marcarLeidos, type Aviso, type TipoAviso } from "@/lib/avisos";
+import { avisosVisibles, construirAvisos, leerLeidos, marcarLeidos, type Aviso, type TipoAviso } from "@/lib/avisos";
 import { dateLabel, roleNames } from "@/lib/domain";
 import { iniciales } from "@/lib/pasos";
 import { veSeccion } from "@/lib/navegacion";
@@ -28,10 +28,10 @@ export function AvatarRing({ name, count }: { name: string; count: number }) {
   return <span className="avatar-ring" data-on={count > 0 || undefined} aria-hidden="true"><span className="avatar avatar-ink">{iniciales(name)}</span>{count > 0 && <span className="avatar-count">{count > 9 ? "9+" : count}</span>}</span>;
 }
 
-function ListaAvisos({ avisos, leidos, limite, onIr }: { avisos: Aviso[]; leidos: Set<string>; limite?: number; onIr: () => void }) {
+function ListaAvisos({ avisos, leidos, onIr }: { avisos: Aviso[]; leidos: Set<string>; onIr: () => void }) {
   const router = useRouter();
   if (!avisos.length) return <p className="account-menu-note">No tienes avisos. Cuando alguien te mencione o una tarea tuya se acerque o se atrase, aparecerá aquí.</p>;
-  return <div className="aviso-list">{avisos.slice(0, limite ?? 30).map(a => { const { icon: Icon, tone } = iconoAviso[a.tipo]; return (
+  return <div className="aviso-list">{avisos.map(a => { const { icon: Icon, tone } = iconoAviso[a.tipo]; return (
     <button key={a.id} type="button" className="aviso" data-new={!leidos.has(a.id) || undefined} onClick={() => { marcarLeidos([a.id]); onIr(); router.push(a.href); }}>
       <span className="aviso-icon" data-tone={tone}><Icon size={15} strokeWidth={1.8} aria-hidden="true" /></span>
       <span><span><strong>{a.quien}</strong> {a.texto}</span><small>{dateLabel(a.cuando)}</small></span>
@@ -91,7 +91,7 @@ export function AccountMenu({ onClose, hoja = false }: { onClose: () => void; ho
   return (
     <div className="account-menu">
       {cabecera}
-      {avisos.length > 0 && <div>{cabeceraAvisos}<ListaAvisos avisos={avisos} leidos={leidos} limite={3} onIr={onClose} /></div>}
+      {avisos.length > 0 && <div>{cabeceraAvisos}<ListaAvisos avisos={avisosVisibles(avisos, leidos)} leidos={leidos} onIr={onClose} /></div>}
       {cuenta}
     </div>
   );

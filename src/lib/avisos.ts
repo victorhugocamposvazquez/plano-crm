@@ -39,6 +39,16 @@ export function construirAvisos(data: Workspace, actor: Actor, hoy = localDate()
   return avisos.sort((a, b) => b.cuando.localeCompare(a.cuando));
 }
 
+/**
+ * Qué enseña el menú de escritorio: todos los sin leer, porque el aro no se apaga hasta entrar en cada uno,
+ * y los leídos más recientes hasta llegar a `minimo`.
+ */
+export function avisosVisibles(avisos: Aviso[], leidos: Set<string>, minimo = 3) {
+  const sinLeer = avisos.filter(a => !leidos.has(a.id)).length;
+  let huecos = Math.max(0, minimo - sinLeer);
+  return avisos.filter(a => { if (!leidos.has(a.id)) return true; if (huecos > 0) { huecos--; return true; } return false; });
+}
+
 const clave = "plano.avisos.leidos";
 export function leerLeidos(): Set<string> {
   try { const raw = JSON.parse(localStorage.getItem(clave) ?? "[]"); return new Set(Array.isArray(raw) ? raw.filter((x): x is string => typeof x === "string") : []); } catch { return new Set(); }

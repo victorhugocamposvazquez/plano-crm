@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { construirAvisos } from "@/lib/avisos";
+import { avisosVisibles, construirAvisos, type Aviso } from "@/lib/avisos";
 import { createDemo, demoActor, demoId } from "@/lib/demo";
 
 const base = () => { const d = createDemo(); d.messages = []; d.tasks = []; return d; };
@@ -26,5 +26,11 @@ describe("avisos", () => {
     const d = base(); d.tasks = [tarea("2026-11-01")];
     expect(construirAvisos(d, demoActor, "2026-10-31").map(a => a.texto)[0]).toMatch(/^mañana/);
     d.tasks = [tarea("2026-11-02")]; expect(construirAvisos(d, demoActor, "2026-10-31")).toEqual([]);
+  });
+  it("el menú enseña todos los sin leer y completa con leídos hasta tres", () => {
+    const lista: Aviso[] = ["a", "b", "c", "d", "e"].map(id => ({ id, tipo: "mencion", quien: "Dani", texto: "", cuando: "2026-10-30", href: "/" }));
+    expect(avisosVisibles(lista, new Set()).map(a => a.id)).toEqual(["a", "b", "c", "d", "e"]);
+    expect(avisosVisibles(lista, new Set(["a", "b", "c"])).map(a => a.id)).toEqual(["a", "d", "e"]);
+    expect(avisosVisibles(lista, new Set(["a", "b", "c", "d", "e"])).map(a => a.id)).toEqual(["a", "b", "c"]);
   });
 });
