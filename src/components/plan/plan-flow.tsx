@@ -95,8 +95,8 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
       const { readPdfFile } = await import("@/lib/captura/read-pdf-browser");
       const lectura = await readPdfFile(file, { signal: controller.signal, onProgress: (page, total) => setProgresoLectura(`Leyendo página ${page} de ${total}…`) });
       if (controller.signal.aborted) return;
-      if (b.planos.some(p => p.extraction.sha256 === lectura.extraction.sha256 && p.page === lectura.extraction.pages[0].page)) { notify("Este plano ya está añadido. No se ha creado otra copia en Documentos."); return; }
-      setProgresoLectura(existente ? "Vinculando el plano…" : "Guardando el original en Documentos…");
+      if (b.planos.some(p => p.extraction.sha256 === lectura.extraction.sha256 && p.page === lectura.extraction.pages[0].page)) { notify("Este plano ya está añadido. No se ha creado otra copia en Planos y fotos."); return; }
+      setProgresoLectura(existente ? "Vinculando el plano…" : "Guardando el original en Planos y fotos…");
       const documento = existente ?? await upload(file, project.id, "plan");
       if (controller.signal.aborted) return;
       setB(prev => añadirPlano(prev, { nombre: file.name, extraction: lectura.extraction, documentId: documento.id, lectura: lectura.report }));
@@ -211,14 +211,14 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
 
       {b.paso === 1 && (
         <div className="flow-body">
-          <p className="muted">Un expediente suele traer varios planos del mismo espacio: demolición, obra nueva, cotas, áreas, instalaciones. Añádelos todos y di para qué sirve cada uno. Se guardan en Documentos del proyecto.</p>
+          <p className="muted">Un expediente suele traer varios planos del mismo espacio: demolición, obra nueva, cotas, áreas, instalaciones. Añádelos todos y di para qué sirve cada uno. Se guardan en Planos y fotos del proyecto.</p>
           {b.planos.length > 0 && (
             <ul className="plan-list">{b.planos.map(p => { const page = paginaDe(p); const u = usos.find(x => x.id === p.uso)!; return (
               <li key={p.id} className="plan-card" data-uso={p.uso}>
                 <div className="plan-stage plan-stage-xs"><PlanSvg page={page} label={`Vista previa de ${p.nombre}`} /></div>
                 <div className="plan-card-body">
                   <strong title={p.nombre}>{p.nombre}</strong>
-                  <small className="muted">{p.extraction.pages.length} página{p.extraction.pages.length === 1 ? "" : "s"} · {page.paths.length.toLocaleString("es-ES")} trazo{page.paths.length === 1 ? "" : "s"}{p.documentId ? " · en Documentos" : ""}</small>
+                  <small className="muted">{p.extraction.pages.length} página{p.extraction.pages.length === 1 ? "" : "s"} · {page.paths.length.toLocaleString("es-ES")} trazo{page.paths.length === 1 ? "" : "s"}{p.documentId ? " · en Planos y fotos" : ""}</small>
                   <Select label={`¿Qué muestra ${p.nombre}?`} size="sm" value={p.uso} onChange={v => actualizarPlano(p.id, { uso: v })} options={usos.map(x => ({ value: x.id, label: x.label }))} />
                   <small className="muted">{u.hint}</small>
                   {p.lectura?.warnings.length ? <details><summary>{p.lectura.partial ? "Lectura parcial · revisar" : "Avisos de lectura"}</summary><ul>{p.lectura.warnings.map(w => <li key={w} className="muted text-sm">{w}</li>)}</ul></details> : null}
@@ -231,12 +231,12 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
           <div className="plan-add">
             <button type="button" className="dropzone dropzone-sm" disabled={subiendo || busy} onClick={() => pdfInput.current?.click()}>
               {subiendo ? <Loader2 size={24} strokeWidth={1.6} aria-hidden="true" className="spin" /> : <Upload size={24} strokeWidth={1.5} aria-hidden="true" />}
-              <strong>{subiendo ? progresoLectura : "Añadir y leer un plano (PDF)"}</strong><span className="muted text-xs">hasta 50 MB y 20 páginas · lectura local · original en Documentos</span>
+              <strong>{subiendo ? progresoLectura : "Añadir y leer un plano (PDF)"}</strong><span className="muted text-xs">hasta 50 MB y 20 páginas · lectura local · original en Planos y fotos</span>
             </button>
             <div className="plan-add-alt">
               <details><summary>Opciones de soporte</summary><Button variant="ghost" disabled={subiendo || busy} onClick={() => jsonInput.current?.click()}><Plus size={15} strokeWidth={1.8} aria-hidden="true" />Importar lectura técnica (.json)</Button></details>
               {(mode === "demo" || b.planos.length === 0) && <Button variant="ghost" disabled={subiendo || busy} onClick={usarEjemplo}>Probar con planos de ejemplo</Button>}
-              {planosAdjuntos.length > 0 && <details><summary>Leer un plano de Documentos ({planosAdjuntos.length})</summary><ul className="info-list">{planosAdjuntos.map(doc => <li key={doc.id} className="info-row"><span>{doc.name}</span><Button variant="secondary" disabled={subiendo || busy} onClick={() => leerAdjunto(doc)}><FileText size={15} aria-hidden="true" />Leer este plano</Button></li>)}</ul></details>}
+              {planosAdjuntos.length > 0 && <details><summary>Leer un plano de Planos y fotos ({planosAdjuntos.length})</summary><ul className="info-list">{planosAdjuntos.map(doc => <li key={doc.id} className="info-row"><span>{doc.name}</span><Button variant="secondary" disabled={subiendo || busy} onClick={() => leerAdjunto(doc)}><FileText size={15} aria-hidden="true" />Leer este plano</Button></li>)}</ul></details>}
             </div>
           </div>
           <input ref={pdfInput} type="file" accept="application/pdf" onChange={subir} style={{ display: "none" }} aria-hidden="true" tabIndex={-1} />

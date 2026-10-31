@@ -68,7 +68,7 @@ export function NewProjectDialog({ open, onClose, cliente = "" }: { open: boolea
             <div className="segments">{(Object.keys(kindNames) as Project["kind"][]).map(kind => <button key={kind} type="button" className="segment" aria-pressed={form.kind === kind} onClick={() => setForm({ ...form, kind })}><span>{kindNames[kind]}</span></button>)}</div>
           </fieldset>
           {error && <p className="text-sm" role="alert" style={{ color: "var(--pl-danger)" }}>{error}</p>}
-          <p className="muted text-xs">Entra como contacto; el presupuesto se abre después desde la ficha. Si estás en la obra con el cliente, <Link href="/proyectos/nueva" className="link-inline" onClick={close}><Footprints size={12} strokeWidth={1.9} aria-hidden="true" />estima en la visita</Link> y sal con una cifra.</p>
+          <p className="muted text-xs">Entra en el paso Visita y el presupuesto se abre después desde su ficha. Si estás en la obra con el cliente, <Link href="/proyectos/nueva" className="link-inline" onClick={close}><Footprints size={12} strokeWidth={1.9} aria-hidden="true" />empieza una visita</Link> y sal con una cifra.</p>
         </form>
       )}
     </Modal>

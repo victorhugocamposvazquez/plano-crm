@@ -4,7 +4,6 @@ import Link from "next/link";
 import { FolderDown, Check, AlertTriangle, Loader2 } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
 import { Button } from "@/components/ui/button";
-import { BackLink } from "@/components/ui/back-link";
 import { can, kindNames, money } from "@/lib/domain";
 import { leerPaquete, planificar, resumen, claveArchivo, ejecutar, type Plan, type Resultado } from "@/lib/importar-expedientes";
 
@@ -55,8 +54,7 @@ export default function ImportarPage() {
   return (
     <div className="page">
       <div>
-        <div className="eyebrow"><BackLink fallback="/mas">Más</BackLink><span>· Configuración</span></div>
-        <div className="page-head"><h1 className="h2" style={{ fontSize: "var(--pl-text-h1)" }}>Importar expedientes</h1></div>
+        <div className="page-head"><h1 className="pl-title">Importar proyectos antiguos</h1></div>
         <p className="subtitle">Carga proyectos con sus presupuestos y documentos desde una carpeta preparada. Entra por los mismos caminos que si lo hicieras a mano, y lo que ya existe no se toca.</p>
       </div>
 

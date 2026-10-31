@@ -121,7 +121,7 @@ export function AppShell({ children }: { children: ReactNode }) {
 
   const migas = miga(pathname, data);
   // En móvil, las secciones que viven en Más vuelven a Más; una ficha de cliente, a Clientes.
-  const volver = pathname.startsWith("/clientes/") ? { href: "/clientes", label: "Clientes" } : !raices.includes(pathname) && !pathname.startsWith("/proyectos/") ? { href: "/mas", label: "Más" } : null;
+  const volver = pathname.startsWith("/clientes/") ? { href: "/clientes", label: "Clientes" } : pathname.startsWith("/configuracion/") ? { href: "/ajustes", label: "Ajustes" } : !raices.includes(pathname) && !pathname.startsWith("/proyectos/") ? { href: "/mas", label: "Más" } : null;
   return (
     <div className="shell">
       <nav className="nav" aria-label="Principal">

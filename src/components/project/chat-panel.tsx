@@ -470,7 +470,7 @@ export function ChatPanel({ projectId, messages, title, subtitle, onClose }: { p
           <section>
             <h3><Paperclip size={15} strokeWidth={2} aria-hidden="true" />Y además</h3>
             <ul className="help-plain">
-              <li>El clip adjunta fotos o PDF: quedan en Documentos del proyecto y se abren en grande con un toque.</li>
+              <li>El clip adjunta fotos o PDF: quedan en Planos y fotos del proyecto y se abren en grande con un toque.</li>
               <li>Pasa por un mensaje para reaccionar, editarlo o borrarlo. <kbd>Enter</kbd> envía, <kbd>Mayús</kbd>+<kbd>Enter</kbd> hace salto de línea.</li>
               <li>La lupa, siempre junto al menú <kbd>···</kbd>, busca en la conversación; «Fotos, documentos y participantes» reúne lo compartido y lo mencionado.</li>
             </ul>

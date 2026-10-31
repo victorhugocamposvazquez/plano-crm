@@ -106,7 +106,7 @@ export default function NuevaVisitaPage() {
       projectId = pid;
       for (const foto of fotos) await upload(foto.file, pid, "before");
       if (soloFotos) {
-        // Solo fotos y notas: quedan en Documentos y, si hay notas, en el chat del proyecto. El presupuesto no se toca.
+        // Solo fotos y notas: quedan en Planos y fotos y, si hay notas, en el chat del proyecto. El presupuesto no se toca.
         if (alcance.trim() && can(actor.role, "message.send")) await send({ type: "message.send", project_id: pid, body: `Notas de la visita: ${alcance.trim()}` });
         notify(`${fotos.length ? `${fotos.length} foto${fotos.length === 1 ? "" : "s"} guardada${fotos.length === 1 ? "" : "s"}` : "Notas guardadas"} · ${project.name}`);
         router.push(`/proyectos/${pid}`);
@@ -154,9 +154,9 @@ export default function NuevaVisitaPage() {
   return (
     <div className="page">
       <div>
-        <div className="eyebrow"><Link href={existente ? `/proyectos/${existente.id}` : "/proyectos"} className="muted" style={{ display: "inline-flex", alignItems: "center", gap: 6, textDecoration: "none" }}><ArrowLeft size={13} strokeWidth={1.8} aria-hidden="true" />{existente ? existente.name : "Proyectos"}</Link><span>· {existente ? `${existente.code} · fotos y notas` : "Nueva visita"}</span></div>
+        <div className="visit-back"><Link href={existente ? `/proyectos/${existente.id}` : "/proyectos"} className="muted" style={{ display: "inline-flex", alignItems: "center", gap: 6, textDecoration: "none" }}><ArrowLeft size={13} strokeWidth={1.8} aria-hidden="true" />{existente ? existente.name : "Proyectos"}</Link></div>
         <div className="page-head">
-          <h1 className="h1">{existente ? "Fotos y notas de la obra." : "Estimar en la visita."}</h1>
+          <h1 className="pl-title">{existente ? "Fotos y notas de la obra" : "Empezar una visita"}</h1>
           <button type="button" className="btn btn-icon" aria-label={existente ? "Salir y volver al proyecto" : "Salir de la visita"} title={existente ? "Volver al proyecto" : "Salir"} onClick={salir}><X size={19} strokeWidth={1.6} aria-hidden="true" /></button>
         </div>
         <p className="subtitle">{existente ? "Hazlas ahora con la cámara o elígelas de la galería, apunta lo que se quiere hacer y, si quieres, deja una cifra orientativa con los precios del catálogo. Puedes volver y añadir más fotos cuando haga falta." : "Sal de la visita con una cifra orientativa, calculada con los precios del catálogo. Lo que no se mide queda marcado como pendiente."}</p>
@@ -301,7 +301,7 @@ export default function NuevaVisitaPage() {
           <div className="panel"><div className="panel-body text-sm">
             <small className="muted text-xs">Se guardará en el proyecto</small>
             <p style={{ marginTop: 4 }}><strong>{existente ? existente.name : datos.name}</strong> · {existente ? existente.client_name : datos.client_name}{(existente ? existente.location : datos.location) ? ` · ${existente ? existente.location : datos.location}` : ""} · {kindNames[existente ? existente.kind : datos.kind]}</p>
-            <p className="muted" style={{ marginTop: 6 }}>{fotos.length ? `${fotos.length} foto${fotos.length === 1 ? "" : "s"} en Documentos` : "Sin fotos"}{soloFotos ? (alcance.trim() ? " · las notas van al chat del proyecto · el presupuesto no cambia" : " · el presupuesto no cambia") : existente ? ` · ${items.length} partida${items.length === 1 ? "" : "s"} al borrador del presupuesto` : " · presupuesto «Estimación de visita» V1 en borrador · estado «Presupuestando»"}</p>
+            <p className="muted" style={{ marginTop: 6 }}>{fotos.length ? `${fotos.length} foto${fotos.length === 1 ? "" : "s"} en Planos y fotos` : "Sin fotos"}{soloFotos ? (alcance.trim() ? " · las notas van al chat del proyecto · el presupuesto no cambia" : " · el presupuesto no cambia") : existente ? ` · ${items.length} partida${items.length === 1 ? "" : "s"} al borrador del presupuesto` : " · presupuesto «Estimación de visita» V1 en borrador · estado «Presupuestando»"}</p>
             <p className="muted text-xs" style={{ marginTop: 10, whiteSpace: "pre-line" }}>{soloFotos ? (alcance.trim() ? `Notas de la visita: ${alcance.trim()}` : "Sin notas.") : notasDeVisita(alcance, pendientes, dateLabel(new Date().toISOString()), margen)}</p>
           </div></div>
 

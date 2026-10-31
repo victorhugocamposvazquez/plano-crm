@@ -40,7 +40,7 @@ export default function ClientePage() {
   const tono = (approved: boolean, status: string): Tone => (approved ? "success" : status === "issued" ? "info" : status === "draft" ? "warning" : "muted");
   return (
     <div className="page ficha-enter">
-      <BackLink fallback="/clientes">Todos los clientes</BackLink>
+      <div className="solo-escritorio"><BackLink fallback="/clientes">Todos los clientes</BackLink></div>
       <div className="pl-head">
         <div className="client-id"><span className="avatar avatar-lg-soft" aria-hidden="true">{iniciales(cliente.name)}</span><div><h1 className="pl-title">{cliente.name}</h1><p className="pl-sub">Cliente desde {desde}</p></div></div>
         {can(actor.role, "project.create") && <Link href={`/proyectos?nuevo=1&cliente=${encodeURIComponent(cliente.name)}`} className="btn btn-primary" data-keep="true"><Plus size={17} strokeWidth={1.8} aria-hidden="true" />Nuevo proyecto</Link>}

@@ -44,10 +44,10 @@ export function PurchasesPanel({ projectId, purchases, showAdd = true, approvedL
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <div className="pl-head">
+      {showAdd && <div className="pl-head">
         <div><strong className="panel-title">Materiales</strong> <span className="muted">· {approvedLabel ? `para la ${approvedLabel} aceptada` : "de este proyecto"}</span></div>
         {showAdd && canCreate && <Button variant="primary" onClick={() => setAdding(v => !v)} aria-expanded={adding}>{adding ? <X size={16} strokeWidth={1.8} aria-hidden="true" /> : <Plus size={16} strokeWidth={1.8} aria-hidden="true" />}{adding ? "Cancelar" : "Material"}</Button>}
-      </div>
+      </div>}
 
       {adding && canCreate && (
         <form className="form line" onSubmit={create} style={{ maxWidth: "none" }}>

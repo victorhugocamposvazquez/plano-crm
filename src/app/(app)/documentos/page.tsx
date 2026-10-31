@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { FolderOpen, FileText, Image as ImageIcon, Film, ArrowUpRight } from "lucide-react";
+import { FileText, Image as ImageIcon, Film, ArrowUpRight } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
 import { dateLabel, type Document } from "@/lib/domain";
 import { categoryNames, categoryOrder, formatSize, isImage, isVideo, type Category } from "@/lib/documentos";
@@ -30,9 +30,8 @@ export default function DocumentosPage() {
   return (
     <div className="page">
       <div>
-        <div className="eyebrow"><FolderOpen size={13} strokeWidth={1.8} aria-hidden="true" /><span>{data.organization_name || "Espacio de trabajo"}</span></div>
-        <h1 className="h1">Documentos.</h1>
-        <p className="subtitle">{loading ? "Cargando…" : `${data.documents.length} archivos en ${new Set(data.documents.map(d => d.project_id)).size} proyectos · planos, contratos, fotos y vídeos`}</p>
+        <h1 className="pl-title">Todos los documentos</h1>
+        <p className="subtitle">{loading ? "Cargando…" : data.documents.length ? `${data.documents.length} ${data.documents.length === 1 ? "archivo" : "archivos"} · planos, contratos, fotos y vídeos` : "Planos, contratos, fotos y vídeos de todos los proyectos"}</p>
       </div>
 
       <div className="chips chips-scroll" role="group" aria-label="Tipo de documento">
@@ -40,7 +39,7 @@ export default function DocumentosPage() {
         {categoryOrder.map(c => <button key={c} type="button" className="chip" aria-pressed={categoria === c} onClick={() => setCategoria(categoria === c ? "" : c)}>{categoryNames[c]} <span className="pl-mono muted">{conteo(c)}</span></button>)}
       </div>
 
-      {!loading && grupos.length === 0 && <div className="empty"><strong>{categoria ? `Sin ${categoryNames[categoria].toLowerCase()}` : "Todavía no hay documentos"}</strong><span className="muted text-sm">Los planos, contratos y fotos se adjuntan en cada proyecto, en su pestaña Documentos.</span><Link href="/proyectos" className="btn btn-secondary">Ir a los proyectos</Link></div>}
+      {!loading && grupos.length === 0 && <div className="empty"><strong>{categoria ? `Sin ${categoryNames[categoria].toLowerCase()}` : "Todavía no hay documentos"}</strong><span className="muted text-sm">Los planos, contratos y fotos se adjuntan en cada proyecto, en su pestaña Planos y fotos.</span><Link href="/proyectos" className="btn btn-secondary">Ir a los proyectos</Link></div>}
 
       {grupos.map(({ project, items }) => (
         <section key={project.id}>
