@@ -1,7 +1,8 @@
 "use client";
 import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useParams, useSearchParams } from "next/navigation";
-import { MessageCircle, Plus, Check } from "lucide-react";
+import Link from "next/link";
+import { Check, ChevronLeft, ChevronRight, Euro, Image as ImageIcon, MessageCircle, MessageSquare, Package, Plus, Receipt, Users } from "lucide-react";
 import { Drawer } from "@/components/ui/drawer";
 import { BackLink } from "@/components/ui/back-link";
 import { TaskDialog } from "@/components/project/task-dialog";
@@ -24,8 +25,8 @@ import { SendDialog } from "@/components/project/send-dialog";
 import { WorkPanel } from "@/components/project/work-panel";
 import { AddToBudget } from "@/components/plan/add-to-budget";
 import { cargarBorrador } from "@/lib/plano-flujo";
-import { budgetHistory } from "@/lib/budget-history";
-import { marcarVisto } from "@/lib/chat-visto";
+import { budgetHistory, versionState } from "@/lib/budget-history";
+import { marcarVisto, sinLeerPorProyecto } from "@/lib/chat-visto";
 import { pasoVisible, type TipoAccion } from "@/lib/siguiente-paso";
 import { pasoDe, pasos, quienActua, quienEtiqueta, textoMovimiento } from "@/lib/pasos";
 import { projectProgress, projectStatus, money, totals, dateLabel, kindNames, can, purchaseStatus, type Task, type Command } from "@/lib/domain";
@@ -58,6 +59,8 @@ export default function ProyectoPage() {
   useEffect(()=>{setBorradorPlano(Boolean(cargarBorrador(id)));},[id]);
   const mensajes=data.messages.filter(m=>m.project_id===id);
   useEffect(()=>{if(chatAbierto)marcarVisto(id);},[chatAbierto,id,mensajes.length]);
+  const [sinLeerChat,setSinLeerChat]=useState(0);
+  useEffect(()=>{const contar=()=>setSinLeerChat(sinLeerPorProyecto(data.messages,actor.name).get(id) ?? 0);contar();window.addEventListener("plano:chat-visto",contar);return()=>window.removeEventListener("plano:chat-visto",contar);},[data.messages,actor.name,id]);
   const editBudget=()=>{if(editable)navigate({s:"budget",v:editable.id,vista:"items",editar:"1"});};
 
   async function crearPresupuesto() {
@@ -141,12 +144,14 @@ export default function ProyectoPage() {
   const versionEnviar=shownParam ?? working;
   const anteriorEnviada=history?.versions.find(v=>v.status==="issued" && (!approved || v.number>approved.number) && v.id!==versionEnviar?.id);
 
-  return <div className="page project-workspace">
+  return <div className="page project-workspace" data-seccion={section}>
+    <button type="button" className="phone-back ficha-subback" onClick={()=>selectSection("overview")}><ChevronLeft size={18} strokeWidth={1.8} aria-hidden="true"/>{project.name}</button>
     <header className="ficha-head">
       <BackLink fallback="/proyectos" compact>Proyectos</BackLink>
       <div className="ficha-title">
         <div className="ficha-name"><h1 className="pl-title">{project.name}</h1><span className="kind-tag">{kindNames[project.kind]}</span></div>
         <p className="pl-sub">{[project.client_name,project.location,project.code].filter(Boolean).join(" · ")}</p>
+        <ol className="step-bars" aria-label="Camino del proyecto">{pasos.map((p,i)=>{const actual=pasos.findIndex(x=>x.id===pasoDe(project.status));return <li key={p.id} data-state={project.status==="completed" || i<actual?"done":i===actual?"current":"todo"}>{p.label}</li>;})}</ol>
       </div>
       <div className="ficha-tools">
         <ProjectStepper status={project.status} progress={progress} onCambiar={puedeFase?()=>setSolicitud("estado"):undefined}/>
@@ -174,6 +179,25 @@ export default function ProyectoPage() {
           </div>
         </div>
       </section>}
+      <nav className="pl-card ficha-list" aria-label="Apartados del proyecto">
+        {[
+          {id:"budget" as const,icon:Euro,tone:"warning",label:"Presupuesto",hint:current?`V${current.number} · ${versionState(current,approved?.id)} · ${history?.versions.length} ${history?.versions.length===1?"versión":"versiones"}`:"Todavía no hay",valor:current?money(totals(current.items).total):"",actual:Boolean(current)},
+          {id:"work" as const,icon:Check,tone:"success",label:"Obra",hint:`${progress} % · ${doneTasks.length} de ${tasks.length} tareas hechas`},
+          {id:"purchases" as const,icon:Package,tone:"danger",label:"Materiales",hint:materialDetalle},
+          {id:"documents" as const,icon:ImageIcon,tone:"muted",label:"Planos y fotos",hint:documents.length?`${documents.length} archivo${documents.length===1?"":"s"}`:"Sin archivos"},
+          {id:"cobros" as const,icon:Receipt,tone:"info",label:"Cobros",hint:approved?`Preparados · puedes cobrar hasta el ${progress} %`:"Cuando el cliente acepte",valor:approved?money(preparado):""}
+        ].map(a=>{const Icon=a.icon;return <button key={a.id} type="button" className="ficha-list-row" onClick={()=>selectSection(a.id)}>
+          <span className="ficha-list-icon" data-tone={a.tone}><Icon size={17} strokeWidth={1.8} aria-hidden="true"/></span>
+          <span className="ficha-list-text"><strong>{a.label}{a.actual && <span className="pulse-dot" aria-hidden="true"/>}</strong><small>{a.hint}</small></span>
+          {a.valor && <span className="pl-mono ficha-list-value">{a.valor}</span>}
+          <ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" className="muted"/>
+        </button>;})}
+        <Link href={`/clientes/${encodeURIComponent(project.client_name.normalize("NFD").replace(/[̀-ͯ]/g,"").toLowerCase().trim())}`} className="ficha-list-row">
+          <span className="ficha-list-icon" data-tone="info"><Users size={17} strokeWidth={1.8} aria-hidden="true"/></span>
+          <span className="ficha-list-text"><strong>Cliente</strong><small>{project.client_name}</small></span>
+          <ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" className="muted"/>
+        </Link>
+      </nav>
       <div className="ficha-cards">
         <button type="button" className="pl-card ficha-card" onClick={()=>selectSection("budget")} aria-label={current?`Presupuesto: ${money(totals((approved??current).items).total)} con IVA. Ver presupuesto y versiones`:"Presupuesto: todavía no hay. Ver opciones para presupuestar"}>
           <span>Presupuesto</span>
@@ -238,6 +262,7 @@ export default function ProyectoPage() {
     {section==="purchases" && <div className="ficha-enter"><PurchasesPanel projectId={project.id} purchases={purchases} approvedLabel={approved?`V${approved.number}`:undefined}/></div>}
     {section==="documents" && <div className="ficha-enter"><DocumentsPanel project={project} documents={documents}/></div>}
     {section==="cobros" && <div className="ficha-enter"><CobrosPanel cobros={cobros} approved={approved} progress={progress} onPreparar={prepararCobro}/></div>}
+    <button type="button" className="ficha-fab" onClick={()=>navigate({chat:"1"})} aria-label={sinLeerChat?`Chat, ${sinLeerChat} sin leer`:"Chat"} aria-haspopup="dialog"><MessageSquare size={18} strokeWidth={1.8} aria-hidden="true"/>Chat{sinLeerChat>0 && <span className="avatar-count">{sinLeerChat}</span>}</button>
     <TaskDialog task={abierta?data.tasks.find(t=>t.id===abierta.id) ?? null:null} onClose={()=>setAbierta(null)}/>
     {editable && <BudgetEditor open={editando} onClose={()=>navigate({editar:null})} project={project} version={editable} guiaInicial={editable.items.length===0}/>}
     {versionEnviar && <SendDialog open={accion==="enviar"} onClose={()=>navigate({accion:null})} project={project} version={versionEnviar} approved={approved} previousSent={anteriorEnviada}/>}

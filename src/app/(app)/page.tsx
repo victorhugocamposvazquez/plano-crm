@@ -73,12 +73,25 @@ export default function HoyPage() {
   return (
     <div className="page today">
       <div className="today-main">
-        <div><h1 className="pl-title">{greeting()}{firstName ? `, ${firstName}` : ""}</h1><p className="pl-sub">{resumen}</p></div>
+        <div className="solo-escritorio"><h1 className="pl-title">{greeting()}{firstName ? `, ${firstName}` : ""}</h1><p className="pl-sub">{resumen}</p></div>
+        <div className="solo-movil today-phone-head"><small>{longDate(today).replace(/^./, c => c.toUpperCase())}</small><h1 className="pl-title">Hoy</h1></div>
         <Onboarding />
         <InstallHint />
 
+        {piden.length > 0 && <section className="solo-movil phone-todo" aria-label="Te esperan a ti">
+          <h2 className="phone-section"><span>Te esperan a ti</span><span className="pl-mono">{piden.filter(x => x.quien !== "cliente").length}</span></h2>
+          {piden.filter(x => x.quien !== "cliente").slice(0, 4).map(({ project, paso, quien }) => (
+            <article key={project.id} className="todo-card" data-tone={quienEtiqueta[quien].tone}>
+              <header><strong>{project.name}</strong><span>{quienEtiqueta[quien].label}</span></header>
+              <small>{[project.client_name, project.location].filter(Boolean).join(" · ")}</small>
+              <p>{paso.titulo}</p>
+              <LinkButton variant="primary" href={enlacePaso(project.id, paso)}>{paso.label || "Ver proyecto"}</LinkButton>
+            </article>
+          ))}
+        </section>}
+
         {primero && (
-          <section className="first-card" data-tone={quienEtiqueta[primero.quien].tone} aria-label="Lo primero">
+          <section className="first-card solo-escritorio" data-tone={quienEtiqueta[primero.quien].tone} aria-label="Lo primero">
             <div className="first-card-kicker">Lo primero · {quienEtiqueta[primero.quien].label.toLowerCase()}</div>
             <div className="first-card-body">
               <div><strong>{primero.paso.titulo}</strong><p>{primero.project.name}{primero.project.location ? ` · ${primero.project.location}` : ""}. {primero.paso.detalle}</p></div>
@@ -86,10 +99,10 @@ export default function HoyPage() {
             </div>
           </section>
         )}
-        {!primero && !loading && <section className="first-card" data-tone="success" aria-label="Lo primero"><div className="first-card-body"><div><strong>Hoy no hay nada urgente</strong><p>Ningún proyecto te está esperando.</p></div></div></section>}
+        {!primero && !loading && <section className="first-card today-calm" data-tone="success" aria-label="Lo primero"><div className="first-card-body"><div><strong>Hoy no hay nada urgente</strong><p>Ningún proyecto te está esperando.</p></div></div></section>}
 
         {piden.length > 0 && (
-          <section className="pl-card" aria-label="Proyectos que piden algo">
+          <section className="pl-card solo-escritorio" aria-label="Proyectos que piden algo">
             <header className="pl-card-head"><strong>Proyectos que piden algo</strong><Link href="/proyectos">Ver todos →</Link></header>
             <div className="need-list">
               {piden.slice(0, 6).map(({ project, paso, quien }) => (
@@ -104,7 +117,7 @@ export default function HoyPage() {
         )}
 
         <section className="pl-card" aria-label="Hoy en obra">
-          <header className="pl-card-head"><strong>Hoy en obra <span className="muted" style={{ fontWeight: 400 }}>· {tareasHoy.length} {tareasHoy.length === 1 ? "tarea" : "tareas"}</span></strong><Link href="/agenda">Ver la semana →</Link></header>
+          <header className="pl-card-head"><strong><span className="solo-movil-inline">Agenda de hoy</span><span className="solo-escritorio-inline">Hoy en obra</span> <span className="muted" style={{ fontWeight: 400 }}>· {tareasHoy.length} {tareasHoy.length === 1 ? "tarea" : "tareas"}</span></strong><Link href="/agenda">Ver la semana →</Link></header>
           {tareasHoy.length === 0 && <p className="muted text-sm" style={{ padding: "14px 18px" }}>Sin tareas para hoy.{can(actor.role, "task.create") && <> <Link href="/agenda?nueva=1" className="link-inline">Planificar una tarea</Link></>}</p>}
           {tareasHoy.map(task => {
             const tarde = task.due_date < today;
@@ -124,6 +137,10 @@ export default function HoyPage() {
       </div>
 
       <aside className="today-side" aria-label="Novedades y cifras">
+        {piden.some(x => x.quien === "cliente") && <section className="pl-card side-card solo-movil" aria-label="Esperando al cliente">
+          <strong>Esperando al cliente</strong>
+          {piden.filter(x => x.quien === "cliente").map(({ project, paso }) => <Link key={project.id} href={enlacePaso(project.id, paso)} className="news-row" data-tone="info"><span>{project.name}<small>{paso.titulo}</small></span></Link>)}
+        </section>}
         <section className="pl-card side-card">
           <strong>Novedades</strong>
           {nuevas.length === 0 && <p className="muted text-sm">Aún no hay novedades.</p>}

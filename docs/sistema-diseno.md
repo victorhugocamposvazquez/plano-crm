@@ -344,7 +344,9 @@ El comparador presenta totales y fechas por versión, explicación de cada cambi
 
 Estilos en `src/styles/plano-app.css`, después de `ui.css`. Detalle de lo integrado y lo pendiente en `docs/usabilidad/propuesta-completa.md`.
 
-**Tokens nuevos.** `--pl-text-search`, `--pl-text-figure`, `--pl-text-total`; `--pl-radius-card`, `--pl-radius-search`; `--pl-search-height`, `--pl-chat-width`, `--pl-panel-width`, `--pl-panel-wide`, `--pl-popover-account`; `--pl-enter-duration`, `--pl-enter-ease`; `--pl-success-line`, `--pl-info-line`, `--pl-warning-line`, `--pl-danger-line`; `--pl-selected`, `--pl-search-bg`, `--pl-chat-bg`, `--pl-chat-mine`, `--pl-chat-other`; `--pl-series-1` a `--pl-series-3`. La marca pasa a 23 px, tracking −0,045 em y cuadrado de 6 px; el menú a 248 px y la cabecera de escritorio a 52 px.
+**Color de acción.** `--pl-ink` pasa a `#16232e`, el azul tinta del logo, en botones primarios, fondos oscuros y estados seleccionados. Nada en negro puro.
+
+**Tokens nuevos.** `--pl-ring-1` a `--pl-ring-3` y `--pl-ring-off` (aro de avisos), `--pl-text-ficha`, `--pl-text-total-phone`, `--pl-text-search`, `--pl-text-figure`, `--pl-text-total`; `--pl-radius-card`, `--pl-radius-search`; `--pl-search-height`, `--pl-chat-width`, `--pl-panel-width`, `--pl-panel-wide`, `--pl-popover-account`; `--pl-enter-duration`, `--pl-enter-ease`; `--pl-success-line`, `--pl-info-line`, `--pl-warning-line`, `--pl-danger-line`; `--pl-selected`, `--pl-search-bg`, `--pl-chat-bg`, `--pl-chat-mine`, `--pl-chat-other`; `--pl-series-1` a `--pl-series-3`. La marca pasa a 23 px, tracking −0,045 em y cuadrado de 6 px; el menú a 248 px y la cabecera de escritorio a 52 px.
 
 **Vocabulario.** Fases: Visita → Presupuesto → Obra → Entregado (`src/lib/pasos.ts`; el dominio conserva sus cinco estados). Versiones: Borrador, Enviado, Aceptado, Archivada; la actual late en verde. Quién actúa: Te espera a ti (ámbar), Esperando al cliente (azul), Atrasado (rojo), Al día (verde). «Cobro» sustituye a «certificación»; mientras no haya facturas se dice «cobro preparado», nunca «cobrado».
 
@@ -354,6 +356,9 @@ Estilos en `src/styles/plano-app.css`, después de `ui.css`. Detalle de lo integ
 - Los desplegables usan `Popover` y se cierran al pulsar fuera. Los formularios cortos y las fichas usan `Modal` con `panel`, que entra por la derecha en escritorio y es hoja inferior en móvil.
 - El chat flota sin bloquear la pantalla (`Drawer floating`).
 - Buscador común `SearchBox`: 60 px, últimas búsquedas y cómo se ha entendido. La tolerancia está en `src/lib/busqueda.ts`; los números solo coinciden por el principio de la palabra.
+- Avatar con aro: naranja y contador con avisos sin leer, gris sin ellos. Arriba a la derecha en móvil y abajo en el menú en escritorio.
+- Móvil: barra Hoy · Proyectos · + · Agenda · Más; títulos de 22 px y fichas de 20 px; la ficha cambia las pestañas por una lista de apartados; el presupuesto va en tarjetas con barra fija y sin barra inferior.
+- El naranja también marca el mes de la agenda, el día de hoy y el contador de avisos.
 - Los importes llevan separador de miles siempre (`money`).
 - Gráficos: un solo eje, curvas suaves, hover con cruz y tabla con los mismos datos. La paleta `--pl-series-*` se ha pasado por el validador de daltonismo en los dos temas.
 - Lo que no tiene dato no se aproxima ni se simula: se omite y se anota en `docs/PREGUNTAS.md`.

@@ -48,15 +48,15 @@ export function useQuickCreate() {
   return { panel, cerrar: () => setPanel(null), elegir: (o: Opcion) => { if (o.panel) setPanel(o.panel); else if (o.href) router.push(o.href); } };
 }
 
-export function QuickCreatePanels({ panel, onClose }: { panel: Panel | null; onClose: () => void }) {
-  return <><TareaPanel open={panel === "tarea"} onClose={onClose} /><CobroPanel open={panel === "cobro"} onClose={onClose} /></>;
+export function QuickCreatePanels({ panel, onClose, fecha }: { panel: Panel | null; onClose: () => void; fecha?: string }) {
+  return <><TareaPanel open={panel === "tarea"} onClose={onClose} fecha={fecha} /><CobroPanel open={panel === "cobro"} onClose={onClose} /></>;
 }
 
-function TareaPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
+function TareaPanel({ open, onClose, fecha }: { open: boolean; onClose: () => void; fecha?: string }) {
   const { data, busy, send, notify } = useWorkspace();
   const [form, setForm] = useState({ project_id: "", title: "", due_date: localDate() });
   const [guardando, setGuardando] = useState(false);
-  useEffect(() => { if (open) setForm(f => ({ ...f, due_date: localDate(), project_id: f.project_id || data.projects.find(p => p.status === "active")?.id || data.projects[0]?.id || "" })); }, [open, data.projects]);
+  useEffect(() => { if (open) setForm(f => ({ ...f, due_date: fecha || localDate(), project_id: f.project_id || data.projects.find(p => p.status === "active")?.id || data.projects[0]?.id || "" })); }, [open, data.projects, fecha]);
   async function crear(event: FormEvent) {
     event.preventDefault();
     if (guardando || busy) return;

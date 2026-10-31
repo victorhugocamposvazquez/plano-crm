@@ -1,11 +1,11 @@
 "use client";
-import { useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { House, Layers2, CalendarDays, Users, Menu, Plus, Search, BookOpen, Wallet, Settings, MessageSquare, ChevronUp, ChevronRight } from "lucide-react";
+import { House, Layers2, CalendarDays, Users, Ellipsis, Plus, Search, BookOpen, Wallet, Settings, MessageSquare, ChevronUp, ChevronRight, ChevronLeft } from "lucide-react";
 import { CommandPalette } from "@/components/command-palette";
 import { QuickCreateList, QuickCreatePanels, useQuickCreate, opcionesPara } from "@/components/quick-create";
-import { AccountMenu } from "@/components/account-menu";
+import { AccountMenu, AvatarRing, useAvisos } from "@/components/account-menu";
 import { Brand } from "@/components/ui/brand";
 import { Modal } from "@/components/ui/modal";
 import { Popover } from "@/components/ui/popover";
@@ -22,16 +22,17 @@ const hoyItem = { href: "/", label: "Hoy", icon: House, primary: true, exact: tr
 const trabajo = [
   { href: "/proyectos", label: "Proyectos", icon: Layers2, primary: true },
   { href: "/agenda", label: "Agenda", icon: CalendarDays, primary: true },
-  { href: "/clientes", label: "Clientes", icon: Users, primary: true },
+  { href: "/clientes", label: "Clientes", icon: Users },
   { href: "/finanzas", label: "Finanzas", icon: Wallet }
 ];
 const empresa = [
   { href: "/catalogo", label: "Catálogo", icon: BookOpen },
   { href: "/ajustes", label: "Ajustes", icon: Settings }
 ];
-const masItem = { href: "/mas", label: "Más", icon: Menu, primary: true };
+const masItem = { href: "/mas", label: "Más", icon: Ellipsis, primary: true };
 type Item = { href: string; label: string; icon: typeof House; primary?: boolean; exact?: boolean };
-const secundarias = ["/presupuestos", "/catalogo", "/compras", "/documentos", "/finanzas", "/ajustes", "/ayuda", "/instalar", "/configuracion", "/sistema", "/laboratorio"];
+const raices = ["/", "/proyectos", "/agenda", "/mas"];
+const secundarias = ["/clientes", "/presupuestos", "/catalogo", "/compras", "/documentos", "/finanzas", "/ajustes", "/ayuda", "/instalar", "/configuracion", "/sistema", "/laboratorio"];
 const seccionesMiga: Record<string, string> = { "/proyectos": "Proyectos", "/agenda": "Agenda", "/clientes": "Clientes", "/finanzas": "Finanzas", "/catalogo": "Catálogo", "/ajustes": "Ajustes", "/presupuestos": "Presupuestos", "/compras": "Compras", "/documentos": "Documentos", "/mas": "Más", "/ayuda": "Ayuda", "/instalar": "Instalar", "/configuracion": "Ajustes", "/sistema": "Supervisión" };
 
 function miga(pathname: string, data: Workspace): { href?: string; label: string }[] {
@@ -58,6 +59,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [crearMovil, setCrearMovil] = useState(false);
   const [chats, setChats] = useState(false);
   const crear = useQuickCreate();
+  const { sinLeer: avisosSinLeer } = useAvisos();
   const puedeCrear = opcionesPara(actor.role).length > 0;
   // ⌘K / Ctrl+K abre el buscador desde cualquier pantalla.
   useEffect(() => {
@@ -78,7 +80,6 @@ export function AppShell({ children }: { children: ReactNode }) {
   const atrasadas = useMemo(() => buildAgenda(data, hoy).overdue.length, [data, hoy]);
   const abiertos = data.projects.filter(p => p.status !== "completed").length;
   const isActive = (href: string, exact?: boolean) => (exact ? pathname === href : pathname === href || pathname.startsWith(`${href}/`));
-  const initials = iniciales(actor.name);
   const proyectoActual = pathname.match(/^\/proyectos\/([0-9a-f-]{36})/)?.[1];
   const conversaciones = useMemo(() => {
     const ultimo = new Map<string, string>();
@@ -95,7 +96,7 @@ export function AppShell({ children }: { children: ReactNode }) {
     const Icon = item.icon;
     const active = isActive(item.href, item.exact) || (item.href === "/mas" && secundarias.some(h => isActive(h)));
     return (
-      <Link key={item.href} prefetch={false} href={item.href} className="nav-item" data-primary={item.primary || undefined} data-solo-movil={item.href === "/mas" || undefined} data-solo-grande={item.href === "/finanzas" || item.href === "/catalogo" || item.href === "/ajustes" || undefined} aria-current={active ? "page" : undefined} aria-label={item.label} title={item.label}>
+      <Link key={item.href} prefetch={false} href={item.href} className="nav-item" data-primary={item.primary || undefined} data-solo-movil={item.href === "/mas" || undefined} data-solo-grande={item.href === "/clientes" || item.href === "/finanzas" || item.href === "/catalogo" || item.href === "/ajustes" || undefined} aria-current={active ? "page" : undefined} aria-label={item.label} title={item.label}>
         <span className="nav-icon"><Icon {...iconProps} size={19} /></span>
         <span className="nav-label">{item.label}</span>
         {badge}
@@ -119,6 +120,8 @@ export function AppShell({ children }: { children: ReactNode }) {
   );
 
   const migas = miga(pathname, data);
+  // En móvil, las secciones que viven en Más vuelven a Más; una ficha de cliente, a Clientes.
+  const volver = pathname.startsWith("/clientes/") ? { href: "/clientes", label: "Clientes" } : !raices.includes(pathname) && !pathname.startsWith("/proyectos/") ? { href: "/mas", label: "Más" } : null;
   return (
     <div className="shell">
       <nav className="nav" aria-label="Principal">
@@ -128,14 +131,17 @@ export function AppShell({ children }: { children: ReactNode }) {
         }><QuickCreateList onElegir={o => { setNuevo(false); crear.elegir(o); }} /></Popover>}
         {enlace(hoyItem, avisos > 0 ? <span className="count-badge" data-tone="warning" aria-label={`${avisos} proyectos te esperan`}>{avisos}</span> : undefined)}
         {visibles(trabajo).length > 0 && <span className="nav-group">Trabajo</span>}
-        {visibles(trabajo).map(item => enlace(item, item.href === "/proyectos" ? <span className="nav-count" aria-hidden="true">{abiertos}</span> : item.href === "/agenda" && atrasadas > 0 ? <span className="nav-alert" title={`${atrasadas} atrasadas`}><span className="sr-only">{atrasadas} tareas atrasadas</span></span> : undefined))}
+        {visibles(trabajo).map(item => <Fragment key={item.href}>
+          {enlace(item, item.href === "/proyectos" ? <span className="nav-count" aria-hidden="true">{abiertos}</span> : item.href === "/agenda" && atrasadas > 0 ? <span className="nav-alert" title={`${atrasadas} atrasadas`}><span className="sr-only">{atrasadas} tareas atrasadas</span></span> : undefined)}
+          {item.href === "/proyectos" && puedeCrear && <button type="button" className="nav-plus" aria-label="Crear" aria-haspopup="dialog" aria-expanded={crearMovil} onClick={() => setCrearMovil(true)}><Plus size={22} strokeWidth={2} aria-hidden="true" /></button>}
+        </Fragment>)}
         {visibles(empresa).length > 0 && <span className="nav-group">Empresa</span>}
         {visibles(empresa).map(item => enlace(item))}
         {enlace(masItem)}
         <div className="nav-foot">
           <Popover open={cuenta} onClose={() => setCuenta(false)} side="top" panelClassName="account-panel" trigger={
-            <button type="button" className="nav-account" onClick={() => setCuenta(v => !v)} aria-haspopup="dialog" aria-expanded={cuenta} aria-label={`Tu cuenta · ${actor.name}`} title="Tu cuenta">
-              <span className="avatar avatar-ink" aria-hidden="true">{initials}</span>
+            <button type="button" className="nav-account" onClick={() => setCuenta(v => !v)} aria-haspopup="dialog" aria-expanded={cuenta} aria-label={`Tu cuenta · ${actor.name}${avisosSinLeer ? ` · ${avisosSinLeer} avisos sin leer` : ""}`} title="Tu cuenta">
+              <AvatarRing name={actor.name} count={avisosSinLeer} />
               <span className="nav-user"><strong>{actor.name}</strong><small>{roleNames[actor.role]}</small></span>
               <ChevronUp size={15} strokeWidth={1.7} aria-hidden="true" className="nav-account-chevron" />
             </button>
@@ -144,15 +150,12 @@ export function AppShell({ children }: { children: ReactNode }) {
       </nav>
 
       <div className="shell-column">
-        <header className="topbar">
-          <Link prefetch={false} href="/" aria-label="Inicio" style={{ color: "inherit", textDecoration: "none" }}><Brand /></Link>
-          <div className="topbar-tools">
-            <button type="button" className="topbar-search" onClick={() => setSearch(true)} aria-label="Buscar en Plano"><Search size={19} strokeWidth={1.6} aria-hidden="true" /></button>
-            {chatBoton}
-            {puedeCrear && <button type="button" className="topbar-new" aria-label="Crear" title="Crear" aria-haspopup="dialog" aria-expanded={crearMovil} onClick={() => setCrearMovil(true)}><Plus size={18} strokeWidth={1.9} aria-hidden="true" /></button>}
-            <button type="button" className="avatar avatar-ink avatar-button" onClick={() => setCuentaMovil(true)} aria-label={`Tu cuenta · ${actor.name}`} aria-haspopup="dialog" aria-expanded={cuentaMovil}>{initials}</button>
-          </div>
-        </header>
+        {raices.includes(pathname) && <div className="phone-tools">
+          <button type="button" className="phone-tool" onClick={() => setSearch(true)} aria-label="Buscar en Plano"><Search size={19} strokeWidth={1.6} aria-hidden="true" /></button>
+          {chatBoton}
+          <button type="button" className="phone-avatar" onClick={() => setCuentaMovil(true)} aria-label={`Tu cuenta · ${actor.name}${avisosSinLeer ? ` · ${avisosSinLeer} avisos sin leer` : ""}`} aria-haspopup="dialog" aria-expanded={cuentaMovil}><AvatarRing name={actor.name} count={avisosSinLeer} /></button>
+        </div>}
+        {volver && <Link prefetch={false} href={volver.href} className="phone-back"><ChevronLeft size={18} strokeWidth={1.8} aria-hidden="true" />{volver.label}</Link>}
         <header className="deskbar">
           <nav className="crumbs" aria-label="Estás en">
             {migas.map((m, i) => <span key={`${m.label}-${i}`}>{i > 0 && <span aria-hidden="true"> › </span>}{m.href ? <Link prefetch={false} href={m.href}>{m.label}</Link> : <span aria-current="page">{m.label}</span>}</span>)}
@@ -165,8 +168,8 @@ export function AppShell({ children }: { children: ReactNode }) {
         <main className="shell-main">{children}</main>
       </div>
 
-      <Modal open={cuentaMovil} onClose={() => setCuentaMovil(false)} title="Tu cuenta"><AccountMenu onClose={() => setCuentaMovil(false)} /></Modal>
-      <Modal open={crearMovil} onClose={() => setCrearMovil(false)} title="¿Qué quieres crear?"><QuickCreateList onElegir={o => { setCrearMovil(false); crear.elegir(o); }} /></Modal>
+      <Modal open={cuentaMovil} onClose={() => setCuentaMovil(false)} title={actor.name}>{cuentaMovil && <AccountMenu hoja onClose={() => setCuentaMovil(false)} />}</Modal>
+      <Modal open={crearMovil} onClose={() => setCrearMovil(false)} title="Crear"><QuickCreateList onElegir={o => { setCrearMovil(false); crear.elegir(o); }} /></Modal>
       <QuickCreatePanels panel={crear.panel} onClose={crear.cerrar} />
       <CommandPalette open={search} onClose={() => setSearch(false)} />
       {notice && <div className="notice" role="status"><span>{notice}</span>{noticeAction && <button type="button" className="notice-action" onClick={() => { const run = noticeAction.run; dismissNotice(); void run(); }}>{noticeAction.label}</button>}</div>}

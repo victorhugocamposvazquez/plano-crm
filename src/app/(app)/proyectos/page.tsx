@@ -79,7 +79,8 @@ export default function ProyectosPage() {
                 <span className="project-step">{pasos.find(p => p.id === paso)?.label}</span>
                 <span className="project-progress" aria-label={enObra ? `Avance ${avance} %` : "Sin avance todavía"}><span className="mini-meter" aria-hidden="true"><span style={{ width: `${enObra ? avance : 0}%` }} /></span><small>{enObra ? `${avance} %` : "—"}</small></span>
                 <span className="project-amount pl-mono">{importe !== null ? money(importe) : "—"}</span>
-                <span className="project-next"><Pill label={quienEtiqueta[q].label} tone={quienEtiqueta[q].tone} /><small>{siguiente.titulo}</small></span>
+                <span className="project-next" data-tone={quienEtiqueta[q].tone}><Pill label={quienEtiqueta[q].label} tone={quienEtiqueta[q].tone} /><small>{siguiente.titulo}</small></span>
+                <span className="project-phase-phone">{pasos.find(p => p.id === paso)?.label}</span>
               </Link>
             );
           })}

@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { Check, Plus } from "lucide-react";
+import Link from "next/link";
+import { BookOpen, Camera, Check, LayoutTemplate, PenLine, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { SearchBox } from "@/components/ui/search-box";
@@ -13,7 +14,7 @@ import { money, type BudgetVersion, type Project } from "@/lib/domain";
 const numero = (texto: string) => { const n = Number(texto.replace(",", ".")); return Number.isFinite(n) && n > 0 ? n : 0; };
 
 /** Añadir del catálogo: buscas, marcas lo que entra y pones la cantidad. Todo acaba en el borrador abierto. */
-export function CatalogPicker({ open, onClose, project, version }: { open: boolean; onClose: () => void; project: Project; version: BudgetVersion }) {
+export function CatalogPicker({ open, onClose, project, version, planoHref, fotosHref, onManual }: { open: boolean; onClose: () => void; project: Project; version: BudgetVersion; planoHref?: string; fotosHref?: string; onManual?: () => void }) {
   const { data, busy, send, notify } = useWorkspace();
   const [query, setQuery] = useState("");
   const [categoria, setCategoria] = useState("");
@@ -43,8 +44,14 @@ export function CatalogPicker({ open, onClose, project, version }: { open: boole
     <Modal open={open} onClose={onClose} size="wide" title="Añadir del catálogo" footer={<>
       <span className="picker-count">{ids.length ? <>{ids.length} {ids.length === 1 ? "artículo" : "artículos"} · <span className="pl-mono">{money(importe)}</span> sin IVA</> : "Marca los artículos que entran"}</span>
       <Button onClick={onClose} disabled={guardando}>Cancelar</Button>
-      <Button variant="primary" onClick={anadir} disabled={!validos.length || validos.length !== ids.length || guardando || busy}>{guardando ? "Añadiendo…" : `Añadir a la V${version.number}`}</Button>
+      <Button variant="primary" onClick={anadir} disabled={!validos.length || validos.length !== ids.length || guardando || busy}>{guardando ? "Añadiendo…" : validos.length ? `Añadir ${validos.length} ${validos.length === 1 ? "partida" : "partidas"} al borrador` : "Elige artículos"}</Button>
     </>}>
+      {planoHref && <div className="picker-ways solo-movil-grid" role="group" aria-label="Cómo añadir">
+        <span data-on="true"><BookOpen size={17} strokeWidth={1.7} aria-hidden="true" />Catálogo</span>
+        <Link href={planoHref}><LayoutTemplate size={17} strokeWidth={1.7} aria-hidden="true" />Plano</Link>
+        {fotosHref && <Link href={fotosHref}><Camera size={17} strokeWidth={1.7} aria-hidden="true" />Fotos</Link>}
+        {onManual && <button type="button" onClick={() => { onClose(); onManual(); }}><PenLine size={17} strokeWidth={1.7} aria-hidden="true" />A mano</button>}
+      </div>}
       <p className="muted text-sm" style={{ marginBottom: 10 }}>Al borrador V{version.number} · {project.name}</p>
       <SearchBox seccion="catalogo-presupuesto" value={query} onChange={setQuery} label="Buscar en el catálogo" placeholder="Busca lo que sea: material, medida, código…" count={`${lista.length} ${lista.length === 1 ? "artículo" : "artículos"}`} vocabulario={vocabulario} />
       <div className="picker-cats" role="group" aria-label="Categoría">

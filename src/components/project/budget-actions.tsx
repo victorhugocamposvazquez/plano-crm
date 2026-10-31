@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { FileText, GitBranch, MessageCircle, Pencil } from "lucide-react";
+import { FileText, GitBranch, MessageCircle, Pencil, Plus } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { useWorkspace } from "@/components/workspace-provider";
@@ -10,7 +10,7 @@ import { can, money, totals, type Budget, type BudgetVersion, type Project } fro
  * Lo que se puede hacer con la versión que se está viendo. Cambia con su estado: el borrador se envía,
  * el enviado espera respuesta y las demás solo se leen. En móvil la acción principal queda fija abajo.
  */
-export function BudgetActions({ project, budget, approved, working, shown, onEdit, onSend, onResponse, onRevisionCreated }: { project: Project; budget: Budget; approved?: BudgetVersion; working?: BudgetVersion; shown: BudgetVersion; onEdit: () => void; onSend: () => void; onResponse: () => void; onRevisionCreated?: (version: BudgetVersion) => void }) {
+export function BudgetActions({ project, budget, approved, working, shown, onEdit, onSend, onResponse, onAdd, onRevisionCreated }: { project: Project; budget: Budget; approved?: BudgetVersion; working?: BudgetVersion; shown: BudgetVersion; onEdit: () => void; onSend: () => void; onResponse: () => void; onAdd?: () => void; onRevisionCreated?: (version: BudgetVersion) => void }) {
   const { actor, busy, send, notify } = useWorkspace();
   const [revisando, setRevisando] = useState(false);
   const [motivo, setMotivo] = useState("");
@@ -37,7 +37,7 @@ export function BudgetActions({ project, budget, approved, working, shown, onEdi
 
   return (
     <div className="budget-side-actions">
-      {esBorrador && puedeEnviar && shown.items.length > 0 && <div className="budget-actions-bar"><Button variant="primary" data-accent="orange" onClick={onSend}>Enviar V{shown.number} al cliente</Button></div>}
+      {esBorrador && puedeEnviar && shown.items.length > 0 && <div className="budget-actions-bar">{onAdd && <Button className="solo-movil-flex" onClick={onAdd}><Plus size={16} strokeWidth={1.9} aria-hidden="true" />Añadir</Button>}<Button variant="primary" data-accent="orange" onClick={onSend}>Enviar V{shown.number} al cliente</Button></div>}
       {esBorrador && puedeEditar && <Button variant={shown.items.length > 0 ? "secondary" : "primary"} onClick={onEdit}><Pencil size={16} strokeWidth={1.7} aria-hidden="true" />Editar partidas</Button>}
       {esEnviado && <div className="budget-actions-bar"><Button variant="primary" data-accent="orange" onClick={onResponse}>Registrar respuesta del cliente</Button></div>}
       {esEnviado && <a className="btn btn-secondary" href={`https://wa.me/?text=${encodeURIComponent(recordatorio)}`} target="_blank" rel="noopener"><MessageCircle size={16} strokeWidth={1.7} aria-hidden="true" />Recordar al cliente</a>}

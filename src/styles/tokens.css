@@ -14,7 +14,7 @@
   --pl-bg: #ffffff;
   --pl-soft: #f6f6f4;
   --pl-raised: #f0f1ee;
-  --pl-ink: #20272d;
+  --pl-ink: #16232e;
   --pl-muted: #697177;
   --pl-faint: #858c90;
   --pl-line: #e5e7e3;
@@ -25,7 +25,7 @@
   --pl-blue: #2c5a85;
   --pl-action: var(--pl-ink);
   --pl-on-action: var(--pl-bg);
-  --pl-overlay: rgb(32 39 45 / 0.32);
+  --pl-overlay: rgb(22 35 46 / 0.32);
   --pl-shadow-float: 0 8px 24px rgb(0 0 0 / 0.08);
 
   /* Tipografía */
@@ -48,6 +48,8 @@
   --pl-text-search: 1.0625rem;
   --pl-text-figure: 1.3125rem;
   --pl-text-total: 1.75rem;
+  --pl-text-total-phone: 1.875rem;
+  --pl-text-ficha: 1.25rem;
 
   --pl-leading-tight: 1.16;
   --pl-leading-base: 1.45;
@@ -267,6 +269,10 @@ html[data-text="large"] {
   --pl-chat-mine: #e0e6ea;
   --pl-chat-other: #ffffff;
   --pl-on-orange: #0b1720;
+  --pl-ring-1: #f2793a;
+  --pl-ring-2: #e25a12;
+  --pl-ring-3: #c8410a;
+  --pl-ring-off: #d9dcd9;
 
   /* Series de gráficos: orden fijo, validado para daltonismo en cada tema */
   --pl-series-1: #2a78d6;

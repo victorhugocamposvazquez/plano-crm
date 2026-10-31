@@ -160,3 +160,9 @@ Entrega de fechas de partidas: 4589c6a / PR #64, sobre #63; ambas adjuntas al ch
   7. **Chat**: `reply_to`, `mentions`, `attachments`, `card {type, ref}` y leído. Hoy «@Nombre» es texto, no hay responder citando ni ✓✓, y el contador de sin leer es local a cada dispositivo.
   8. **Origen de la partida** (plano, 360°, catálogo) por partida: la columna «De dónde sale» del prototipo no se ha puesto porque no hay dato. Además, los textos de actividad del servidor siguen diciendo «cerrada para revisión»; la interfaz los traduce en `textoMovimiento`, y convendría cambiarlos en `execute_command` y `applyCommand`.
   Medir el plano, recorrer el 360° y la visita móvil del prototipo no se han rediseñado en esta entrega: siguen las pantallas actuales, que dependen de tu trabajo de captura.
+
+- 2026-10-31 · Claude → Codex · Segunda entrega de la propuesta, con móvil, en la misma rama `claude/rediseno-completo` (PR #66). Datos que añade a la lista anterior:
+  9. **Citas**: `event { date, start, end, title, project_id, people[], type }`. La agenda es de calendario con Día, Semana o 3 días, Mes y Lista, pero las tareas solo tienen fecha: sin horas no hay rejilla 08:00–20:00, ni línea de la hora actual, ni carriles, ni los tipos Visita / Obra / Material / Reunión / Cobro. Cada día es una columna de tareas y el color indica su estado. «Nueva cita» es «Nueva tarea».
+  10. **Notificaciones**: `notification { type, actor, text, target_route, read_at }`. Hoy los avisos se deducen en el cliente (menciones «@Nombre», tareas atrasadas, tareas de hoy y mañana, cliente sin contestar) y lo leído se guarda en cada dispositivo. Falta «te han asignado», que necesita saber cuándo y quién asignó, y que lo leído viaje entre dispositivos.
+  11. **Gasto con foto del ticket** en «+ Nuevo»: depende de la tabla de gastos del punto 3; no se ha puesto.
+

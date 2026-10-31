@@ -44,7 +44,7 @@ const ws=page=>page.evaluate(()=>JSON.parse(localStorage.getItem('plano.workspac
   await page.getByRole('button',{name:'Añadir partidas'}).click();await page.getByRole('menuitem',{name:/^Del catálogo/}).click();
   const picker=page.getByRole('dialog',{name:'Añadir del catálogo'});await picker.getByRole('searchbox').fill('pintura');
   await picker.getByRole('button',{name:'Añadir',exact:true}).first().click();await picker.getByRole('textbox',{name:/^Cantidad de/}).fill('2');
-  await picker.getByRole('button',{name:'Añadir a la V2'}).click();await expect(picker).not.toBeVisible();
+  await picker.getByRole('button',{name:'Añadir 1 partida al borrador'}).click();await expect(picker).not.toBeVisible();
   const despues=(await ws(page)).versions.find(v=>v.id===antes.id);expect(despues.items.length).toBe(antes.items.length+1);expect(despues.items.at(-1).quantity).toBe(2);
   console.log('Catálogo → borrador correcto');
   await page.getByRole('button',{name:'Editar partidas'}).click();await expect(page.getByRole('dialog',{name:/Editar V2/})).toBeVisible();await page.keyboard.press('Escape');
@@ -107,8 +107,28 @@ const ws=page=>page.evaluate(()=>JSON.parse(localStorage.getItem('plano.workspac
   const [descarga]=await Promise.all([page.waitForEvent('download'),page.getByRole('button',{name:'Exportar para la gestoría'}).click()]);expect(descarga.suggestedFilename()).toBe('cobros-para-la-gestoria.csv');
   console.log('Clientes y Finanzas correctos');
 
-  // Móvil: sin scroll horizontal y con la acción principal a mano.
+  // Agenda de calendario: cuatro vistas y minicalendario, sin horas inventadas.
+  await page.goto(`${base}/agenda`);await expect(page.getByRole('button',{name:'Semana',exact:true})).toHaveAttribute('aria-pressed','true');
+  await page.getByRole('button',{name:'Mes',exact:true}).click();await expect(page.getByRole('grid')).toBeVisible();
+  await page.getByRole('button',{name:'Lista',exact:true}).click();await expect(page.getByText(/Replantear tabiquería/).first()).toBeVisible();
+  await page.getByRole('button',{name:'Día',exact:true}).click();await page.getByRole('button',{name:/Replantear tabiquería/}).first().click();const cita=page.getByRole('dialog',{name:'Tarea'});await expect(cita.getByRole('link',{name:'Abrir proyecto'})).toBeVisible();await cita.getByRole('button',{name:'Cerrar'}).click();
+  console.log('Agenda correcta');
+
+  // Avisos: una mención al usuario sube el contador del aro y se marca como leída.
+  await page.goto(url);await page.getByRole('button',{name:/^Chat/}).click();
+  await page.evaluate(id=>{const w=JSON.parse(localStorage.getItem('plano.workspace.v1'));w.messages.push({id:'00000000-0000-4000-8000-000000009999',organization_id:w.organization_id,project_id:id,body:'@Alex mañana nos quedamos sin placa',author_name:'Dani · Demo',created_at:new Date().toISOString()});localStorage.setItem('plano.workspace.v1',JSON.stringify(w));},project);
+  await page.goto(`${base}/`);const cuenta=page.getByRole('button',{name:/^Tu cuenta.*avisos sin leer/}).first();await expect(cuenta).toBeVisible();await cuenta.click();await expect(page.getByText('te ha mencionado en Vivienda en Monte Alto')).toBeVisible();await page.getByRole('button',{name:'Marcar todo como leído'}).click();await expect(page.getByRole('button',{name:/avisos sin leer/})).toHaveCount(0);
+  await page.getByRole('heading',{level:1}).click();
+  console.log('Avisos correctos');
+
+  // Móvil: barra con «+» central, hoja de cuenta, apartados de la ficha y barra fija del presupuesto.
   await page.setViewportSize({width:390,height:844});
+  await page.goto(`${base}/`);await page.getByRole('navigation',{name:'Principal'}).getByRole('button',{name:'Crear'}).click();await expect(page.getByRole('dialog',{name:'Crear'}).getByRole('menuitem',{name:/^Tarea/})).toBeVisible();await page.keyboard.press('Escape');
+  await page.getByRole('button',{name:/^Tu cuenta/}).click();await page.getByRole('button',{name:'Tu cuenta',exact:true}).click();await expect(page.getByRole('group',{name:'Tema de la interfaz'})).toBeVisible();await page.keyboard.press('Escape');
+  const otro=id(11);await page.goto(`${base}/proyectos/${otro}`);await expect(page.getByRole('navigation',{name:'Apartados del proyecto'})).toBeVisible();await expect(page.getByRole('tablist',{name:'Secciones del proyecto'})).not.toBeVisible();
+  await page.getByRole('button',{name:/^Presupuesto/}).first().click();await expect(page.getByRole('button',{name:/^Enviar V\d+ al cliente/})).toBeVisible();await expect(page.getByRole('navigation',{name:'Principal'})).not.toBeVisible();
+  await page.getByRole('button',{name:'Añadir',exact:true}).click();const hoja=page.getByRole('dialog',{name:'Añadir del catálogo'});await expect(hoja.getByRole('link',{name:'Plano'})).toBeVisible();await hoja.getByRole('button',{name:'Cerrar'}).click();
+  console.log('Composición móvil correcta');
   for(const ruta of ['/','/proyectos',`/proyectos/${project}`,`/proyectos/${project}?s=budget`,'/agenda','/clientes','/catalogo','/finanzas','/ajustes','/mas']){await page.goto(base+ruta);await page.waitForTimeout(400);const sobra=await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth);expect(sobra,`Scroll horizontal en ${ruta}`).toBeLessThanOrEqual(0);}
   await page.screenshot({path:path.join(out,'mas-390.png')});
   console.log('Móvil correcto');

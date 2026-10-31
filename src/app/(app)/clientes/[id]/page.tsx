@@ -43,7 +43,7 @@ export default function ClientePage() {
       <BackLink fallback="/clientes">Todos los clientes</BackLink>
       <div className="pl-head">
         <div className="client-id"><span className="avatar avatar-lg-soft" aria-hidden="true">{iniciales(cliente.name)}</span><div><h1 className="pl-title">{cliente.name}</h1><p className="pl-sub">Cliente desde {desde}</p></div></div>
-        {can(actor.role, "project.create") && <Link href={`/proyectos?nuevo=1&cliente=${encodeURIComponent(cliente.name)}`} className="btn btn-primary"><Plus size={17} strokeWidth={1.8} aria-hidden="true" />Nuevo proyecto</Link>}
+        {can(actor.role, "project.create") && <Link href={`/proyectos?nuevo=1&cliente=${encodeURIComponent(cliente.name)}`} className="btn btn-primary" data-keep="true"><Plus size={17} strokeWidth={1.8} aria-hidden="true" />Nuevo proyecto</Link>}
       </div>
       <div className="stat-row stat-row-4">
         <div className="pl-card stat"><span>Proyectos</span><strong className="pl-mono">{cliente.projects.length}</strong><small>{cliente.activos} en marcha</small></div>

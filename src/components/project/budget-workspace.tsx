@@ -67,9 +67,18 @@ export function BudgetWorkspace({project,budget,versions,onNavigate,onEdit,canEd
         {ocultas>0 && <button type="button" className="version-card version-card-more" onClick={()=>onNavigate({vista:"versions"})}>Historial · {ocultas} ›</button>}
       </div>
 
-      {/* En móvil el total va justo debajo de las versiones. */}<div className="budget-side-phone"><BudgetTotal version={shown} delta={deltaAceptada} approved={approved}/></div>
+      {/* En móvil, sin tarjetas: qué versión se ve, si es la actual, cuántas hay y el total en grande. */}
+      <div className="budget-phone-head">
+        <div className="budget-phone-tags">
+          <span className="mini-chip" data-tone={estadoTono(shown,approved?.id)}>V{shown.number} · {versionState(shown,approved?.id)}</span>
+          {currentView ? <span className="budget-phone-current"><span className="pulse-dot" aria-hidden="true"/>La actual</span> : current && <button type="button" className="link-inline" onClick={()=>showVersion(current)}>Ir a la actual</button>}
+          <button type="button" className="budget-phone-versions" onClick={()=>onNavigate({vista:view==="versions"?"items":"versions"})}>{view==="versions"?"Ver partidas":`${history.versions.length} ${history.versions.length===1?"versión":"versiones"}`}</button>
+        </div>
+        <strong className="pl-mono budget-phone-total">{money(t.total)}</strong>
+        <small>Con IVA{deltaAceptada!==null && approved?` · ${signed(deltaAceptada)} respecto a la V${approved.number} aceptada`:""}</small>
+      </div>
 
-      <div className="budget-subbar">
+      <div className="budget-subbar" data-view={view}>
         <div className="pl-seg" role="group" aria-label="Qué ver del presupuesto">
           <button type="button" aria-pressed={view==="items"} onClick={()=>onNavigate({vista:"items"})}>Partidas</button>
           <button type="button" aria-pressed={view==="versions"} onClick={()=>onNavigate({vista:"versions"})}>Versiones · {history.versions.length}</button>
@@ -93,9 +102,9 @@ export function BudgetWorkspace({project,budget,versions,onNavigate,onEdit,canEd
           <div className="items-row items-head" role="row"><span role="columnheader">Partida</span><span role="columnheader">Cantidad</span><span role="columnheader">Precio</span><span role="columnheader">Importe</span></div>
           {[...chapters].map(([chapter,items])=>{const abierto=!cerrados.includes(chapter),noSuman=items.filter(i=>i.inclusion!=="included").length;return <div key={chapter} className="items-chapter" role="rowgroup">
             <button type="button" className="items-chapter-head" aria-expanded={abierto} onClick={()=>toggle(chapter)}><span><ChevronDown size={15} strokeWidth={1.8} aria-hidden="true" data-open={abierto}/><strong>{chapter}</strong><small> · {items.length} partida{items.length===1?"":"s"}{noSuman?` · ${noSuman} no suma${noSuman===1?"":"n"}`:""}</small></span><strong className="pl-mono">{money(totalCapitulo(items))}</strong></button>
-            {abierto && items.map(item=>{const cambio=cambios.get(item.id);return <div key={item.id} className="items-row" role="row" data-inclusion={item.inclusion}>
+            {abierto && items.map(item=>{const cambio=cambios.get(item.id);return <div key={item.id} className="items-row" role="row" data-inclusion={item.inclusion} data-cambio={cambio==="added"?"nueva":cambio?"cambia":undefined}>
               <span role="cell" className="items-desc">{item.description}{(item.adjustment_percent!==0 || item.inclusion!=="included" || cambio) && <span className="items-tags">{cambio && referencia && <span className="items-tag" data-tone="warning">{cambio==="added"?"nueva":"cambia"} · desde V{referencia.number}</span>}{item.adjustment_percent!==0 && <span className="items-tag">{item.adjustment_percent>0?"recargo":"descuento"} {number(Math.abs(item.adjustment_percent))} %</span>}{item.inclusion!=="included" && <span className="items-tag">{item.inclusion==="optional"?"alternativa":"excluida"} · no suma</span>}</span>}</span>
-              <span role="cell" className="pl-mono items-num" data-label="Cantidad">{number(item.quantity)} {item.unit}</span>
+              <span role="cell" className="pl-mono items-num" data-label="Cantidad">{number(item.quantity)} {item.unit}<span className="solo-movil-inline"> × {money(item.unit_price)}</span></span>
               <span role="cell" className="pl-mono items-num" data-label="Precio">{money(item.unit_price)}</span>
               <span role="cell" className="pl-mono items-num items-amount" data-label="Importe">{money(lineTotal(item))}</span>
             </div>;})}
@@ -135,14 +144,14 @@ export function BudgetWorkspace({project,budget,versions,onNavigate,onEdit,canEd
 
     <aside className="budget-side" aria-label={`Total y acciones de V${shown.number}`}>
       <div className="budget-side-wide"><BudgetTotal version={shown} delta={deltaAceptada} approved={approved}/></div>
-      <BudgetActions project={project} budget={budget} approved={approved} working={working} shown={shown} onEdit={onEdit} onSend={abrirEnviar} onResponse={abrirRespuesta} onRevisionCreated={showVersion}/>
+      <BudgetActions project={project} budget={budget} approved={approved} working={working} shown={shown} onEdit={onEdit} onSend={abrirEnviar} onResponse={abrirRespuesta} onAdd={canEdit?()=>setCatalogo(true):undefined} onRevisionCreated={showVersion}/>
       <div className="pl-card budget-facts">
         {alternativas>0 && <div><span>Alternativas</span><span className="muted">{alternativas} · no suman</span></div>}
         <div><span>Base · IVA</span><span className="pl-mono muted">{money(t.base)} + {money(t.tax)}</span></div>
         {shown.notes ? <details><summary>Condiciones y notas</summary><p>{shown.notes}</p></details> : <div><span>Condiciones y notas</span><span className="muted">Sin notas</span></div>}
       </div>
     </aside>
-    {borrador && <CatalogPicker open={catalogo} onClose={()=>setCatalogo(false)} project={project} version={shown}/>}
+    {borrador && <CatalogPicker open={catalogo} onClose={()=>setCatalogo(false)} project={project} version={shown} planoHref={planoHref} fotosHref={fotosHref} onManual={onEdit}/>}
   </section>;
 }
 

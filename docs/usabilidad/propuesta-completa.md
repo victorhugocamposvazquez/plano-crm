@@ -1,6 +1,6 @@
 # Propuesta completa de usabilidad
 
-Integración del prototipo «PLANO Propuesta completa» que Hugo entregó el 31 de octubre de 2026. El prototipo es una referencia: se ha recreado con los componentes, tokens y datos de Plano. No hay migraciones en esta entrega.
+Integración de los dos prototipos («PLANO Propuesta completa» de escritorio y «PLANO Movil» de 390 px) que Hugo entregó el 31 de octubre de 2026. El prototipo es una referencia: se ha recreado con los componentes, tokens y datos de Plano. No hay migraciones en esta entrega.
 
 | Pantalla del prototipo | Estado | Qué falta y por qué |
 |---|---|---|
@@ -18,7 +18,9 @@ Integración del prototipo «PLANO Propuesta completa» que Hugo entregó el 31 
 | Planos y fotos | Integrada | Lista por tipo y filtro. Sin miniaturas en esta pestaña. |
 | Cobros | Integrada | Son borradores; todavía no son facturas. |
 | Chat | Integrada en parte | Flota, tiene lupa, cuadrícula, chips, clip, @ y «Hacer tarea». Falta responder citando, tarjetas, ✓✓ y foto de grupo: no hay dato. |
-| Agenda | Integrada | Por día, por persona y por oficio. |
+| Agenda | Integrada en parte | Calendario con Día por persona, Semana o 3 días, Mes y Lista, minicalendario y «Qué mostrar». Sin rejilla por horas, línea de ahora ni tipos de cita: las tareas no tienen hora. |
+| Avisos y aro del avatar | Integrados en parte | Deducidos de menciones, tareas y clientes sin contestar. Lo leído es local a cada dispositivo. |
+| Móvil | Integrado | Barra con «+» central, tarjetas en Hoy, apartados en la ficha, presupuesto por tarjetas con barra fija, chat a pantalla completa, Más con la cuenta y hojas inferiores. Sin Gasto ni ficha de stock. La visita sigue sin rediseñar. |
 | Clientes y ficha | Integradas en parte | Sin teléfono, correo ni NIF: el cliente no es una entidad todavía. |
 | Finanzas | Integrada en parte | Con lo aceptado, los cobros preparados y lo enviado. Sin gastos, facturas, beneficio ni margen. |
 | Catálogo y ficha de artículo | Integrada en parte | Buscador tolerante, categoría, acordeón y panel. Sin proveedor, stock, subcategorías ni fotos. |
@@ -26,6 +28,6 @@ Integración del prototipo «PLANO Propuesta completa» que Hugo entregó el 31 
 
 Lista de datos necesarios para completar lo pendiente: `docs/PREGUNTAS.md`, entrada del 31 de octubre de 2026.
 
-Secciones que dejan el menú: Presupuestos, Compras y Documentos. Viven en cada proyecto y sus vistas de todos los proyectos siguen accesibles desde Ajustes y Más.
+Secciones que dejan el menú: Presupuestos, Compras y Documentos. En móvil, Clientes, Catálogo y Finanzas pasan a Más. Viven en cada proyecto y sus vistas de todos los proyectos siguen accesibles desde Ajustes y Más.
 
 Comprobación: `npm run check` y el recorrido `tests/usabilidad/presupuesto.browser-check.cjs` en modo demostración.
