@@ -363,3 +363,7 @@ Estilos en `src/styles/plano-app.css`, después de `ui.css`. Detalle de lo integ
 - Los importes llevan separador de miles siempre (`money`).
 - Gráficos: un solo eje, curvas suaves, hover con cruz y tabla con los mismos datos. La paleta `--pl-series-*` se ha pasado por el validador de daltonismo en los dos temas.
 - Lo que no tiene dato no se aproxima ni se simula: se omite y se anota en `docs/PREGUNTAS.md`.
+
+### Captura por zonas (Codex · 1 nov 2026)
+
+Pantalla independiente para mantener el rediseño de Fable: una zona visible, controles progresivos, guardado y propuesta separados. Reutiliza Select, Button y Modal; tipografía, colores, radios y ancho con tokens existentes. Ambos temas comparten estructura; controles táctiles de 44 px. La cantidad vacía es pendiente y el coste distingue IVA. La procedencia se consulta en un diálogo por incorporación; imágenes y panorámicas se muestran planas y no se presentan como geometría o medidas automáticas.

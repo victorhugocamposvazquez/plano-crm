@@ -302,3 +302,65 @@ describe("Fechas verificables de las ediciones de partidas",()=>{
     expect((await db.query("select * from budget_item_events")).rows).toHaveLength(1);
   });
 });
+
+describe("Capturas y procedencia de partidas en PostgreSQL",()=>{
+  async function fixture(){
+    const data=await budget();await command({type:"article.create",code:"CAP",name:"Paredes medidas",chapter:"Pintura",unit:"m²",unit_price:1000,vat_rate:21});
+    const article=(await db.query<{id:string}>("select id from articles where code='CAP'")).rows[0].id;
+    const survey={schema_version:1,project_id:data.projectId,scope:"Pintar una zona",calibrations:[],sources:[{id:demoId(801),kind:"manual",label:"Medidas anotadas",phase:"existing",legend:""}],rooms:[{id:demoId(802),label:"Zona",scope:"Pintura",source_ids:[demoId(801)],observations:[],questions:[],measurements:[{id:demoId(803),source_id:demoId(801),kind:"quantity",label:"Paredes",value:12.5,unit:"m²",method:"manual",reference:"Medida anotada"}],selections:[{kind:"work",intent:{id:demoId(804),label:"Pintura",article_id:article,formula:{kind:"sum",measurement_ids:[demoId(803)]},inclusion:"included",adjustment_percent:0,adjustment_reason:""}}]}]};
+    const items=[{...firstItem,id:demoId(804),chapter:"Pintura",description:"Paredes medidas",quantity:12.5,unit_price:1000,adjustment_percent:0}];
+    return {...data,survey,items};
+  }
+  const save=(projectId:string,survey:unknown,revision=0,user=admin)=>asUser(user,()=>db.query<{capture:{revision:number;updated_by_name:string}}>("select save_room_capture($1,$2,$3,$4::jsonb) as capture",[org,projectId,revision,JSON.stringify(survey)]));
+  const apply=(f:Awaited<ReturnType<typeof fixture>>,revision=0,captureRevision=1,items=f.items,user=admin)=>asUser(user,()=>db.query("select apply_room_capture($1,$2,$3,$4,$5,$6::jsonb,true) as snapshot",[org,f.projectId,captureRevision,f.versionId,revision,JSON.stringify(items)]));
+  it("retoma una captura, conserva autor del servidor y detecta conflictos",async()=>{
+    const f=await fixture();const first=await save(f.projectId,f.survey);expect(first.rows[0].capture).toMatchObject({revision:1,updated_by_name:"Usuario admin"});
+    expect((await save(f.projectId,f.survey)).rows[0]).toEqual(first.rows[0]);
+    await expect(save(f.projectId,{...f.survey,scope:"Otra cosa"})).rejects.toThrow(/actualizado/);
+    expect((await save(f.projectId,{...f.survey,scope:"Otra cosa"},1)).rows[0].capture).toMatchObject({revision:2});
+  });
+  it("solo admite responsables de presupuesto y bloquea lectura y documentos de otra empresa",async()=>{
+    const f=await fixture();await expect(save(f.projectId,f.survey,0,site)).rejects.toThrow(/permiso/);await save(f.projectId,f.survey);
+    expect((await asUser(outsider,()=>db.query("select * from room_captures"))).rows).toHaveLength(0);
+    await expect(asUser(admin,()=>db.exec("delete from room_capture_imports"))).rejects.toThrow(/permission denied/);
+    const foreign=await project(otherOrg,outsider);
+    const doc=(await db.query<{id:string}>("insert into documents(organization_id,project_id,name,category,storage_path,mime_type,size_bytes) values($1,$2,'Foto','before',$3,'image/jpeg',100) returning id",[otherOrg,foreign,`${otherOrg}/${foreign}/${demoId(900)}`])).rows[0].id;
+    await expect(save(f.projectId,{...f.survey,sources:[{...f.survey.sources[0],kind:"photo",document_id:doc}]},1)).rejects.toThrow(/otro proyecto/);
+  });
+  it("incorpora presupuesto y procedencia juntos, y reintentar no duplica",async()=>{
+    const f=await fixture();await save(f.projectId,f.survey);await apply(f);await apply(f);
+    expect((await db.query("select * from room_capture_imports")).rows).toHaveLength(1);
+    expect((await db.query<{items:BudgetItem[];draft_revision:number}>("select items,draft_revision from budget_versions where id=$1",[f.versionId])).rows[0]).toMatchObject({items:f.items,draft_revision:1});
+    expect((await db.query("select * from budget_item_events")).rows).toHaveLength(1);
+    await save(f.projectId,{...f.survey,scope:"Cambiar alcance"},1);
+    expect((await db.query<{survey:typeof f.survey}>("select survey from room_capture_imports")).rows[0].survey.scope).toBe("Pintar una zona");
+  });
+  it("no permite cantidades ni precios inyectados, tampoco al llamar directamente al RPC",async()=>{
+    const f=await fixture();await save(f.projectId,f.survey);
+    await expect(apply(f,0,1,[{...f.items[0],quantity:99}])).rejects.toThrow(/cantidad no coincide/);
+    await expect(apply(f,0,1,[{...f.items[0],unit_price:1}])).rejects.toThrow(/catálogo/);
+    expect((await db.query("select * from room_capture_imports")).rows).toHaveLength(0);
+    expect((await db.query<{items:BudgetItem[]}>("select items from budget_versions where id=$1",[f.versionId])).rows[0].items).toEqual([]);
+  });
+  it("requiere motivo del ajuste también al llamar directamente al RPC",async()=>{
+    const f=await fixture();f.survey.rooms[0].selections[0].intent.adjustment_percent=15;
+    await save(f.projectId,f.survey);
+    await expect(apply(f,0,1,[{...f.items[0],adjustment_percent:15}])).rejects.toThrow(/motivo del ajuste/);
+    expect((await db.query("select * from room_capture_imports")).rows).toHaveLength(0);
+  });
+  it("actualiza una importada intacta y protege una edición manual posterior",async()=>{
+    const f=await fixture();await save(f.projectId,f.survey);await apply(f);
+    const changed=structuredClone(f.survey);changed.rooms[0].measurements[0].value=20;
+    await save(f.projectId,changed,1);await apply(f,1,2,[{...f.items[0],quantity:20}]);
+    await command({type:"budget.save",version_id:f.versionId,expected_revision:2,items:[{...f.items[0],quantity:25}],notes:"Edición manual"});
+    changed.rooms[0].measurements[0].value=30;await save(f.projectId,changed,2);
+    await expect(apply(f,3,3,[{...f.items[0],quantity:30}])).rejects.toThrow(/ya se ha editado/);
+    expect((await db.query("select * from room_capture_imports")).rows).toHaveLength(2);
+  });
+  it("nunca aplica sobre una versión aprobada ni sobre un guardado obsoleto",async()=>{
+    const f=await fixture();await save(f.projectId,f.survey);
+    await expect(apply(f,1)).rejects.toThrow(/presupuesto ha cambiado/);
+    await apply(f);await command({type:"budget.issue",version_id:f.versionId,expected_revision:1});await command({type:"budget.approve",version_id:f.versionId,reference:"Prueba"});
+    await expect(apply(f,1)).rejects.toThrow(/borrador abierto/);
+  });
+});

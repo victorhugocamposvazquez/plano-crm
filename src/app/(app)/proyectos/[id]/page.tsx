@@ -120,7 +120,7 @@ export default function ProyectoPage() {
   if(!project)return <div className="empty"><strong>Proyecto no encontrado</strong><LinkButton href="/proyectos" variant="ghost">Volver a proyectos</LinkButton></div>;
   const hoy=localDate();
   const progress=projectProgress(data,project.id),meterTone=progressTone({overdue:pendingTasks.filter(t=>t.due_date<hoy).length,done:project.status==="completed" || progress>=100});
-  const planoHref=`/proyectos/${project.id}/plano${budget?`?p=${budget.id}`:""}`,fotosHref=`/proyectos/nueva?proyecto=${project.id}`;
+  const planoHref=`/proyectos/${project.id}/plano${budget?`?p=${budget.id}`:""}`,fotosHref=`/proyectos/${project.id}/captura${budget?`?p=${budget.id}`:""}`;
   const aMano=()=>{if(!budget)void crearPresupuesto();else if(editable)editBudget();else{navigate({s:"budget",vista:"items",v:current?.id});}};
   const enObra=project.status==="planning" || project.status==="active" || project.status==="completed" || tasks.length>0;
   const fotosVisita=documents.filter(d=>d.category==="before").length;

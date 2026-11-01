@@ -1,0 +1,29 @@
+.room-capture{max-width:var(--pl-reading-width);display:grid;gap:var(--pl-space-5)}
+.room-capture fieldset{border:0;padding:0;margin:0;min-width:0;display:grid;gap:var(--pl-space-5)}
+.room-capture h2{font-size:var(--pl-text-h2)}
+.room-capture h3{font-size:var(--pl-text-h3)}
+.room-section{border-top:1px solid var(--pl-line);padding-top:var(--pl-space-5);display:grid;gap:var(--pl-space-4);min-width:0}
+.room-save{display:flex;align-items:center;flex-wrap:wrap;gap:var(--pl-space-3);font-size:var(--pl-text-sm);color:var(--pl-muted)}
+.room-save>span{flex:1 1 100%}
+.room-tabs{display:flex;gap:var(--pl-space-2);overflow:auto;padding-bottom:var(--pl-space-2)}
+.room-tabs>button{min-height:44px;flex-shrink:0;border:1px solid var(--pl-line);background:var(--pl-bg);color:var(--pl-ink);padding:var(--pl-space-2) var(--pl-space-4);border-radius:var(--pl-radius-control);font-size:var(--pl-text-ui)}
+.room-tabs>button[aria-pressed=true]{border-color:var(--pl-ink);font-weight:var(--pl-weight-semibold);background:var(--pl-soft)}
+.room-photo-actions{display:flex;flex-wrap:wrap;gap:var(--pl-space-2)}
+.room-file{position:absolute;width:1px;height:1px;opacity:0}
+.room-photo-actions label:focus-within{outline:2px solid var(--pl-blue);outline-offset:2px}
+.room-photos{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:var(--pl-space-3);list-style:none;padding:0}
+.room-photos li{position:relative;display:grid;gap:var(--pl-space-2);font-size:var(--pl-text-sm);overflow-wrap:anywhere}
+.room-photos img{width:100%;height:140px;object-fit:cover;border-radius:var(--pl-radius-control)}
+.room-photos .btn-icon{position:absolute;right:0;top:0;background:var(--pl-bg)}
+.room-work{border:1px solid var(--pl-line);border-radius:var(--pl-radius-control);padding:var(--pl-space-4);display:grid;gap:var(--pl-space-4);min-width:0}
+.room-measure{display:grid;gap:var(--pl-space-4)}
+.room-amount{font-weight:var(--pl-weight-semibold)}
+.room-capture details>summary{min-height:44px;cursor:pointer;display:list-item;padding:var(--pl-space-3) 0}
+.room-capture details[open]{display:grid;gap:var(--pl-space-3)}
+.room-review{display:flex;align-items:flex-start;gap:var(--pl-space-3);padding:var(--pl-space-3) 0;min-height:44px}
+.room-review input{min-width:22px;min-height:22px}
+@media(min-width:640px){.room-measure{grid-template-columns:1fr 1fr;align-items:end}.room-save>span{flex:1}.room-photos{grid-template-columns:repeat(3,minmax(0,1fr))}}
+
+.room-capture [hidden]{display:none!important}
+.room-stage{background:var(--pl-bg);padding-top:var(--pl-space-2)}
+.room-stage>button{flex:1 1 0;min-width:0;padding:var(--pl-space-2);font-size:var(--pl-text-sm)}
