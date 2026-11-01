@@ -45,7 +45,7 @@ Relación con la identidad corporativa: la Tinta de marca (`#16232E`), el Yeso (
 
 | Rol | Fuente | Tamaño / peso / tracking |
 |---|---|---|
-| Marca «PLANO■» | Archivo 800 | 21 px en app, −0,065 em, cuadrado de 5 px en `--pl-orange` apoyado en la línea base · favicon/PWA: «PLA» / «NO■» en blanco sobre Tinta `#16232E`, cuadrado `#F2793A` (`src/lib/brand-icon.tsx`, `src/app/icon.tsx`, `apple-icon.tsx`, `manifest.ts`) · en móvil (`.phone-bar`): la «P.» va **dentro** del cuadrado de marca (`--pl-brand-mark` 32 px, fondo `--pl-brand-mark-bg`, tinta blanca y naranja `--pl-brand-mark-orange`) |
+| Marca «PLANO■» | Archivo 800 | 23 px en app (`--pl-text-brand`), −0,045 em, cuadrado de 6 px en `--pl-orange` apoyado en la línea base · también completa en la banda móvil · favicon/PWA: «PLA» / «NO■» en blanco sobre Tinta `#16232E`, cuadrado `#F2793A` (`src/lib/brand-icon.tsx`, `src/app/icon.tsx`, `apple-icon.tsx`, `manifest.ts`) |
 | Título de pantalla | Inter 500 | 28 px, línea 1,16, −0,055 em (Grafito: 25 px) |
 | Título de ficha / panel | Inter 500 | 22 px, −0,04 em · 16–17 px, −0,025 em |
 | Nombre de obra, botón, campo | Inter 500 / 400 | 15 px, −0,015 em |
@@ -64,7 +64,7 @@ Fuentes ya instaladas en el proyecto (`@fontsource-variable/inter`, `@fontsource
 - **Radios:** pantalla móvil 24 · panel y campo 10 · botón 10 · botón-icono 8 · pestaña píldora 6 · barra de comando 17 (Grafito 11) · circular para avatar (36 px, iniciales 12 px) y botón de enviar.
 - **Campos en móvil:** el texto de `input` / `select` / `textarea` es siempre ≥ 16 px (`--pl-text-base`) para que iOS no haga zoom al enfocar.
 - **Filetes:** 1 px; pestaña activa 1,5 px; medidor de avance 3 px.
-- **Banda fija del móvil** (`.phone-bar`, `--pl-phone-bar`: 48 px): el cuadrado de marca con la «P.» dentro, arriba a la izquierda en todas las pantallas, también al hacer scroll; lleva a Hoy. El contador de avisos del avatar no se recorta (`overflow: visible`) ni tapa las iniciales: va compacto, a −3 px arriba y −6 px a la derecha. En las pantallas raíz añade buscar, chat y cuenta a la derecha. El chat a pantalla completa la tapa.
+- **Banda fija del móvil** (`.phone-bar`, `--pl-phone-bar`: 48 px): «PLANO■» escrito arriba a la izquierda en todas las pantallas, también al hacer scroll; lleva a Hoy. El contador de avisos del avatar no se recorta (`overflow: visible`) ni tapa las iniciales: va compacto, a −3 px arriba y −6 px a la derecha. En las pantallas raíz añade buscar, chat y cuenta a la derecha. El chat a pantalla completa la tapa.
 - **Táctil:** botones 44 px (38 px en cabecera de escritorio) · campos 46 px · filas de lista ≥ 56 px, filas de obra 90 px en móvil y 60 px en escritorio · navegación inferior 48 px de ítem (`--pl-nav-bar` 52 px + `safe-area-inset-bottom`, sin padding extra bajo los iconos) · botón-icono 34–36 px (mínimo 44 px de área activa).
 - **Iconos:** trazo 1,55 px, 19 px por defecto; 13–16 px dentro de etiquetas y meta. Conjunto: Lucide (ya en dependencias).
 
