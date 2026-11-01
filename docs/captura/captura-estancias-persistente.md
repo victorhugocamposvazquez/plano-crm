@@ -39,3 +39,7 @@ Pruebas de dominio, editor, API y PostgreSQL local: cantidades pendientes, unida
 El recorrido `tests/captura/room-capture.browser-check.cjs` utiliza un PNG sintético y dos zonas; cubre subida, recarga, cambio de artículos, pregunta necesaria, incorporación, origen, salida con cambios y conflicto. La vista previa de Codex usa 3121; 3119 pertenece al checkout de Fable y no se reinicia.
 
 La pantalla se divide en Fotos y zonas → Trabajos → Revisar, mostrando un único paso y una única zona. Los perfiles de consulta pueden cambiar de zona y consultar el origen, aunque los controles de edición e incorporación estén desactivados.
+
+Recorrido de navegador completo correcto, sin errores ni desbordamiento, en 390/768/1280 y ambos temas. Se corrigió la recuperación tras recarga con el mismo patrón de hidratación de la ruta de planos y se añadió una regresión SSR. La rama incorpora también main 729ac9e (#75), conservando el último ajuste visual de Fable.
+
+Comprobación final: `npm run check` correcto con 366 pruebas y una privada omitida, tipos y build. Incluye conservación de procedencia al abrir una nueva revisión, sin modificar la aceptada. Tras incorporar #75, comprobación adicional de los tres pasos en ambos temas y 390/768/1280, recarga correcta y ningún error. La incorporación heredada utiliza únicamente registros del mismo presupuesto anteriores o iguales a la versión elegida; si no se puede confirmar la correspondencia con la partida actual, se bloquea su sustitución.

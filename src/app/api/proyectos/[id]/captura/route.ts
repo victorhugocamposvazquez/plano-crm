@@ -40,7 +40,7 @@ export async function POST(request:Request,{params}:Params){return endpoint(asyn
   if(JSON.stringify(items)!==JSON.stringify(input.expected_items))throw new ApiError(409,"La captura o los precios han cambiado. Revisa el cálculo actualizado.");
   const {data,error}=await context.supabase.rpc("apply_room_capture",{p_organization_id:context.organizationId,p_project_id:id,p_capture_revision:input.capture_revision,p_version_id:input.version_id,p_expected_revision:input.expected_revision,p_items:items,p_reviewed:input.reviewed});
   if(error){
-    if(error.code==="40001" && error.message?.startsWith("Una partida ya se ha editado"))throw new ApiError(409,"Una partida de esta captura se editó manualmente en el presupuesto. No se ha sobrescrito: revisa ese cambio antes de actualizarla.");
+    if(error.code==="40001" && error.message?.startsWith("Una partida ya se ha editado"))throw new ApiError(409,"Una partida tiene una edición manual o su origen no se puede comprobar. No se ha sobrescrito; revisa el presupuesto antes de actualizarla.");
     if(error.code==="40001" && error.message?.startsWith("El catálogo ha cambiado"))throw new ApiError(409,"El catálogo ha cambiado. Recarga precios y revisa el cálculo antes de incorporar.");
     databaseError(error);
   }return json({snapshot:data,workspace:await loadWorkspace(context)});

@@ -26,8 +26,8 @@ export function preparedRoomItems(survey:RoomSurvey,organizationId:string,articl
 /** Solo sustituye partidas que todavía coinciden con la última incorporación de la captura. */
 export function mergeCapturedItems(existing:BudgetItem[],incoming:BudgetItem[],previous:RoomImport[]){
   for(const item of incoming){const current=existing.find(i=>i.id===item.id);if(!current)continue;
-    const last=[...previous].sort((a,b)=>b.capture_revision-a.capture_revision).flatMap(p=>p.items.filter(i=>i.id===item.id)).at(0);
-    if(!last || JSON.stringify(itemSchema.parse(current))!==JSON.stringify(itemSchema.parse(last)))throw new Error("Una partida ya se ha editado en el presupuesto. Conserva esa edición y revisa el conflicto antes de continuar.");
+    const last=previous.flatMap(p=>p.items.filter(i=>i.id===item.id)).at(0);
+    if(!last || JSON.stringify(itemSchema.parse(current))!==JSON.stringify(itemSchema.parse(last)))throw new Error("Una partida ya se ha editado o no tiene procedencia comprobable. Conserva esa edición y revisa el conflicto antes de continuar.");
   }
   const ids=new Set(incoming.map(i=>i.id));return [...existing.filter(i=>!ids.has(i.id)),...incoming];
 }
@@ -52,7 +52,11 @@ export function applyRoomCapture(previous:Workspace,raw:unknown,actor:Actor,proj
   checkRoomDocuments(draft.survey,state.documents,state.organization_id);
   const items=preparedRoomItems(draft.survey,state.organization_id,state.articles);
   if(JSON.stringify(items)!==JSON.stringify(request.expected_items))throw new Error("La captura o los precios han cambiado. Revisa el cálculo actualizado.");
-  const merged=mergeCapturedItems(version.items,items,(state.room_imports ?? []).filter(i=>i.version_id===version.id));
+  const history=(state.room_imports ?? []).filter(i=>state.versions.some(v=>v.id===i.version_id && v.budget_id===version.budget_id && v.number<=version.number)).sort((a,b)=>{
+    const av=state.versions.find(v=>v.id===a.version_id)!,bv=state.versions.find(v=>v.id===b.version_id)!;
+    return bv.number-av.number || b.capture_revision-a.capture_revision;
+  });
+  const merged=mergeCapturedItems(version.items,items,history);
   const next=applyCommand(state,{type:"budget.save",version_id:version.id,expected_revision:request.expected_revision,items:merged,notes:version.notes},actor,now);
   next.room_imports=[...(next.room_imports ?? []),{id:crypto.randomUUID(),project_id:projectId,version_id:version.id,capture_revision:draft.revision,survey:draft.survey,items,created_at:now,created_by_name:actor.name}];return next;
 }

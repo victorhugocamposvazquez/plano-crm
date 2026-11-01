@@ -108,8 +108,8 @@ begin
     if (item->>'adjustment_percent')::numeric is distinct from (selection->>'adjustment_percent')::numeric or item->>'inclusion' is distinct from selection->>'inclusion' then raise exception 'El ajuste no coincide con la captura.' using errcode='22023'; end if;
     select value into current_item from jsonb_array_elements(v.items) where value->>'id'=item->>'id';
     if found then
-      select i into previous_item from public.room_capture_imports h,jsonb_array_elements(h.items) i where h.version_id=v.id and i->>'id'=item->>'id' order by h.capture_revision desc limit 1;
-      if not found or previous_item is distinct from current_item then raise exception 'Una partida ya se ha editado en el presupuesto.' using errcode='40001'; end if;
+      select i into previous_item from public.room_capture_imports h join public.budget_versions origin on origin.id=h.version_id,jsonb_array_elements(h.items) i where h.organization_id=p_organization_id and origin.budget_id=v.budget_id and origin.number<=v.number and i->>'id'=item->>'id' order by origin.number desc,h.capture_revision desc limit 1;
+      if not found or previous_item is distinct from current_item then raise exception 'Una partida ya se ha editado o no tiene procedencia comprobable.' using errcode='40001'; end if;
     end if;
   end loop;
   select coalesce(jsonb_agg(i),'[]') into combined from jsonb_array_elements(v.items) i where not exists(select 1 from jsonb_array_elements(p_items) n where n->>'id'=i->>'id');

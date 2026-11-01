@@ -357,6 +357,17 @@ describe("Capturas y procedencia de partidas en PostgreSQL",()=>{
     await expect(apply(f,3,3,[{...f.items[0],quantity:30}])).rejects.toThrow(/ya se ha editado/);
     expect((await db.query("select * from room_capture_imports")).rows).toHaveLength(2);
   });
+  it("conserva la procedencia al revisar un presupuesto y mantiene intacta la aprobada",async()=>{
+    const f=await fixture();await save(f.projectId,f.survey);await apply(f);
+    await command({type:"budget.issue",version_id:f.versionId,expected_revision:1});await command({type:"budget.approve",version_id:f.versionId,reference:"Aceptación de prueba"});
+    await command({type:"budget.revise",version_id:f.versionId,reason:"Cambiar medidas"});
+    const next=(await db.query<{id:string}>("select id from budget_versions where budget_id=$1 and status='draft'",[f.budgetId])).rows[0].id;
+    const updated=structuredClone(f.survey);updated.rooms[0].measurements[0].value=15;
+    await save(f.projectId,updated,1);await apply({...f,versionId:next},0,2,[{...f.items[0],quantity:15}]);
+    expect((await db.query<{items:BudgetItem[]}>("select items from budget_versions where id=$1",[f.versionId])).rows[0].items).toEqual(f.items);
+    expect((await db.query<{items:BudgetItem[]}>("select items from budget_versions where id=$1",[next])).rows[0].items[0].quantity).toBe(15);
+    expect((await db.query("select id from room_capture_imports")).rows).toHaveLength(2);
+  });
   it("nunca aplica sobre una versión aprobada ni sobre un guardado obsoleto",async()=>{
     const f=await fixture();await save(f.projectId,f.survey);
     await expect(apply(f,1)).rejects.toThrow(/presupuesto ha cambiado/);
