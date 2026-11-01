@@ -81,12 +81,12 @@ export default function HoyPage() {
 
         {piden.length > 0 && <section className="solo-movil phone-todo" aria-label="Te esperan a ti">
           <h2 className="phone-section"><span>Te esperan a ti</span><span className="pl-mono">{piden.filter(x => x.quien !== "cliente").length}</span></h2>
-          {piden.filter(x => x.quien !== "cliente").slice(0, 4).map(({ project, paso, quien }) => (
+          {piden.filter(x => x.quien !== "cliente").slice(0, 4).map(({ project, paso, quien }, i) => (
             <article key={project.id} className="todo-card" data-tone={quienEtiqueta[quien].tone}>
-              <header><strong>{project.name}</strong><span>{quienEtiqueta[quien].label}</span></header>
+              <header><strong>{project.name}</strong>{quien !== "te-espera" && <span>{quienEtiqueta[quien].label}</span>}</header>
               <small>{[project.client_name, project.location].filter(Boolean).join(" · ")}</small>
               <p>{paso.titulo}</p>
-              <LinkButton variant="primary" href={enlacePaso(project.id, paso)}>{paso.label || "Ver proyecto"}</LinkButton>
+              <LinkButton variant={i === 0 ? "primary" : "secondary"} href={enlacePaso(project.id, paso)}>{paso.label || "Ver proyecto"}</LinkButton>
             </article>
           ))}
         </section>}
