@@ -831,7 +831,8 @@ button.article-card:hover { border-color: var(--pl-strong-line); box-shadow: var
 .avatar-ring[data-on] { background: conic-gradient(from 210deg, var(--pl-ring-1), var(--pl-ring-2), var(--pl-ring-3), var(--pl-ring-1)); }
 .avatar-ring .avatar { width: 34px; height: 34px; border: 2px solid var(--pl-bg); font-size: var(--pl-text-xs); }
 .avatar-count { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: var(--pl-radius-full); background: var(--pl-orange); color: var(--pl-on-orange); font-size: var(--pl-text-xs); font-weight: var(--pl-weight-semibold); line-height: 1; }
-.avatar-ring .avatar-count { position: absolute; top: -2px; right: -2px; border: 2px solid var(--pl-bg); box-sizing: content-box; }
+/* Contador compacto y hacia la esquina: no tapa las iniciales ni se corta contra la banda móvil. */
+.avatar-ring .avatar-count { position: absolute; top: -3px; right: -6px; min-width: 16px; height: 16px; padding: 0 2px; border: 2px solid var(--pl-bg); box-sizing: content-box; }
 .nav-account { padding: 3px; }
 .aviso-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px 4px; color: var(--pl-muted); font-size: var(--pl-text-xs); font-weight: var(--pl-weight-semibold); }
 .aviso-head .link-inline { font-size: var(--pl-text-xs); font-weight: var(--pl-weight-regular); }
@@ -1609,7 +1610,7 @@ button.fin-line { width: 100%; border-left: 0; border-right: 0; border-bottom: 0
 /* Banda fija del móvil: la «P.» dentro del cuadrado de marca, siempre en el mismo sitio */
 .phone-bar { display: none; }
 @media (max-width: 767px) {
-  .phone-bar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 10px; box-sizing: content-box; min-height: var(--pl-phone-bar); height: auto; padding: max(6px, env(safe-area-inset-top, 0px)) 12px 6px 16px; overflow: visible; background: var(--pl-bg); border-bottom: var(--pl-hairline) solid var(--pl-line); }
+  .phone-bar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 10px; box-sizing: content-box; height: var(--pl-phone-bar); padding: env(safe-area-inset-top, 0px) 12px 0 16px; overflow: visible; background: var(--pl-bg); border-bottom: var(--pl-hairline) solid var(--pl-line); }
   .phone-bar-brand { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; color: inherit; text-decoration: none; }
   /* Cuadrado de marca: «P.» blanco sobre Tinta, como el icono de la app */
   .phone-bar .pl-brand { align-items: center; justify-content: center; width: var(--pl-brand-mark); height: var(--pl-brand-mark); gap: 2px; background: var(--pl-brand-mark-bg); color: var(--pl-brand-mark-ink); font-size: 1.05rem; --pl-brand-dot: 4px; }
