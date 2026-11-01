@@ -1607,16 +1607,14 @@ button.fin-line { width: 100%; border-left: 0; border-right: 0; border-bottom: 0
 }
 @media (min-width: 768px) and (max-width: 1099px) { .project-workspace .tab { font-size: var(--pl-text-md); padding-inline: 6px; } }
 
-/* Banda fija del móvil: la «P.» dentro del cuadrado de marca, siempre en el mismo sitio */
+/* Banda fija del móvil: «PLANO■» escrito, siempre en el mismo sitio */
 .phone-bar { display: none; }
 @media (max-width: 767px) {
   .phone-bar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 10px; box-sizing: content-box; height: var(--pl-phone-bar); padding: env(safe-area-inset-top, 0px) 12px 0 16px; overflow: visible; background: var(--pl-bg); border-bottom: var(--pl-hairline) solid var(--pl-line); }
-  .phone-bar-brand { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; color: inherit; text-decoration: none; }
-  /* Cuadrado de marca: «P.» blanco sobre Tinta, como el icono de la app */
-  .phone-bar .pl-brand { align-items: center; justify-content: center; width: var(--pl-brand-mark); height: var(--pl-brand-mark); gap: 2px; background: var(--pl-brand-mark-bg); color: var(--pl-brand-mark-ink); font-size: 1.05rem; --pl-brand-dot: 4px; }
-  .phone-bar .pl-brand::after { background: var(--pl-brand-mark-orange); }
-  .phone-bar .pl-brand-text { display: none; }
-  .phone-bar .pl-brand-initial { display: inline; }
+  .phone-bar-brand { display: inline-flex; align-items: center; min-width: 44px; min-height: 44px; color: inherit; text-decoration: none; }
+  .phone-bar .pl-brand { font-size: var(--pl-text-brand); }
+  .phone-bar .pl-brand-text { display: inline; }
+  .phone-bar .pl-brand-initial { display: none; }
   .phone-tools { position: static; margin-left: auto; overflow: visible; }
   .phone-avatar { overflow: visible; }
 }
