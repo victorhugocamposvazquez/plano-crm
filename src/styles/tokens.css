@@ -20,6 +20,11 @@
   --pl-line: #e5e7e3;
   --pl-strong-line: #cbd0cb;
   --pl-orange: #e25a12;
+  /* Marca compacta (icono / «P.» en móvil): Tinta y naranja de identidad, fijos en ambos temas. */
+  --pl-brand-mark-bg: #16232e;
+  --pl-brand-mark-ink: #ffffff;
+  --pl-brand-mark-orange: #f2793a;
+  --pl-brand-mark: 32px;
   --pl-accent-text: #aa440d;
   --pl-warning: #926022;
   --pl-blue: #2c5a85;

@@ -827,11 +827,11 @@ button.article-card:hover { border-color: var(--pl-strong-line); box-shadow: var
 .pl-switch[aria-checked="true"] span { transform: translateX(18px); }
 
 /* Avatar con aro de avisos */
-.avatar-ring { position: relative; flex-shrink: 0; display: inline-flex; padding: 3px; border-radius: var(--pl-radius-full); background: var(--pl-ring-off); }
+.avatar-ring { position: relative; flex-shrink: 0; display: inline-flex; padding: 3px; border-radius: var(--pl-radius-full); background: var(--pl-ring-off); overflow: visible; }
 .avatar-ring[data-on] { background: conic-gradient(from 210deg, var(--pl-ring-1), var(--pl-ring-2), var(--pl-ring-3), var(--pl-ring-1)); }
 .avatar-ring .avatar { width: 34px; height: 34px; border: 2px solid var(--pl-bg); font-size: var(--pl-text-xs); }
 .avatar-count { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: var(--pl-radius-full); background: var(--pl-orange); color: var(--pl-on-orange); font-size: var(--pl-text-xs); font-weight: var(--pl-weight-semibold); line-height: 1; }
-.avatar-ring .avatar-count { position: absolute; top: -8px; right: -8px; border: 2px solid var(--pl-bg); box-sizing: content-box; }
+.avatar-ring .avatar-count { position: absolute; top: -2px; right: -2px; border: 2px solid var(--pl-bg); box-sizing: content-box; }
 .nav-account { padding: 3px; }
 .aviso-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 14px 4px; color: var(--pl-muted); font-size: var(--pl-text-xs); font-weight: var(--pl-weight-semibold); }
 .aviso-head .link-inline { font-size: var(--pl-text-xs); font-weight: var(--pl-weight-regular); }
@@ -946,7 +946,7 @@ button.article-card:hover { border-color: var(--pl-strong-line); box-shadow: var
 
 /* Móvil: la composición del prototipo de 390 px */
 @media (max-width: 767px) {
-  .shell-main { padding: 14px 16px calc(var(--pl-nav-bar) + env(safe-area-inset-bottom, 0px) + 32px); }
+  .shell-main { padding: 14px 16px calc(var(--pl-nav-bar) + env(safe-area-inset-bottom, 0px) + 12px); }
   .page { gap: 14px; }
   .pl-title { font-size: var(--pl-text-h2); }
   .page > .pl-head { min-height: 44px; align-items: center; padding-right: 0; }
@@ -1125,6 +1125,12 @@ button.article-card:hover { border-color: var(--pl-strong-line); box-shadow: var
 /* Más */
 .mas-page { max-width: 640px; }
 .mas-page > .pl-title { min-height: 44px; display: flex; align-items: center; }
+@media (max-width: 767px) {
+  /* El título lo dice la pestaña; se oculta para no dejar aire vacío bajo la banda. */
+  .mas-page { gap: 10px; }
+  .mas-page > .pl-title { display: none; }
+  .shell-main:has(.mas-page) { padding-top: 10px; padding-bottom: calc(var(--pl-nav-bar) + env(safe-area-inset-bottom, 0px) + 8px); }
+}
 .mas-account { display: flex; align-items: center; gap: 14px; padding: 14px 16px; background: var(--pl-soft); }
 .avatar-big { width: 52px; height: 52px; flex-shrink: 0; font-size: var(--pl-text-ui); }
 .mas-account > span:last-child { min-width: 0; display: flex; flex-direction: column; }
@@ -1600,15 +1606,18 @@ button.fin-line { width: 100%; border-left: 0; border-right: 0; border-bottom: 0
 }
 @media (min-width: 768px) and (max-width: 1099px) { .project-workspace .tab { font-size: var(--pl-text-md); padding-inline: 6px; } }
 
-/* Banda fija del móvil: la «P.» siempre en el mismo sitio */
+/* Banda fija del móvil: la «P.» dentro del cuadrado de marca, siempre en el mismo sitio */
 .phone-bar { display: none; }
 @media (max-width: 767px) {
-  .phone-bar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 10px; box-sizing: content-box; height: var(--pl-phone-bar); padding: env(safe-area-inset-top, 0px) 12px 0 16px; background: var(--pl-bg); border-bottom: var(--pl-hairline) solid var(--pl-line); }
-  .phone-bar-brand { display: inline-flex; align-items: center; min-width: 44px; min-height: 44px; color: inherit; text-decoration: none; }
-  .phone-bar .pl-brand { font-size: var(--pl-text-h2); --pl-brand-dot: 5px; }
+  .phone-bar { position: sticky; top: 0; z-index: 20; display: flex; align-items: center; justify-content: space-between; gap: 10px; box-sizing: content-box; min-height: var(--pl-phone-bar); height: auto; padding: max(6px, env(safe-area-inset-top, 0px)) 12px 6px 16px; overflow: visible; background: var(--pl-bg); border-bottom: var(--pl-hairline) solid var(--pl-line); }
+  .phone-bar-brand { display: inline-flex; align-items: center; justify-content: center; min-width: 44px; min-height: 44px; color: inherit; text-decoration: none; }
+  /* Cuadrado de marca: «P.» blanco sobre Tinta, como el icono de la app */
+  .phone-bar .pl-brand { align-items: center; justify-content: center; width: var(--pl-brand-mark); height: var(--pl-brand-mark); gap: 2px; background: var(--pl-brand-mark-bg); color: var(--pl-brand-mark-ink); font-size: 1.05rem; --pl-brand-dot: 4px; }
+  .phone-bar .pl-brand::after { background: var(--pl-brand-mark-orange); }
   .phone-bar .pl-brand-text { display: none; }
   .phone-bar .pl-brand-initial { display: inline; }
-  .phone-tools { position: static; margin-left: auto; }
+  .phone-tools { position: static; margin-left: auto; overflow: visible; }
+  .phone-avatar { overflow: visible; }
 }
 
 /* Pulido de la fase 1 */
