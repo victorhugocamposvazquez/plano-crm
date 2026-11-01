@@ -11,8 +11,8 @@ export type Capability = {
   evidence: Evidence[];
 };
 
-export const documentationDate = "2026-10-30";
-export const workBranch = "codex/estado-fechas-produccion";
+export const documentationDate = "2026-11-01";
+export const workBranch = "codex/captura-estancias-persistente";
 const repository = "https://github.com/victorhugocamposvazquez/plano-crm";
 export const statusLabels: Record<CapabilityStatus, string> = {
   available: "Implementado",
@@ -62,10 +62,10 @@ export const capabilities: Capability[] = [
   },
   {
     id: "estancias", name: "Estancias y artículos del catálogo", status: "partial",
-    summary: "Motor para separar zonas y cambiar artículos conservando cantidades y procedencia.",
-    available: ["API de previsualización por estancia con catálogo autorizado y dudas pendientes.", "Bloqueo de unidades incompatibles; decoración y elementos existentes sin coste añadido."],
-    pending: ["Conectar la captura por estancias a la pantalla y guardar la asociación en servidor.", "Tarifario real de GARAL y reglas de compatibilidad técnica entre artículos."],
-    evidence: [{ label: "Contrato y alcance", path: "docs/captura/estancias-catalogo.md" }, { label: "Pruebas de propuestas por estancia", path: "tests/captura/room-survey.test.ts" }],
+    summary: "Captura por zonas, cálculo con catálogo y procedencia al incorporar a un borrador.",
+    available: ["Pantalla y API de captura por zonas con catálogo autorizado y dudas pendientes; transacciones preparadas para guardar y retomar.", "Incorporación al borrador con copia de origen y detección de ediciones manuales posteriores.", "Bloqueo de unidades incompatibles; decoración y elementos existentes sin coste añadido."],
+    pending: ["Activar la migración de captura tras su revisión e integrar la procedencia con el flujo PDF.", "Tarifario real de GARAL y reglas de compatibilidad técnica entre artículos."],
+    evidence: [{ label: "Captura persistente y límites", path: "docs/captura/captura-estancias-persistente.md" }, { label: "Contrato y alcance", path: "docs/captura/estancias-catalogo.md" }, { label: "Pruebas de propuestas por estancia", path: "tests/captura/room-survey.test.ts" }],
   },
   {
     id: "fotos", name: "Análisis automático de fotos y 360", status: "pending",
@@ -96,6 +96,12 @@ export type ProductChange = {
 };
 /** Se registran cambios existentes en git, sin inferir si están fusionados o desplegados. */
 export const productChanges: ProductChange[] = [
+  {
+    id: "captura-zonas", date: "2026-11-01", title: "Capturar por zonas y conservar la procedencia",
+    impact: "Fotos/panoramas, cantidades anotadas y catálogo en tres pasos; borrador recuperable e incorporación al presupuesto con origen y revisión optimista.",
+    limitation: "Migración pendiente de activar; sin reconocimiento automático de imágenes ni persistencia del flujo PDF en esta entrega.",
+    commit: "a703deb", pullRequest: 76,
+  },
   {
     id: "fechas-partidas", date: "2026-10-30", title: "Registrar fechas y autor de cambios de partidas",
     impact: "Registro transaccional de altas, modificaciones y bajas; última edición individual visible en el comparador.",
