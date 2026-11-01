@@ -97,6 +97,12 @@ export type ProductChange = {
 /** Se registran cambios existentes en git, sin inferir si están fusionados o desplegados. */
 export const productChanges: ProductChange[] = [
   {
+    id: "captura-zonas", date: "2026-11-01", title: "Capturar por zonas y conservar la procedencia",
+    impact: "Fotos/panoramas, cantidades anotadas y catálogo en tres pasos; borrador recuperable e incorporación al presupuesto con origen y revisión optimista.",
+    limitation: "Migración pendiente de activar; sin reconocimiento automático de imágenes ni persistencia del flujo PDF en esta entrega.",
+    commit: "a703deb", pullRequest: 76,
+  },
+  {
     id: "fechas-partidas", date: "2026-10-30", title: "Registrar fechas y autor de cambios de partidas",
     impact: "Registro transaccional de altas, modificaciones y bajas; última edición individual visible en el comparador.",
     limitation: "El registro comienza desde la activación; las fechas individuales antiguas no registradas no se reconstruyen.",
