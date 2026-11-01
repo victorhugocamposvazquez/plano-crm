@@ -29,7 +29,7 @@ Integración de los dos prototipos («PLANO Propuesta completa» de escritorio y
 
 Lista de datos necesarios para completar lo pendiente: `docs/PREGUNTAS.md`, entrada del 31 de octubre de 2026.
 
-Secciones que dejan el menú: Presupuestos, Compras y Documentos. En móvil, Clientes, Catálogo y Finanzas pasan a Más. Viven en cada proyecto y sus vistas de todos los proyectos siguen accesibles desde Ajustes y Más.
+Secciones que dejan el menú: Presupuestos, Compras y Documentos. En móvil, Clientes, Catálogo y Finanzas pasan a Más. Viven en cada proyecto y sus vistas de todos los proyectos se abren desde el pie de Proyectos.
 
 Comprobación: `npm run check` y el recorrido `tests/usabilidad/presupuesto.browser-check.cjs` en modo demostración.
 

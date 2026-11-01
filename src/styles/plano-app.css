@@ -1610,3 +1610,22 @@ button.fin-line { width: 100%; border-left: 0; border-right: 0; border-bottom: 0
   .phone-bar .pl-brand-initial { display: inline; }
   .phone-tools { position: static; margin-left: auto; }
 }
+
+/* Pulido de la fase 1 */
+.global-views { display: flex; align-items: center; gap: 4px 14px; flex-wrap: wrap; color: var(--pl-muted); font-size: var(--pl-text-md); }
+.global-views a { display: inline-flex; align-items: center; min-height: var(--pl-touch); color: var(--pl-blue); text-decoration: none; }
+.global-views a:hover { text-decoration: underline; }
+@media (max-width: 767px) {
+  .project-next small { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; white-space: normal; line-height: 1.3; }
+  .project-next small::before { display: inline-block; margin-right: 6px; transform: translateY(-2px); }
+  .shell-main:has(.project-workspace:not([data-seccion="budget"]) .ficha-fab) { padding-bottom: calc(var(--pl-nav-bar) + env(safe-area-inset-bottom, 0px) + 92px); }
+}
+/* Tableta: se usa en obra, con el dedo */
+@media (min-width: 768px) and (max-width: 1099px) {
+  .project-workspace .btn { min-height: var(--pl-touch); }
+  .material-row { grid-template-columns: minmax(0, 1fr) 100px 170px minmax(120px, auto); }
+  .material-supplier, .material-head > span:nth-child(2) { display: none; }
+  .material-name small.solo-movil-inline { display: block !important; color: var(--pl-muted); font-weight: var(--pl-weight-regular); }
+  .material-action { height: var(--pl-touch); }
+  .task-line { grid-template-columns: 22px minmax(0, 1fr) minmax(0, 150px) 64px 40px; min-height: var(--pl-touch); }
+}

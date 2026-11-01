@@ -11,6 +11,7 @@ import { pasoVisible } from "@/lib/siguiente-paso";
 import { iniciales, pasoDe, pasos, quienActua, quienEtiqueta, tituloPaso, type Paso, type Quien } from "@/lib/pasos";
 import { localDate } from "@/lib/hoy";
 import { useQueryState } from "@/lib/use-query-state";
+import { veSeccion } from "@/lib/navegacion";
 import { NewProjectDialog } from "@/components/project/new-project-dialog";
 
 type Filtro = "all" | Paso;
@@ -42,6 +43,7 @@ export default function ProyectosPage() {
   const cuentaQuien = (id: Quien) => filas.filter(f => (filtro === "all" || f.paso === filtro) && f.quien === id).length;
   const puedeCrear = can(actor.role, "project.create");
 
+  const vistas = [{ href: "/presupuestos", label: "Presupuestos" }, { href: "/compras", label: "Materiales" }, { href: "/documentos", label: "Documentos" }].filter(v => veSeccion(actor.role, v.href));
   return (
     <div className="page">
       <div className="pl-head">
@@ -95,6 +97,7 @@ export default function ProyectosPage() {
           {!query && puedeCrear && <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}><button type="button" className="btn btn-primary" onClick={() => setNuevo("1")}>Nuevo proyecto</button><Link href="/proyectos/nueva" className="btn btn-secondary">Empezar con una visita</Link></div>}
         </div>
       )}
+      {vistas.length > 0 && <nav className="global-views" aria-label="Vistas de todos los proyectos"><span>De todos los proyectos:</span>{vistas.map(v => <Link key={v.href} href={v.href}>{v.label}</Link>)}</nav>}
       <NewProjectDialog open={nuevo === "1"} onClose={() => setNuevo("")} cliente={clienteNuevo} />
     </div>
   );
