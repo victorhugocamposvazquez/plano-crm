@@ -183,11 +183,12 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
       await send({ type: "budget.save", version_id: borrador.id, expected_revision: borrador.draft_revision, items: fusionar(borrador.items, nuevos, decisiones, paresAhora), notes: borrador.notes });
       borrarBorrador(project.id);
       notify(`${nuevos.length} partida${nuevos.length === 1 ? "" : "s"} de los planos añadida${nuevos.length === 1 ? "" : "s"} a la V${borrador.number}.`);
-      router.push(`/proyectos/${project.id}?s=budget&p=${objetivo.id}`);
+      // replace: la ruta del plano no debe quedar debajo de la ficha en el historial.
+      router.replace(`/proyectos/${project.id}?s=budget&p=${objetivo.id}`);
     } catch (err) { notify(err instanceof Error ? err.message : "No se han podido añadir las partidas."); }
     finally { setGuardando(false); }
   }
-  function salir() { router.push(salida); }
+  function salir() { router.replace(salida); }
   function empezarDeNuevo() { borrarBorrador(project.id); setB(borradorNuevo(project.id, budgetId)); setDecisiones({}); }
 
   const cabeceraDestino = destino ? `Añadiendo al presupuesto · V${destino.number} · ${destino.status === "draft" ? "borrador" : destino.status === "issued" ? "enviada, se abrirá una versión nueva" : "aceptada, se abrirá una versión nueva"}` : "Se abrirá el presupuesto · V1";
@@ -200,7 +201,7 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
   return (
     <div className="flow">
       <header className="flow-head">
-        <Link prefetch={false} href={salida} className="flow-back" title="Volver al proyecto"><ArrowLeft size={15} strokeWidth={1.8} aria-hidden="true" /><span>{project.name}</span></Link>
+        <a href={salida} className="flow-back" title="Volver al proyecto" onClick={event => { event.preventDefault(); salir(); }}><ArrowLeft size={15} strokeWidth={1.8} aria-hidden="true" /><span>{project.name}</span></a>
         <div className="flow-head-text"><span className="eyebrow">{cabeceraDestino}</span><span className="muted text-xs flow-head-save">Se guarda solo en este navegador</span></div>
         <button type="button" className="btn btn-icon" aria-label="Salir y volver al proyecto" title="Salir · el borrador se guarda" onClick={salir}><X size={19} strokeWidth={1.6} aria-hidden="true" /></button>
       </header>

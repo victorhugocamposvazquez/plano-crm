@@ -48,7 +48,9 @@ export default function NuevaVisitaPage() {
   const [confirmarSalida, setConfirmarSalida] = useState(false);
   const destinoSalida = existente ? `/proyectos/${existente.id}` : "/proyectos";
   const hayCambios = fotos.length > 0 || lineas.length > 0 || alcance.trim().length > 0 || (!existente && (datos.name.trim().length > 0 || datos.client_name.trim().length > 0));
-  function salir() { if (hayCambios) setConfirmarSalida(true); else router.push(destinoSalida); }
+  /** Volver con replace: no dejar la visita en el historial (si no, «Atrás» en la ficha reabre el flujo). */
+  function volverAlDestino(href = destinoSalida) { router.replace(href); }
+  function salir() { if (hayCambios) setConfirmarSalida(true); else volverAlDestino(); }
   const [dictando, setDictando] = useState(false);
   const recognition = useRef<Recognition | null>(null);
   const Factory = useMemo(recognitionFactory, []);
@@ -109,7 +111,7 @@ export default function NuevaVisitaPage() {
         // Solo fotos y notas: quedan en Planos y fotos y, si hay notas, en el chat del proyecto. El presupuesto no se toca.
         if (alcance.trim() && can(actor.role, "message.send")) await send({ type: "message.send", project_id: pid, body: `Notas de la visita: ${alcance.trim()}` });
         notify(`${fotos.length ? `${fotos.length} foto${fotos.length === 1 ? "" : "s"} guardada${fotos.length === 1 ? "" : "s"}` : "Notas guardadas"} · ${project.name}`);
-        router.push(`/proyectos/${pid}`);
+        volverAlDestino(`/proyectos/${pid}?s=documents`);
         return;
       }
       // Si el proyecto ya tiene un borrador abierto, las partidas se añaden a él en vez de abrir otro presupuesto.
@@ -126,7 +128,7 @@ export default function NuevaVisitaPage() {
       await send({ type: "budget.save", version_id: version.id, expected_revision: version.draft_revision, items: [...version.items, ...items], notes });
       if (project.status === "lead") await send({ type: "project.status", id: pid, status: "estimating" });
       notify(`Estimación guardada · ${project.name}`);
-      router.push(`/proyectos/${pid}`);
+      volverAlDestino(`/proyectos/${pid}?s=budget`);
     } catch (e) {
       const message = e instanceof Error ? e.message : "No se ha podido guardar la estimación.";
       setError(projectId ? `${message} La obra ya existe; puedes completar el presupuesto desde su ficha.` : message);
@@ -142,7 +144,7 @@ export default function NuevaVisitaPage() {
   }
 
   const modalSalida = (
-    <Modal open={confirmarSalida} onClose={() => setConfirmarSalida(false)} title="Salir sin guardar" footer={<><Button variant="secondary" onClick={() => setConfirmarSalida(false)}>Seguir en la visita</Button><Button variant="primary" onClick={() => router.push(destinoSalida)}>Salir</Button></>}>
+    <Modal open={confirmarSalida} onClose={() => setConfirmarSalida(false)} title="Salir sin guardar" footer={<><Button variant="secondary" onClick={() => setConfirmarSalida(false)}>Seguir en la visita</Button><Button variant="primary" onClick={() => volverAlDestino()}>Salir</Button></>}>
       <p className="text-sm">Las fotos, el alcance y las partidas de esta visita no se han guardado todavía. Si sales, se pierden{existente ? "; el proyecto se queda como estaba" : ""}.</p>
     </Modal>
   );
@@ -154,7 +156,7 @@ export default function NuevaVisitaPage() {
   return (
     <div className="page">
       <div>
-        <div className="visit-back"><Link href={existente ? `/proyectos/${existente.id}` : "/proyectos"} className="muted" style={{ display: "inline-flex", alignItems: "center", gap: 6, textDecoration: "none" }}><ArrowLeft size={13} strokeWidth={1.8} aria-hidden="true" />{existente ? existente.name : "Proyectos"}</Link></div>
+        <div className="visit-back"><a href={destinoSalida} className="muted" style={{ display: "inline-flex", alignItems: "center", gap: 6, textDecoration: "none" }} onClick={event => { event.preventDefault(); salir(); }}><ArrowLeft size={13} strokeWidth={1.8} aria-hidden="true" />{existente ? existente.name : "Proyectos"}</a></div>
         <div className="page-head">
           <h1 className="pl-title">{existente ? "Fotos y notas de la obra" : "Empezar una visita"}</h1>
           <button type="button" className="btn btn-icon" aria-label={existente ? "Salir y volver al proyecto" : "Salir de la visita"} title={existente ? "Volver al proyecto" : "Salir"} onClick={salir}><X size={19} strokeWidth={1.6} aria-hidden="true" /></button>
