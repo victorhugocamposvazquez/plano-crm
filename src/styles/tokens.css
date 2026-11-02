@@ -15,7 +15,7 @@
   --pl-soft: #f6f6f4;
   --pl-raised: #f0f1ee;
   --pl-ink: #16232e;
-  --pl-muted: #697177;
+  --pl-muted: #5f676d;
   --pl-faint: #858c90;
   --pl-line: #e5e7e3;
   --pl-strong-line: #cbd0cb;
@@ -251,7 +251,7 @@ html[data-text="large"] {
  * En Grafito la elevación se expresa con un escalón de superficie, no con sombra.
  */
 :root {
-  --pl-success: #2f7d4f;
+  --pl-success: #2a7347;
   --pl-success-bg: #e2f0e7;
   --pl-info: var(--pl-blue);
   --pl-info-bg: #e3ecf4;

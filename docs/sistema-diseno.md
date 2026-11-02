@@ -26,7 +26,7 @@ Prefijo `--pl-`. Claro = Workspace, oscuro = Grafito.
 | `--pl-soft` | barra de comando, botón suave, cabecera de panel | `#F6F6F4` | `#222427` |
 | `--pl-raised` | avatar, medidor, pestaña activa (Grafito), chip | `#F0F1EE` | `#303236` |
 | `--pl-ink` | texto principal, acción por defecto | `#20272D` | `#ECEDEB` |
-| `--pl-muted` | texto secundario, iconos | `#697177` | `#A8ADB2` |
+| `--pl-muted` | texto secundario, iconos | `#5F676D` | `#A8ADB2` |
 | `--pl-faint` | solo decorativo (no para texto de 11 px) | `#858C90` | `#8B9299` |
 | `--pl-line` | filetes | `#E5E7E3` | `#36383C` |
 | `--pl-strong-line` | borde de botón secundario, foco suave | `#CBD0CB` | `#51575E` |
@@ -112,7 +112,8 @@ Siempre texto + punto de 5 px (`currentColor`). Colores:
 
 ## 8. Accesibilidad
 
-- Contraste mínimo 4,5:1 en todo texto, incluido el de 11 px: por eso `--pl-faint` no se usa para texto.
+- Contraste mínimo 4,5:1 en todo texto, incluido el de 11 px y sobre fondos suaves o de estado: por eso `--pl-faint` no se usa para texto. `tests/usabilidad/accesibilidad.browser-check.cjs` lo comprueba en las pantallas principales.
+- Primer elemento enfocable: «Saltar al contenido» (`.skip-link`), visible solo con el foco. Un título oculto en móvil usa el patrón de `.sr-only`, no `display: none`, para que siga en el lector de pantalla.
 - Foco visible en todos los controles (borde 1,5 px `--pl-ink` o anillo de 2 px `--pl-strong-line`).
 - Objetivos táctiles de 44 px; en escritorio pueden bajar a 38 px en cabecera.
 - `color-scheme` declarado por tema para que formularios nativos y barras de scroll sigan al tema.
