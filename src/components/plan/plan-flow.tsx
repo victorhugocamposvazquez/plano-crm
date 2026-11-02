@@ -207,20 +207,20 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
     <div className="flow">
       <header className="flow-head">
         <a href={salida} className="flow-back" title="Volver al proyecto" onClick={event => { event.preventDefault(); salir(); }}><ArrowLeft size={15} strokeWidth={1.8} aria-hidden="true" /><span>{project.name}</span></a>
-        <div className="flow-head-text"><span className="eyebrow">{cabeceraDestino}</span><span className="muted text-xs flow-head-save">{!persistence.available ? "Se guarda solo en este navegador" : persistence.dirty ? "Cambios pendientes de guardar en el proyecto" : "Preparación guardada en el proyecto"}</span></div>
+        <div className="flow-head-text"><span className="eyebrow">{cabeceraDestino}</span><span className="muted text-xs flow-head-save">{!persistence.available ? "Se guarda solo en este navegador" : persistence.dirty ? "Cambios pendientes de guardar en el proyecto" : persistence.saved ? "Preparación guardada en el proyecto" : ""}</span></div>
         <button type="button" className="btn btn-icon" aria-label="Salir y volver al proyecto" title="Salir al proyecto" onClick={salir}><X size={19} strokeWidth={1.6} aria-hidden="true" /></button>
       </header>
-      <section className="plan-draft-save" aria-label="Guardado de la preparación">
-        <p className="muted text-sm">{persistence.saved ? `Guardada ${versionTimestamp(persistence.saved.updated_at)} · ${persistence.saved.updated_by_name}` : "Preparación sin guardar en el proyecto"}{mode==="demo" && " · demostración local"}</p>
+      {(persistence.saved || persistence.dirty || persistence.error || persistence.localError || persistence.conflict || !persistence.available) && <section className="plan-draft-save" aria-label="Guardado de la preparación">
+        {persistence.available && <p className="muted text-sm">{persistence.saved ? `Guardada ${versionTimestamp(persistence.saved.updated_at)} · ${persistence.saved.updated_by_name}` : "Preparación sin guardar en el proyecto"}{mode==="demo" && " · demostración local"}</p>}
         {persistence.error && <p role="alert" className="error">{persistence.error} Tu edición sigue en pantalla.</p>}
         {persistence.localError && <p role="alert" className="error">{persistence.localError}</p>}
         {persistence.conflict && <p role="alert">Hay una preparación más reciente en el proyecto. Tu copia local se conserva; carga la guardada para continuar desde ella.</p>}
         {!persistence.available && <p role="status" className="muted text-sm">El guardado en el proyecto aún no está disponible. Puedes continuar con una copia en este navegador.</p>}
-        <div className="plan-draft-actions">
-          <Button variant="secondary" disabled={persistence.saving || !persistence.available || subiendo || guardando} onClick={()=>persistence.dirty?setLoadDialog(true):void persistence.load()}>Cargar la guardada</Button>
+        {persistence.available && <div className="plan-draft-actions">
+          {persistence.saved && <Button variant="secondary" disabled={persistence.saving || subiendo || guardando} onClick={()=>persistence.dirty?setLoadDialog(true):void persistence.load()}>Cargar la guardada</Button>}
           <Button variant="primary" disabled={!puede || !persistence.available || !persistence.dirty || persistence.conflict || persistence.saving || subiendo || guardando} onClick={async()=>{if(await persistence.save())notify(mode==="demo"?"Preparación guardada en la demostración local":"Preparación guardada en el proyecto");}}>{persistence.saving?"Guardando…":"Guardar preparación"}</Button>
-        </div>
-      </section>
+        </div>}
+      </section>}
       <Modal open={loadDialog} onClose={()=>setLoadDialog(false)} title="¿Cargar la preparación guardada?" footer={<><Button variant="secondary" onClick={()=>setLoadDialog(false)}>Seguir con mi edición</Button><Button variant="primary" onClick={()=>{setLoadDialog(false);setDecisiones({});void persistence.load();}}>Cargar la guardada</Button></>}><p>Se sustituirá lo que estás preparando en esta pestaña por la última copia del proyecto. Tus cambios pendientes no se mezclarán automáticamente.</p></Modal>
       <Modal open={resetDialog} onClose={()=>setResetDialog(false)} title="¿Empezar de nuevo?" footer={<><Button variant="secondary" onClick={()=>setResetDialog(false)}>Cancelar</Button><Button variant="primary" onClick={()=>{setResetDialog(false);empezarDeNuevo();}}>Empezar de nuevo</Button></>}><p>Se vaciará esta preparación. Los originales adjuntos y las partidas del presupuesto se conservan. La preparación guardada no cambia hasta que vuelvas a guardar.</p></Modal>
       <Modal open={exitDialog} onClose={()=>setExitDialog(false)} title="Hay cambios sin copia segura" footer={<><Button variant="secondary" onClick={()=>setExitDialog(false)}>Seguir preparando</Button><Button variant="primary" onClick={()=>router.replace(salida)}>Salir sin guardar</Button></>}><p>No se han guardado los últimos cambios en el proyecto y la copia local no está disponible. Si sales, podrían perderse.</p></Modal>

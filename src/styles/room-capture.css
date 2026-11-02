@@ -27,3 +27,6 @@
 .room-capture [hidden]{display:none!important}
 .room-stage{background:var(--pl-bg);padding-top:var(--pl-space-2)}
 .room-stage>button{flex:1 1 0;min-width:0;padding:var(--pl-space-2);font-size:var(--pl-text-sm)}
+.room-capture>.link-inline{justify-self:start}
+.room-capture .workspace-callout{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:var(--pl-space-3);padding:var(--pl-space-4);background:var(--pl-soft);border-radius:var(--pl-radius-panel)}
+.room-capture .workspace-callout p{margin:0}

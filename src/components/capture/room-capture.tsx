@@ -38,7 +38,7 @@ export function RoomCapture({project,budgetId}:{project:Project;budgetId:string|
       let capture:RoomDraft|null,history:ImportInfo[];
       if(mode==="demo"){const ws=JSON.parse(localStorage.getItem(workspaceKey)!);capture=ws.room_captures?.find((c:RoomDraft)=>c.project_id===project.id) ?? null;history=(ws.room_imports ?? []).filter((i:RoomImport)=>i.project_id===project.id).reverse().slice(0,20);}
       else{const response=await fetch(`/api/proyectos/${project.id}/captura`,{cache:"no-store"});const body=await response.json();if(!response.ok)throw new Error(body.error);setAvailable(body.available);capture=body.capture;history=body.imports;}
-      setSaved(capture);setForm(capture?.survey ?? newRoomSurvey(project.id));setDirty(!capture);setImports(history);setReviewed(false);setSnapshot(null);
+      setSaved(capture);setForm(capture?.survey ?? newRoomSurvey(project.id));setDirty(false);setImports(history);setReviewed(false);setSnapshot(null);
     }catch(e){setError((e as Error).message);setAvailable(false);}finally{setLoading(false);}
   }
   useEffect(()=>{void load(); /* El proyecto no cambia durante la vida de esta pantalla. */
