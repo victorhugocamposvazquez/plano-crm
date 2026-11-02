@@ -17,5 +17,5 @@ export default function PlanoPage() {
   const project = data.projects.find(p => p.id === id);
   if (!hydrated || loading) return <p className="muted">Cargando el proyecto…</p>;
   if (!project) return <div className="empty"><strong>Ese proyecto no existe</strong></div>;
-  return <PlanFlow project={project} budgetId={params.get("p")} />;
+  return <PlanFlow key={project.id} project={project} budgetId={params.get("p")} />;
 }

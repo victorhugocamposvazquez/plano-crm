@@ -1,9 +1,13 @@
 "use client";
+import "@/styles/plan-draft.css";
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, ArrowRight, Check, FileText, Upload, Loader2, RotateCcw, X, Ruler, Sparkles, Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Modal } from "@/components/ui/modal";
+import { usePlanDraft } from "./use-plan-draft";
+import { versionTimestamp } from "@/lib/budget-history";
 import { Select } from "@/components/ui/select";
 import { useWorkspace } from "@/components/workspace-provider";
 import { PlanSvg } from "@/components/plan/plan-svg";
@@ -12,7 +16,7 @@ import { samplePlan } from "@/lib/captura/sample-plan";
 import { can, money, lineTotal, type Project, type BudgetItem, type Document } from "@/lib/domain";
 import { budgetHistory } from "@/lib/budget-history";
 import { formatSize } from "@/lib/documentos";
-import { borradorNuevo, cargarBorrador, guardarBorrador, borrarBorrador, añadirPlano, quitarPlano, usos, nombreUso, paginaDe, planoParaMedir, mismaHoja, comparteEscala, confirmarEscalaCompartida, cambiarPagina, medidaDe, escalaDe, escala, planosSinEscala, colores, cuentaComoPared, puntoCercano, paredes as calcularParedes, resumenParedes, trabajos, articulosMedibles, sugerirArticulo, cantidadTrabajo, huecosTrabajo, asegurarIds, propuesta as calcularPropuesta, coincidencias, fusionar, numero, type Borrador, type Paso, type PlanoCargado, type Decision } from "@/lib/plano-flujo";
+import { borradorNuevo, borrarBorrador, añadirPlano, quitarPlano, usos, nombreUso, paginaDe, planoParaMedir, mismaHoja, comparteEscala, confirmarEscalaCompartida, cambiarPagina, medidaDe, escalaDe, escala, planosSinEscala, colores, cuentaComoPared, puntoCercano, paredes as calcularParedes, resumenParedes, trabajos, articulosMedibles, sugerirArticulo, cantidadTrabajo, huecosTrabajo, asegurarIds, propuesta as calcularPropuesta, coincidencias, fusionar, numero, type Borrador, type Paso, type PlanoCargado, type Decision } from "@/lib/plano-flujo";
 
 /** Tres pasos. Internamente se conservan los números 1, 2 y 4 para que los borradores guardados sigan valiendo. */
 const pasos: { n: Paso; titulo: string; corto: string }[] = [
@@ -20,26 +24,26 @@ const pasos: { n: Paso; titulo: string; corto: string }[] = [
   { n: 2, titulo: "Mide y confirma las paredes", corto: "Medir" },
   { n: 4, titulo: "Qué se hace y qué entra en el presupuesto", corto: "Partidas" }
 ];
-const pasoVigente = (paso: Paso): Paso => (paso === 3 ? 2 : paso === 5 ? 4 : paso);
 const cantidad = (n: number) => new Intl.NumberFormat("es-ES", { maximumFractionDigits: 2 }).format(n);
 type Vista = { medida: boolean };
 
 /**
  * Flujo «Presupuestar desde un plano». Un expediente trae varios planos de la misma vivienda: cada uno dice
  * para qué sirve, comparten una medida tras confirmar que tienen la misma escala y cada trabajo toma su cantidad del plano que
- * le toca. Tres pasos con palabras de obra; la X siempre arriba; el borrador se guarda en este navegador.
+ * le toca. Tres pasos con palabras de obra; la X siempre arriba; preparación recuperable con revisión y copia local.
  */
 export function PlanFlow({ project, budgetId }: { project: Project; budgetId: string | null }) {
   const { data, actor, busy, send, notify, upload, fileUrl, mode } = useWorkspace();
   const router = useRouter();
   const puede = can(actor.role, "budget.save");
-  const [b, setB] = useState<Borrador>(() => { const guardado = typeof window !== "undefined" ? cargarBorrador(project.id) : null; return guardado ? { ...guardado, paso: pasoVigente(guardado.paso) } : borradorNuevo(project.id, budgetId); });
+  const persistence=usePlanDraft(project.id,budgetId);
+  const {draft:b,setDraft:setB}=persistence;
+  const [loadDialog,setLoadDialog]=useState(false),[resetDialog,setResetDialog]=useState(false),[exitDialog,setExitDialog]=useState(false);
   const [subiendo, setSubiendo] = useState(false);
   const [planoActivoId, setPlanoActivoId] = useState<string | null>(null);
   const [seleccionada, setSeleccionada] = useState<string | null>(null);
   const [decisiones, setDecisiones] = useState<Record<string, Decision>>({});
   const [guardando, setGuardando] = useState(false);
-  const [avisoGuardado, setAvisoGuardado] = useState(false);
   const pdfInput = useRef<HTMLInputElement>(null);
   const jsonInput = useRef<HTMLInputElement>(null);
   const lecturaActual = useRef<AbortController | null>(null);
@@ -66,7 +70,6 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
   const planoMedida = planoActivo;
   const planoParedes = planoActivo && usos.find(u => u.id === planoActivo.uso)?.paredes ? planoActivo : null;
 
-  useEffect(() => { if (!guardarBorrador(b) && !avisoGuardado) { setAvisoGuardado(true); notify("No se ha podido guardar el borrador en este navegador (ocupa demasiado); sigue, pero no cierres la pestaña."); } }, [b]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { setB(prev => asegurarIds(prev, ps)); }, [ps]);
   useEffect(() => { if (b.paso !== 4) return; setB(prev => { let cambiado = false; const t = { ...prev.trabajos }; for (const tr of trabajos) if (!t[tr.id].articleId) { const a = sugerirArticulo(data.articles, tr); if (a) { t[tr.id] = { ...t[tr.id], articleId: a.id }; cambiado = true; } } return cambiado ? { ...prev, trabajos: t } : prev; }); }, [b.paso, data.articles]);
 
@@ -188,7 +191,7 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
     } catch (err) { notify(err instanceof Error ? err.message : "No se han podido añadir las partidas."); }
     finally { setGuardando(false); }
   }
-  function salir() { router.replace(salida); }
+  function salir() { if(persistence.dirty && persistence.localError)setExitDialog(true);else router.replace(salida); }
   function empezarDeNuevo() { borrarBorrador(project.id); setB(borradorNuevo(project.id, budgetId)); setDecisiones({}); }
 
   const cabeceraDestino = destino ? `Añadiendo al presupuesto · V${destino.number} · ${destino.status === "draft" ? "borrador" : destino.status === "issued" ? "enviada, se abrirá una versión nueva" : "aceptada, se abrirá una versión nueva"}` : "Se abrirá el presupuesto · V1";
@@ -196,15 +199,31 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
   const actual = pasos[indice];
   const vista: Vista = { medida: Boolean(b.medida.start && b.medida.end) };
 
+  if (persistence.loading) return <p className="muted">Cargando la preparación de los planos…</p>;
+
   if (!puede) return <div className="empty"><strong>Tu perfil puede ver el presupuesto, pero no añadir partidas.</strong><Link prefetch={false} href={salida} className="btn btn-secondary">Volver a la ficha</Link></div>;
 
   return (
     <div className="flow">
       <header className="flow-head">
         <a href={salida} className="flow-back" title="Volver al proyecto" onClick={event => { event.preventDefault(); salir(); }}><ArrowLeft size={15} strokeWidth={1.8} aria-hidden="true" /><span>{project.name}</span></a>
-        <div className="flow-head-text"><span className="eyebrow">{cabeceraDestino}</span><span className="muted text-xs flow-head-save">Se guarda solo en este navegador</span></div>
-        <button type="button" className="btn btn-icon" aria-label="Salir y volver al proyecto" title="Salir · el borrador se guarda" onClick={salir}><X size={19} strokeWidth={1.6} aria-hidden="true" /></button>
+        <div className="flow-head-text"><span className="eyebrow">{cabeceraDestino}</span><span className="muted text-xs flow-head-save">{!persistence.available ? "Se guarda solo en este navegador" : persistence.dirty ? "Cambios pendientes de guardar en el proyecto" : "Preparación guardada en el proyecto"}</span></div>
+        <button type="button" className="btn btn-icon" aria-label="Salir y volver al proyecto" title="Salir al proyecto" onClick={salir}><X size={19} strokeWidth={1.6} aria-hidden="true" /></button>
       </header>
+      <section className="plan-draft-save" aria-label="Guardado de la preparación">
+        <p className="muted text-sm">{persistence.saved ? `Guardada ${versionTimestamp(persistence.saved.updated_at)} · ${persistence.saved.updated_by_name}` : "Preparación sin guardar en el proyecto"}{mode==="demo" && " · demostración local"}</p>
+        {persistence.error && <p role="alert" className="error">{persistence.error} Tu edición sigue en pantalla.</p>}
+        {persistence.localError && <p role="alert" className="error">{persistence.localError}</p>}
+        {persistence.conflict && <p role="alert">Hay una preparación más reciente en el proyecto. Tu copia local se conserva; carga la guardada para continuar desde ella.</p>}
+        {!persistence.available && <p role="status" className="muted text-sm">El guardado en el proyecto aún no está disponible. Puedes continuar con una copia en este navegador.</p>}
+        <div className="plan-draft-actions">
+          <Button variant="secondary" disabled={persistence.saving || !persistence.available || subiendo || guardando} onClick={()=>persistence.dirty?setLoadDialog(true):void persistence.load()}>Cargar la guardada</Button>
+          <Button variant="primary" disabled={!puede || !persistence.available || !persistence.dirty || persistence.conflict || persistence.saving || subiendo || guardando} onClick={async()=>{if(await persistence.save())notify(mode==="demo"?"Preparación guardada en la demostración local":"Preparación guardada en el proyecto");}}>{persistence.saving?"Guardando…":"Guardar preparación"}</Button>
+        </div>
+      </section>
+      <Modal open={loadDialog} onClose={()=>setLoadDialog(false)} title="¿Cargar la preparación guardada?" footer={<><Button variant="secondary" onClick={()=>setLoadDialog(false)}>Seguir con mi edición</Button><Button variant="primary" onClick={()=>{setLoadDialog(false);setDecisiones({});void persistence.load();}}>Cargar la guardada</Button></>}><p>Se sustituirá lo que estás preparando en esta pestaña por la última copia del proyecto. Tus cambios pendientes no se mezclarán automáticamente.</p></Modal>
+      <Modal open={resetDialog} onClose={()=>setResetDialog(false)} title="¿Empezar de nuevo?" footer={<><Button variant="secondary" onClick={()=>setResetDialog(false)}>Cancelar</Button><Button variant="primary" onClick={()=>{setResetDialog(false);empezarDeNuevo();}}>Empezar de nuevo</Button></>}><p>Se vaciará esta preparación. Los originales adjuntos y las partidas del presupuesto se conservan. La preparación guardada no cambia hasta que vuelvas a guardar.</p></Modal>
+      <Modal open={exitDialog} onClose={()=>setExitDialog(false)} title="Hay cambios sin copia segura" footer={<><Button variant="secondary" onClick={()=>setExitDialog(false)}>Seguir preparando</Button><Button variant="primary" onClick={()=>router.replace(salida)}>Salir sin guardar</Button></>}><p>No se han guardado los últimos cambios en el proyecto y la copia local no está disponible. Si sales, podrían perderse.</p></Modal>
       <ol className="flow-steps" aria-label="Pasos">
         {pasos.map((p, i) => <li key={p.n} data-state={i < indice ? "done" : i === indice ? "current" : "todo"} aria-current={i === indice ? "step" : undefined}><button type="button" disabled={i > indice} onClick={() => ir(p.n)}><i>{i < indice ? <Check size={11} strokeWidth={2.6} aria-hidden="true" /> : i + 1}</i><span>{p.corto}</span></button></li>)}
       </ol>
@@ -359,14 +378,14 @@ export function PlanFlow({ project, budgetId }: { project: Project; budgetId: st
           <footer className="flow-foot">
             <Button variant="ghost" onClick={() => ir(2)}><ArrowLeft size={15} strokeWidth={1.8} aria-hidden="true" />Volver a medir</Button>
             <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-              <Button variant="secondary" onClick={salir}>Guardar y seguir luego</Button>
+              <Button variant="secondary" disabled={persistence.saving || guardando || persistence.conflict} onClick={async()=>{if(!persistence.available)salir();else if(!persistence.dirty || await persistence.save())router.replace(salida);}}>{persistence.available?"Guardar y salir":"Salir · copia local"}</Button>
               <Button variant="primary" disabled={!nuevos.length || guardando || busy || pares.some(p => !decisiones[p.nuevo.id]) || Boolean(resultado && !("error" in resultado) && resultado.pendientes > 0)} onClick={añadir}>{guardando ? "Añadiendo…" : `Añadir ${nuevos.length} partida${nuevos.length === 1 ? "" : "s"} ${destino ? `a la V${destino.number}` : "al presupuesto"}`}</Button>
             </div>
           </footer>
         </div>
       )}
 
-      {b.paso > 1 && <p className="muted text-xs" style={{ textAlign: "center" }}><button type="button" className="link-button" onClick={empezarDeNuevo}>Empezar de nuevo con otros planos</button></p>}
+      {b.paso > 1 && <p className="muted text-xs" style={{ textAlign: "center" }}><button type="button" className="link-button" onClick={()=>setResetDialog(true)}>Empezar de nuevo con otros planos</button></p>}
     </div>
   );
 }
