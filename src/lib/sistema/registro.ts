@@ -11,8 +11,8 @@ export type Capability = {
   evidence: Evidence[];
 };
 
-export const documentationDate = "2026-10-30";
-export const workBranch = "codex/estado-fechas-produccion";
+export const documentationDate = "2026-11-02";
+export const workBranch = "codex/planos-borrador-compartido";
 const repository = "https://github.com/victorhugocamposvazquez/plano-crm";
 export const statusLabels: Record<CapabilityStatus, string> = {
   available: "Implementado",
@@ -56,16 +56,16 @@ export const capabilities: Capability[] = [
   {
     id: "pdf", name: "Presupuesto desde planos PDF", status: "partial",
     summary: "Lectura directa y propuesta de trabajos, con escala y revisión profesional.",
-    available: ["Lectura local del PDF, original vinculado y avisos de elementos no interpretados.", "Varios planos; escala confirmada; huecos y trabajos ligados al catálogo."],
-    pending: ["Persistir la extracción y la procedencia para continuar en otro dispositivo.", "Reconocer recintos, símbolos y planos escaneados; validar precisión con mediciones reales."],
-    evidence: [{ label: "Lectura y límites", path: "docs/captura/lectura-pdf-directa.md" }, { label: "Fiabilidad de mediciones", path: "docs/captura/fiabilidad-planos.md" }],
+    available: ["Lectura local del PDF, original vinculado y avisos de elementos no interpretados.", "Varios planos; escala confirmada; huecos y trabajos ligados al catálogo.", "Guardado y recuperación de la preparación con revisión, fecha y autor; migración preparada."],
+    pending: ["Activar el guardado recuperable tras revisar la migración y ligar transaccionalmente la procedencia PDF a cada incorporación.", "Reconocer recintos, símbolos y planos escaneados; validar precisión con mediciones reales."],
+    evidence: [{ label: "Guardado y recuperación", path: "docs/captura/preparacion-pdf-persistente.md" }, { label: "Visita rápida y alcance", path: "docs/captura/visita-rapida.md" }, { label: "Lectura y límites", path: "docs/captura/lectura-pdf-directa.md" }, { label: "Fiabilidad de mediciones", path: "docs/captura/fiabilidad-planos.md" }],
   },
   {
     id: "estancias", name: "Estancias y artículos del catálogo", status: "partial",
-    summary: "Motor para separar zonas y cambiar artículos conservando cantidades y procedencia.",
-    available: ["API de previsualización por estancia con catálogo autorizado y dudas pendientes.", "Bloqueo de unidades incompatibles; decoración y elementos existentes sin coste añadido."],
-    pending: ["Conectar la captura por estancias a la pantalla y guardar la asociación en servidor.", "Tarifario real de GARAL y reglas de compatibilidad técnica entre artículos."],
-    evidence: [{ label: "Contrato y alcance", path: "docs/captura/estancias-catalogo.md" }, { label: "Pruebas de propuestas por estancia", path: "tests/captura/room-survey.test.ts" }],
+    summary: "Captura por zonas, cálculo con catálogo y procedencia al incorporar a un borrador.",
+    available: ["Pantalla y API de captura por zonas con catálogo autorizado y dudas pendientes; transacciones preparadas para guardar y retomar.", "Incorporación al borrador con copia de origen y detección de ediciones manuales posteriores.", "Bloqueo de unidades incompatibles; decoración y elementos existentes sin coste añadido."],
+    pending: ["Activar la migración de captura tras su revisión e integrar la procedencia con el flujo PDF.", "Tarifario real de GARAL y reglas de compatibilidad técnica entre artículos."],
+    evidence: [{ label: "Captura persistente y límites", path: "docs/captura/captura-estancias-persistente.md" }, { label: "Contrato y alcance", path: "docs/captura/estancias-catalogo.md" }, { label: "Pruebas de propuestas por estancia", path: "tests/captura/room-survey.test.ts" }],
   },
   {
     id: "fotos", name: "Análisis automático de fotos y 360", status: "pending",
@@ -96,6 +96,18 @@ export type ProductChange = {
 };
 /** Se registran cambios existentes en git, sin inferir si están fusionados o desplegados. */
 export const productChanges: ProductChange[] = [
+  {
+    id: "preparacion-pdf", date: "2026-11-02", title: "Guardar y recuperar la preparación de planos",
+    impact: "Conserva geometría, escala y decisiones por proyecto, fecha/autor y revisión para no sobrescribir otra edición.",
+    limitation: "Migración preparada, sin activar en producción. La procedencia PDF por partida al incorporar y la medición sin revisión siguen pendientes.",
+    commit: "2c24da6", pullRequest: 77,
+  },
+  {
+    id: "captura-zonas", date: "2026-11-01", title: "Capturar por zonas y conservar la procedencia",
+    impact: "Fotos/panoramas, cantidades anotadas y catálogo en tres pasos; borrador recuperable e incorporación al presupuesto con origen y revisión optimista.",
+    limitation: "Migración pendiente de activar; sin reconocimiento automático de imágenes ni persistencia del flujo PDF en esta entrega.",
+    commit: "a703deb", pullRequest: 76,
+  },
   {
     id: "fechas-partidas", date: "2026-10-30", title: "Registrar fechas y autor de cambios de partidas",
     impact: "Registro transaccional de altas, modificaciones y bajas; última edición individual visible en el comparador.",

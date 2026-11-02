@@ -1,0 +1,38 @@
+const {chromium,expect:baseExpect}=require('@playwright/test');
+const expect=baseExpect.configure({timeout:20000}),fs=require('node:fs');
+(async()=>{const browser=await chromium.launch({headless:true,executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH||'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome'});try{
+ const page=await browser.newPage({viewport:{width:390,height:950}});page.setDefaultTimeout(20000);const errors=[];page.on('pageerror',e=>errors.push(e.message));
+ const base=process.env.PLAYWRIGHT_BASE_URL||'http://127.0.0.1:3121',project='00000000-0000-4000-8000-000000000010';
+ const ws=()=>page.evaluate(()=>JSON.parse(localStorage.getItem('plano.workspace.v1')));
+ await page.goto(`${base}/proyectos/${project}/captura`);await expect(page.getByRole('heading',{name:'Fotos y trabajos por zonas'})).toBeVisible();
+ const initial=await ws(),approved=initial.versions.filter(v=>v.status==='approved'),catalogue=initial.articles.filter(a=>a.unit==='m²'),first=catalogue[0],second=catalogue.find(a=>a.id!==first.id && a.unit_price!==first.unit_price),piece=initial.articles.find(a=>a.unit==='ud');
+ const choose=async(label,text)=>{await page.getByRole('button',{name:label,exact:true}).click();await page.getByRole('option').filter({hasText:text}).first().click();};
+ await page.getByLabel('Nombre de la zona',{exact:true}).fill('Salón');
+ await choose('Tipo de imagen','Panorámicas 360');
+ await page.getByLabel('Elegir de la galería',{exact:true}).setInputFiles({name:'panoramica-sintetica.png',mimeType:'image/png',buffer:Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+a1ioAAAAASUVORK5CYII=','base64')});
+ await expect(page.getByRole('img',{name:'panoramica-sintetica.png'})).toBeVisible();
+ await page.getByRole('button',{name:'2 · Trabajos',exact:true}).click();
+ await choose('Artículo para añadir',first.name);await page.getByRole('button',{name:'Añadir trabajo',exact:true}).click();
+ await expect(page.getByText(/Pendiente: Falta una medición/)).toBeVisible();
+ await page.getByRole('spinbutton',{name:'Cantidad (m²)',exact:true}).fill('12.5');
+ await choose('Artículo de '+first.name,second.name);await expect(page.getByRole('spinbutton',{name:'Cantidad (m²)',exact:true})).toHaveValue('12.5');
+ await choose('Artículo de '+first.name,piece.name);await expect(page.getByText(/La unidad de la medición no coincide/)).toBeVisible();
+ await choose('Artículo de '+first.name,second.name);
+ await page.getByRole('button',{name:'Guardar captura',exact:true}).click();await expect(page.getByRole('button',{name:'Guardar captura',exact:true})).toBeDisabled();
+ await page.reload();await expect(page.getByLabel('Nombre de la zona',{exact:true})).toHaveValue('Salón');await page.getByRole('button',{name:'2 · Trabajos',exact:true}).click();await expect(page.getByRole('spinbutton',{name:'Cantidad (m²)',exact:true})).toHaveValue('12.5');console.log('Captura y cambio de artículo persistentes');
+ await page.getByRole('button',{name:'Añadir zona',exact:true}).click();await page.getByLabel('Nombre de la zona',{exact:true}).fill('Nave · almacén');await page.getByRole('button',{name:'2 · Trabajos',exact:true}).click();
+ await choose('Artículo para añadir',first.name);await page.getByRole('button',{name:'Añadir trabajo',exact:true}).click();await page.getByRole('spinbutton',{name:'Cantidad (m²)',exact:true}).fill('5');
+ await choose('Cómo se obtuvo '+first.name,'Aproximación visual');await expect(page.getByText('Cantidad aproximada visualmente; no es una medición verificada.')).toBeVisible();
+ await page.getByRole('button',{name:'Anotar una comprobación pendiente'}).click();await page.getByRole('button',{name:'3 · Revisar',exact:true}).click();await expect(page.getByRole('checkbox',{name:/He revisado/})).toBeDisabled();await page.getByRole('button',{name:'2 · Trabajos',exact:true}).click();
+ await page.getByLabel(/Acceso, ascensor o trabajos ocultos/).fill('Pendiente de inspección de instalaciones; solo estimación de suelos.');
+ await page.getByRole('button',{name:'Guardar captura',exact:true}).click();await expect(page.getByRole('button',{name:'Guardar captura',exact:true})).toBeDisabled();
+ await page.getByRole('button',{name:'3 · Revisar',exact:true}).click();await page.getByRole('checkbox',{name:/He revisado/}).check();await page.getByRole('button',{name:/^Incorporar a V/}).click();await expect(page.getByRole('button',{name:'Esta captura ya está incorporada'})).toBeVisible();
+ const saved=await ws();expect(saved.room_imports).toHaveLength(1);expect(saved.room_imports[0].items).toHaveLength(2);expect(saved.versions.filter(v=>v.status==='approved')).toEqual(approved);expect(saved.room_imports[0].survey.rooms.map(r=>r.label)).toEqual(['Salón','Nave · almacén']);
+ await page.getByRole('button',{name:/^Captura 2 · V/}).click();const origin=page.getByRole('dialog',{name:'De dónde salen estas partidas'});await expect(origin).toBeVisible();await expect(origin.getByText(/Salón · 12,?\.?5 m²/)).toBeVisible();await origin.getByRole('button',{name:'Cerrar',exact:true}).click();console.log('Presupuesto y procedencia guardados; aprobada intacta');
+ fs.mkdirSync('test-results/captura-estancias',{recursive:true});
+ for(const width of [390,768,1280]){await page.setViewportSize({width,height:950});for(const theme of ['light','dark']){await page.evaluate(t=>{document.documentElement.dataset.theme=t;localStorage.setItem('plano.theme',t);},theme);expect(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)).toBe(false);await page.screenshot({path:`test-results/captura-estancias/${width}-${theme}.png`,fullPage:true});}}
+ await page.getByRole('button',{name:'1 · Fotos y zonas',exact:true}).click();await page.getByLabel('Nombre de la zona',{exact:true}).fill('Mi edición sin guardar');await page.getByRole('link',{name:'← Volver al presupuesto'}).click();await expect(page.getByRole('dialog',{name:'Salir con cambios pendientes'})).toBeVisible();await page.getByRole('button',{name:'Seguir en la captura'}).click();
+ await page.evaluate(()=>{const key='plano.workspace.v1',data=JSON.parse(localStorage.getItem(key));data.room_captures[0].revision++;data.room_captures[0].survey.scope='Edición desde otro dispositivo';localStorage.setItem(key,JSON.stringify(data));});
+ await page.getByRole('button',{name:'Guardar captura',exact:true}).click();await expect(page.getByRole('alert').filter({hasText:'Otra persona ha actualizado la captura'})).toBeVisible();await expect(page.getByLabel('Nombre de la zona',{exact:true})).toHaveValue('Mi edición sin guardar');
+ expect(errors).toEqual([]);console.log(JSON.stringify({rooms:2,panoramaAttached:true,catalogSwapKeepsQuantity:true,incompatibleUnitBlocked:true,sourceSnapshotSaved:true,approvedIntact:true,conflictPreservesEdit:true,errors}));
+}finally{await browser.close();}})().catch(error=>{console.error(error);process.exitCode=1;});
