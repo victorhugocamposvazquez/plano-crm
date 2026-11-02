@@ -10,7 +10,7 @@ const output=process.env.PLANO_BROWSER_OUTPUT || 'test-results/plan-flow';fs.mkd
   const project='00000000-0000-4000-8000-000000000010';
   await page.goto(`${base}/proyectos/${project}/plano`);
   await page.getByRole('button',{name:'Probar con planos de ejemplo',exact:true}).click();
-  await page.getByRole('button',{name:/Siguiente: dale una medida/}).click();
+  await page.getByRole('button',{name:/Siguiente: mide y confirma las paredes/}).click();
   const svg=page.locator('svg[data-picking="true"]');
   for(const point of [[20,20],[480,20]]) {
    const p=await svg.evaluate((el,point)=>{const screen=new DOMPoint(...point).matrixTransform(el.getScreenCTM());return {x:screen.x,y:screen.y};},point);
@@ -30,18 +30,16 @@ const output=process.env.PLANO_BROWSER_OUTPUT || 'test-results/plan-flow';fs.mkd
   for(const width of [390,768,1280]) {
    await page.setViewportSize({width,height:950});
    for(const theme of ['light','dark']) {
-    const toggle=page.getByRole('button',{name:/Tema .*cambiar/});
-    if(await toggle.getAttribute('aria-pressed')!==(theme==='dark'?'true':'false')) await toggle.click();
+    await page.evaluate(theme=>document.documentElement.dataset.theme=theme,theme);
     if(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth)) throw new Error(`Desbordamiento ${width} ${theme}`);
     await page.screenshot({path:path.join(output,`escala-${width}-${theme}.png`),fullPage:true});reports.push({width,theme});
    }
   }
-  await page.getByRole('button',{name:/Siguiente: confirma las paredes/}).click();
-  await page.getByRole('button',{name:/Siguiente: ¿qué se hace/}).click();
+  await page.getByRole('button',{name:/Siguiente:/}).click();
+  await page.getByText('Huecos que no cuentan',{exact:false}).click();
   await page.getByRole('textbox',{name:'Huecos en paredes nuevas en metros cuadrados',exact:true}).fill('2');
   await page.getByRole('textbox',{name:'Huecos en paredes de demolición en metros cuadrados',exact:true}).fill('1');
   await page.getByRole('checkbox',{name:/Pintar las paredes nuevas/}).check();
-  await page.getByRole('button',{name:/Ver las partidas/}).click();
   const save=page.getByRole('button',{name:/Añadir 3 partidas a la V2/});await expect(save).toBeDisabled();
   await expect(page.getByText(/Elige qué hacer con cada coincidencia/)).toBeVisible();
   for(const radio of await page.getByRole('radio',{name:'Añadir aparte',exact:true}).all()) await radio.click();

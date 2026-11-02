@@ -367,3 +367,7 @@ Estilos en `src/styles/plano-app.css`, después de `ui.css`. Detalle de lo integ
 ### Captura por zonas (Codex · 1 nov 2026)
 
 Pantalla independiente para mantener el rediseño de Fable: una zona visible, controles progresivos, guardado y propuesta separados. Reutiliza Select, Button y Modal; tipografía, colores, radios y ancho con tokens existentes. Ambos temas comparten estructura; controles táctiles de 44 px. La cantidad vacía es pendiente y el coste distingue IVA. La procedencia se consulta en un diálogo por incorporación; imágenes y panorámicas se muestran planas y no se presentan como geometría o medidas automáticas.
+
+### Preparación PDF recuperable · 2/11/2026 (Codex, autorizada por Hugo)
+
+Se conserva el flujo de Fable con tres pasos. Bloque compacto «Guardar preparación / Cargar la guardada», fecha/autor y estados por texto; usa tokens existentes, ambos temas y controles de 44 px. Los diálogos confirman sustitución, reinicio y salida sin copia segura. El guardado de preparación se distingue de añadir partidas al presupuesto. Se corrige además una colisión de `.work-head` con la vista Obra que ocultaba nombres y casillas en el flujo PDF móvil, y el desbordamiento de su destino largo. Estilos limitados a `plan-draft.css`, sin nuevos tokens ni cambios al armazón compartido.
