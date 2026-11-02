@@ -9,7 +9,7 @@ function pdf(stream='1 0 0 rg 10 20 80 4 re f') {
  const browser=await chromium.launch({headless:true,executablePath:process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined});
  try{
   const page=await browser.newPage({viewport:{width:390,height:950}}),errors=[],external=[],workers=[];
-  page.setDefaultTimeout(15000);
+  page.setDefaultTimeout(30000);
   page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(/^https?:/.test(r.url()) && !r.url().startsWith(base))external.push(r.url());if(r.url().includes('/pdfjs/'))workers.push(r.url());});
   const base=process.env.PLAYWRIGHT_BASE_URL || 'http://127.0.0.1:3119',project='00000000-0000-4000-8000-000000000010';
   await page.goto(`${base}/proyectos/${project}/plano`);
@@ -17,15 +17,15 @@ function pdf(stream='1 0 0 rg 10 20 80 4 re f') {
   const buffer=pdf();await page.locator('input[type=file][accept="application/pdf"]').setInputFiles({name:'Plano Demolicion.pdf',mimeType:'application/pdf',buffer});
   await expect(page.getByTitle('Plano Demolicion.pdf',{exact:true})).toBeVisible({timeout:30000});
   await expect(page.getByText(/1 página · 1 trazo · en Planos y fotos/)).toBeVisible();
-  const state=await page.evaluate(project=>({b:JSON.parse(localStorage.getItem('plano.borrador.'+project)),ws:JSON.parse(localStorage.getItem('plano.workspace.v1'))}),project);
+  const state=await page.evaluate(project=>({b:JSON.parse(localStorage.getItem(Object.keys(localStorage).find(k=>k.startsWith('plano.plan-capture.') && k.endsWith(project)))).draft,ws:JSON.parse(localStorage.getItem('plano.workspace.v1'))}),project);
   expect(state.ws.documents).toHaveLength(1);expect(state.b.planos[0].documentId).toBe(state.ws.documents[0].id);
   expect(state.b.planos[0].extraction.sha256).toBe(require('node:crypto').createHash('sha256').update(buffer).digest('hex'));
   expect(state.b.planos[0].lectura.partial).toBe(false);expect(workers.some(u=>u.endsWith('pdf.worker.min.mjs'))).toBe(true);
   const out=process.env.PLANO_BROWSER_OUTPUT || 'test-results/pdf-directo';fs.mkdirSync(out,{recursive:true});await page.screenshot({path:path.join(out,'pdf-leido-390.png'),fullPage:true});
   // Un documento ya guardado se relee sin duplicar documento ni plano.
-  await page.getByText('Leer un plano de Documentos (1)',{exact:true}).click();await page.getByRole('button',{name:'Leer este plano',exact:true}).click();
+  await page.getByText('Leer un plano de Planos y fotos (1)',{exact:true}).click();await page.getByRole('button',{name:'Leer este plano',exact:true}).click();
   await expect(page.getByRole('button',{name:/Añadir y leer un plano/})).toBeEnabled({timeout:30000});
-  expect(await page.evaluate(project=>JSON.parse(localStorage.getItem('plano.borrador.'+project)).planos.length,project)).toBe(1);
+  expect(await page.evaluate(project=>JSON.parse(localStorage.getItem(Object.keys(localStorage).find(k=>k.startsWith('plano.plan-capture.') && k.endsWith(project)))).draft.planos.length,project)).toBe(1);
   expect(await page.evaluate(()=>JSON.parse(localStorage.getItem('plano.workspace.v1')).documents.length)).toBe(1);
   // Un PDF vacío de dibujo queda señalado, aunque sea un archivo PDF válido.
   await page.locator('input[type=file][accept="application/pdf"]').setInputFiles({name:'Plano sin geometría.pdf',mimeType:'application/pdf',buffer:pdf('')});

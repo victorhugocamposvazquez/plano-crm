@@ -97,6 +97,12 @@ export type ProductChange = {
 /** Se registran cambios existentes en git, sin inferir si están fusionados o desplegados. */
 export const productChanges: ProductChange[] = [
   {
+    id: "preparacion-pdf", date: "2026-11-02", title: "Guardar y recuperar la preparación de planos",
+    impact: "Conserva geometría, escala y decisiones por proyecto, fecha/autor y revisión para no sobrescribir otra edición.",
+    limitation: "Migración preparada, sin activar en producción. La procedencia PDF por partida al incorporar y la medición sin revisión siguen pendientes.",
+    commit: "2c24da6", pullRequest: 77,
+  },
+  {
     id: "captura-zonas", date: "2026-11-01", title: "Capturar por zonas y conservar la procedencia",
     impact: "Fotos/panoramas, cantidades anotadas y catálogo en tres pasos; borrador recuperable e incorporación al presupuesto con origen y revisión optimista.",
     limitation: "Migración pendiente de activar; sin reconocimiento automático de imágenes ni persistencia del flujo PDF en esta entrega.",
