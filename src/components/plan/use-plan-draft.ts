@@ -7,6 +7,7 @@ import { borradorNuevo, cargarBorrador, type Borrador } from "@/lib/plano-flujo"
 type Cache={draft:Borrador;base_revision:number;saved_signature:string|null};
 const workspaceKey="plano.workspace.v1";
 const currentStep=(draft:Borrador):Borrador=>({...draft,paso:draft.paso===3?2:draft.paso===5?4:draft.paso});
+const withoutIds=(draft:Borrador)=>planSignature({...draft,ids:null} as unknown as Borrador);
 /** Una copia local no puede adoptar una revisión remota que no ha leído: evita sobrescrituras al reabrir. */
 export function usePlanDraft(projectId:string,budgetId:string|null){
   const {data,mode,actor}=useWorkspace();
@@ -23,7 +24,8 @@ export function usePlanDraft(projectId:string,budgetId:string|null){
   const [saved,setSaved]=useState<PlanDraft|null>(null),[base,setBase]=useState(initial.cache?.base_revision ?? 0),[savedSignature,setSavedSignature]=useState<string|null>(initial.cache?.saved_signature ?? null);
   const [loading,setLoading]=useState(true),[saving,setSaving]=useState(false),[available,setAvailable]=useState(false),[conflict,setConflict]=useState(false),[error,setError]=useState(initial.error),[localError,setLocalError]=useState(initial.error),[ready,setReady]=useState(false);
   const signature=useMemo(()=>planSignature(draft),[draft]);
-  const dirty=signature!==savedSignature;
+  // Una preparación vacía no tiene nada que guardar; sus ids se generan al abrirla y no cuentan.
+  const dirty=savedSignature===null?withoutIds(draft)!==withoutIds(borradorNuevo(projectId,budgetId)):signature!==savedSignature;
   async function read():Promise<{available:boolean;capture:PlanDraft|null}>{
     if(mode==="demo"){const workspace=JSON.parse(localStorage.getItem(workspaceKey)!);return {available:true,capture:workspace.plan_captures?.find((c:PlanDraft)=>c.project_id===projectId) ?? null};}
     const response=await fetch(`/api/proyectos/${projectId}/planos/borrador`,{cache:"no-store"});const body=await response.json();

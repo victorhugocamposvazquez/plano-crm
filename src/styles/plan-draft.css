@@ -2,7 +2,7 @@
 .plan-draft-save p { margin: 0 0 8px; overflow-wrap: anywhere; }
 .plan-draft-actions { display: flex; flex-wrap: wrap; gap: 8px; }
 .plan-draft-actions .btn { min-height: 44px; }
-@media (max-width: 600px) { .plan-draft-actions .btn { flex: 1; } }
+@media (max-width: 600px) { .plan-draft-actions .btn { flex: 1 1 0; padding-inline: var(--pl-space-2); } }
 /* El destino largo debe caber junto a la X también a 390 px. */
 .flow-head-text > .eyebrow { max-width: 100%; }
 /* El encabezado de trabajo del flujo lleva sus casillas; no es la cabecera de Obra. */
