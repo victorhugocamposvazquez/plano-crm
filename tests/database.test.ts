@@ -375,3 +375,45 @@ describe("Capturas y procedencia de partidas en PostgreSQL",()=>{
     await expect(apply(f,1)).rejects.toThrow(/borrador abierto/);
   });
 });
+
+describe("Preparación PDF persistente en PostgreSQL",()=>{
+  async function fixture(){
+    const f=await budget();
+    const doc=(await db.query<{id:string}>("insert into documents(organization_id,project_id,name,category,storage_path,mime_type,size_bytes) values($1,$2,'Plano','plan',$3,'application/pdf',100) returning id",[org,f.projectId,`${org}/${f.projectId}/${demoId(900)}`])).rows[0].id;
+    const {borradorNuevo,añadirPlano}=await import("@/lib/plano-flujo");const {samplePlan}=await import("@/lib/captura/sample-plan");
+    const draft=añadirPlano(borradorNuevo(f.projectId,f.budgetId),{nombre:"Plano.pdf",documentId:doc,extraction:samplePlan});
+    return {...f,draft};
+  }
+  const save=(projectId:string,draft:unknown,revision=0,user=admin)=>asUser(user,()=>db.query<{capture:{revision:number;updated_by_name:string;updated_at:string}}>("select save_plan_capture($1,$2,$3,$4::jsonb) as capture",[org,projectId,revision,JSON.stringify(draft)]));
+  it("conserva cada guardado con fecha y autor reales y reintenta sin duplicar",async()=>{
+    const f=await fixture();const first=(await save(f.projectId,f.draft)).rows[0].capture;
+    expect(first).toMatchObject({revision:1,updated_by_name:"Usuario admin"});expect(first.updated_at).toBeTruthy();expect((await save(f.projectId,f.draft)).rows[0].capture).toEqual(first);
+    await save(f.projectId,{...f.draft,altura:"3"},1);
+    const history=(await db.query<{draft:typeof f.draft}>("select draft from plan_capture_revisions order by revision")).rows;
+    expect(history.map(r=>r.draft.altura)).toEqual(["2,60","3"]);
+    expect((await db.query("select * from budget_item_events")).rows).toHaveLength(0);
+    expect((await db.query<{draft_revision:number}>("select draft_revision from budget_versions where id=$1",[f.versionId])).rows[0].draft_revision).toBe(0);
+  });
+  it("no sobrescribe una revisión obsoleta ni permite lecturas o escrituras ajenas",async()=>{
+    const f=await fixture();await save(f.projectId,f.draft);
+    await expect(save(f.projectId,{...f.draft,altura:"4"})).rejects.toThrow(/actualizado/);
+    expect((await asUser(outsider,()=>db.query("select * from plan_captures"))).rows).toHaveLength(0);
+    expect((await asUser(outsider,()=>db.query("select * from plan_capture_revisions"))).rows).toHaveLength(0);
+    await expect(asUser(admin,()=>db.exec("delete from plan_capture_revisions"))).rejects.toThrow(/permission denied/);
+    await expect(asUser(admin,()=>db.exec("update plan_captures set revision=9"))).rejects.toThrow(/permission denied/);
+    await expect(save(f.projectId,f.draft,1,viewer)).rejects.toThrow(/permiso/);
+    await expect(save(f.projectId,f.draft,1,site)).rejects.toThrow(/permiso/);
+    expect((await db.query("select * from plan_capture_revisions")).rows).toHaveLength(1);
+  });
+  it("bloquea documentos, proyectos y presupuestos cruzados incluso por RPC directo",async()=>{
+    const f=await fixture(),otherProject=await project();
+    await command({type:"budget.create",project_id:otherProject,title:"Otro proyecto"});
+    const other={projectId:otherProject,budgetId:(await db.query<{id:string}>("select id from budgets where project_id=$1",[otherProject])).rows[0].id};
+    await expect(save(f.projectId,{...f.draft,budgetId:other.budgetId})).rejects.toThrow(/otro proyecto/);
+    await expect(save(f.projectId,{...f.draft,projectId:other.projectId})).rejects.toThrow(/no válida/);
+    const modified=structuredClone(f.draft);modified.planos[0].documentId=null;
+    await expect(save(f.projectId,modified)).rejects.toThrow(/PDF original/);
+    expect((await db.query("select * from plan_captures")).rows).toHaveLength(0);
+    await expect(save(f.projectId,f.draft,-1)).rejects.toThrow(/no válida/);
+  });
+});

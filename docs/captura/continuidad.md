@@ -104,3 +104,15 @@ Recorrido completo de navegador correcto con PNG sintético y dos zonas: subida,
 Cierre de verificación: `npm run check` correcto con 366 pruebas y una privada omitida, tipos y build. Añadida regresión SQL y demo para nueva revisión del presupuesto con origen heredado y aceptada intacta. Recorrido completo de navegador sin errores; comprobación posterior a #75 de tres pasos, ambos temas y 390/768/1280, más recarga correcta. La última compilación debe servirse reiniciando solo 3121.
 
 Entrega publicada: PR #76, adjunta al chat, commit inicial a703deb y cierre 7dd56df sobre main #75. Migración pendiente de activación; no fusionar ni aplicar sin autorización específica. La continuación por horas sigue pausada.
+
+## Preparación PDF recuperable · 2/11/2026
+
+Rama `codex/planos-borrador-compartido` sobre #76/4eaabe9; main comprobada sigue en 729ac9e. Conserva el flujo de Fable y añade guardado del trabajo PDF (geometría, página, usos, escala, descartes, huecos y catálogo), recuperación sin copia del navegador, fecha/autor e historial inmutable en servidor. La copia local conserva su revisión base y no pisa una edición remota. Cargar/reiniciar exige confirmación cuando puede sustituir trabajo pendiente. Un proyecto mantiene preparaciones separadas de fotos y PDF.
+
+Migración 202611010002 preparada, NO aplicada. La preparación no certifica mediciones ni crea procedencia transaccional por partida: la incorporación sigue por el flujo previo de budget.save y esa conexión final aún está pendiente. Los ejemplos sin original permanecen locales. Límite de guardado 1.500.000 bytes de lectura compacta; no envía originales a terceros ni altera aprobados. Documento `preparacion-pdf-persistente.md`.
+
+`npm run check` final correcto: 378 pruebas + una privada omitida, tipos y build. Recorrido completo con PDF sintético correcto: subida, escala, recuperación sin caché, conflicto reteniendo edición, carga confirmada y cantidad final 20,8 m², aprobada intacta. Revisión 390/768/1280, ambos temas y sin errores. Se corrigió una colisión de estilos con `.work-head` de Obra que ocultaba en móvil los nombres y casillas de los trabajos PDF, y el desbordamiento de su destino. Se añadió después recuperación automática de la última preparación si la copia local no tiene cambios; nueva pasada de navegador en curso al registrar esta sección.
+
+Hugo reafirma la vía fotos/móvil/360/voz para estimación rápida sin planos y recuerda todo el alcance del CRM. PDF original de seis páginas releído localmente; ambas copias son idénticas. Criterios en `visita-rapida.md` y `automatizacion-medidas.md`: validar cantidades y cobertura con GARAL, pedir solo datos necesarios y no anunciar porcentajes sin evaluación. La lectura de 31 planos nunca equivale a 31 presupuestos validados. Reconocimiento automático de imágenes, dictado interpretado y entorno realista siguen pendientes.
+
+Workspace `/private/tmp/plano-codex-main-noviembre`, vista propia 3121; 3119 pertenece a Fable. No tocar el checkout de Fable ni activar migraciones nuevas sin autorización. La continuación de tres horas sigue pausada.

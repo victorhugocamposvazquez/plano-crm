@@ -1,0 +1,17 @@
+# Preparación de planos recuperable · 2/11/2026
+
+El flujo existente conserva sus tres pasos. Se añaden «Guardar preparación» y «Cargar la guardada», fecha y autor de servidor y una copia local separada por empresa, usuario y proyecto. Guardar no incorpora partidas ni certifica medidas. La demostración sigue siendo local, sin sincronización entre dispositivos.
+
+Se conservan los originales vinculados, geometría extraída, páginas, usos, referencia métrica, confirmaciones de escala, paredes descartadas, altura/huecos y selecciones de catálogo con sus identificadores. Los PDF originales siguen en el almacenamiento del proyecto; no se envían a terceros. El servidor comprueba pertenencia al proyecto y empresa. Las lecturas técnicas y ejemplos sin original solo pueden continuar localmente: no se presentan como una captura original trazable.
+
+Un proyecto tiene una preparación PDF, independiente de la captura de fotos por zonas. El presupuesto de destino forma parte de ella y debe pertenecer al mismo proyecto. Recuperarla desde el servidor permite continuar sin la copia local. Si existe una edición local distinta, se conserva con la revisión desde la que se inició; no adopta una revisión nueva sin leerla. Un conflicto bloquea el guardado y la sustitución por la última preparación requiere confirmación. No se mezclan medidas automáticamente.
+
+Cada guardado crea una copia inmutable en `plan_capture_revisions` con fecha y autor de servidor. Los reintentos idénticos no duplican el guardado. Ese historial queda en base de datos; la interfaz de recuperación de revisiones anteriores queda pendiente. RLS permite lectura únicamente a miembros y deniega escrituras directas. El RPC solo permite guardar a administración, oficina y responsables con permiso de presupuestar.
+
+Límites: 20 entradas de planos y 1.500.000 bytes de JSON compacto para guardar por API (cuerpo limitado además a 2 MiB). Si la lectura supera el límite o falla la red, no se vacía la edición. Si también falla el almacenamiento local, se muestra un aviso y se confirma la salida. La geometría, el hash y la escala enviados desde el navegador se conservan como preparación revisable: no son una certificación independiente del original.
+
+La incorporación de partidas conserva el flujo previo de revisión de coincidencias y `budget.save`. **Todavía falta guardar transaccionalmente la procedencia PDF con cada incorporación**, recalcularla con garantías equivalentes en la frontera de escritura y mostrarla desde la partida. Esta entrega no lo anuncia como resuelto. La preparación guardada permanece disponible después de añadir partidas; «Empezar de nuevo» solo cambia la edición, sin borrar originales ni presupuestos y sin cambiar el servidor hasta volver a guardar.
+
+Migración `202611010002_plan_captures.sql` preparada; no aplicada en producción. Base de entrega #76 (fotos por zonas), también pendiente de integración. Respetar el checkout y la interfaz de Fable. Cambios mínimos en `PlanFlow` y clave React por proyecto para no heredar la edición de otra ficha.
+
+Comprobaciones: pruebas del contrato y cálculo recuperado; API privada/origen/permisos; PostgreSQL real con PGlite para reintentos, concurrencia, historial inmutable y aislamiento. Recorrido de navegador con PDF sintético: original vinculado, medición y recuperación sin caché, conflicto y carga confirmada, copia local, incorporación y versión aprobada intacta; lectura 390/768/1280 y ambos temas. Los resultados finales se anotan en continuidad al cerrar la entrega.
