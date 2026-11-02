@@ -13,7 +13,8 @@ export function useQueryState<T extends string>(key: string, fallback: T): [T, (
   const pathname = usePathname();
   const value = (params.get(key) as T | null) ?? fallback;
   const set = useCallback((next: T | "") => {
-    const search = new URLSearchParams(params.toString());
+    // Leer la URL real: varios set seguidos (día + vista) no se pisan entre sí.
+    const search = new URLSearchParams(typeof window !== "undefined" ? window.location.search : params.toString());
     if (!next || next === fallback) search.delete(key); else search.set(key, next);
     const query = search.toString();
     router.replace(query ? `${pathname}?${query}` : pathname, { scroll: false });
