@@ -3,6 +3,10 @@
  * Va después de ui.css y solo lee variables --pl-*. Reglas en docs/sistema-diseno.md.
  */
 
+.skip-link { position: fixed; z-index: 100; top: 8px; left: 8px; padding: 10px 14px; border-radius: var(--pl-radius-control); background: var(--pl-action); color: var(--pl-on-action); text-decoration: none; transform: translateY(-200%); }
+.skip-link:focus { transform: none; }
+.shell-main:focus { outline: 0; }
+.items-chapter-group, .items-chapter-group > span { display: contents; }
 .sr-only { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 
 @keyframes pl-entra { from { transform: translateX(40px); opacity: 0; } to { transform: none; opacity: 1; } }
@@ -864,7 +868,7 @@ button.article-card:hover { border-color: var(--pl-strong-line); box-shadow: var
 .cal-page { gap: 14px; }
 .cal-head { display: flex; align-items: center; gap: 4px 14px; flex-wrap: wrap; }
 .cal-month { font-size: var(--pl-text-h2); letter-spacing: var(--pl-tracking-h2); }
-.cal-month strong { color: var(--pl-orange); font-weight: var(--pl-weight-semibold); }
+.cal-month strong { color: var(--pl-accent-text); font-weight: var(--pl-weight-semibold); }
 .cal-month span { color: var(--pl-muted); }
 .cal-nav { display: flex; align-items: center; gap: 6px; }
 .cal-icon, .cal-today { display: inline-flex; align-items: center; justify-content: center; height: 36px; border: var(--pl-hairline) solid var(--pl-line); border-radius: var(--pl-radius-control); background: var(--pl-surface); color: var(--pl-ink); font: inherit; font-size: var(--pl-text-md); cursor: pointer; }
@@ -879,7 +883,7 @@ button.article-card:hover { border-color: var(--pl-strong-line); box-shadow: var
 .mini-cal > span { color: var(--pl-muted); padding: 4px 0; }
 .mini-cal button { position: relative; aspect-ratio: 1; padding: 0; border: 0; border-radius: var(--pl-radius-full); background: none; color: var(--pl-ink); font: inherit; cursor: pointer; }
 .mini-cal button:hover { background: var(--pl-soft); }
-.mini-cal button[data-out] { color: var(--pl-faint); }
+.mini-cal button[data-out] { color: var(--pl-muted); }
 /* Día elegido: anillo (se ve también en Grafito); «hoy» lleva el naranja y, si coincide, basta el relleno. */
 .mini-cal button[data-on] { font-weight: var(--pl-weight-semibold); box-shadow: inset 0 0 0 2px var(--pl-ink); }
 .mini-cal button[data-today] { background: var(--pl-orange); color: var(--pl-on-orange); font-weight: var(--pl-weight-semibold); box-shadow: none; }
@@ -926,7 +930,7 @@ button.article-card:hover { border-color: var(--pl-strong-line); box-shadow: var
 .cal-cell { min-width: 0; display: flex; flex-direction: column; align-items: flex-start; gap: 3px; min-height: 108px; padding: 5px; border-bottom: var(--pl-hairline) solid var(--pl-line); border-left: var(--pl-hairline) solid var(--pl-line); }
 .cal-cell:nth-child(7n + 1) { border-left: 0; }
 .cal-cell[data-out] { background: var(--pl-soft); }
-.cal-cell[data-out] .cal-cell-day { color: var(--pl-faint); }
+.cal-cell[data-out] .cal-cell-day { color: var(--pl-muted); }
 .cal-cell-day { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0; border: 0; border-radius: var(--pl-radius-full); background: none; color: var(--pl-ink); font: inherit; font-size: var(--pl-text-md); font-weight: var(--pl-weight-medium); cursor: pointer; }
 .cal-cell[data-on] .cal-cell-day { box-shadow: inset 0 0 0 2px var(--pl-ink); font-weight: var(--pl-weight-semibold); }
 .cal-cell .cal-cell-day[data-today] { background: var(--pl-orange); color: var(--pl-on-orange); box-shadow: none; }
@@ -959,8 +963,8 @@ button.article-card:hover { border-color: var(--pl-strong-line); box-shadow: var
   .page > .pl-head > .pl-head-actions, .page > .pl-head > .btn:not([data-keep]) { display: none; }
   .page > .pl-head .pl-sub { display: none; }
   .phone-tools { position: absolute; z-index: 5; top: 14px; right: 12px; display: flex; align-items: center; gap: 0; }
-  .phone-tool { display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 44px; border: 0; background: none; color: var(--pl-ink); cursor: pointer; }
-  .phone-tools .chat-button { position: relative; width: 40px; height: 44px; padding: 0; border: 0; justify-content: center; background: none; }
+  .phone-tool { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border: 0; background: none; color: var(--pl-ink); cursor: pointer; }
+  .phone-tools .chat-button { position: relative; width: 44px; height: 44px; padding: 0; border: 0; justify-content: center; background: none; }
   .phone-tools .chat-button-text { display: none; }
   .phone-tools .chat-button .count-badge { position: absolute; top: 2px; right: 0; }
   .phone-avatar { margin-left: 4px; padding: 0; border: 0; background: none; cursor: pointer; }
@@ -1132,9 +1136,9 @@ button.article-card:hover { border-color: var(--pl-strong-line); box-shadow: var
 .mas-page { max-width: 640px; }
 .mas-page > .pl-title { min-height: 44px; display: flex; align-items: center; }
 @media (max-width: 767px) {
-  /* El título lo dice la pestaña; se oculta para no dejar aire vacío bajo la banda. */
+  /* El título lo dice la pestaña: sin aire vacío bajo la banda, pero sigue en el lector de pantalla. */
   .mas-page { gap: 10px; }
-  .mas-page > .pl-title { display: none; }
+  .mas-page > .pl-title { position: absolute; width: 1px; height: 1px; min-height: 0; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
   .shell-main:has(.mas-page) { padding-top: 10px; padding-bottom: calc(var(--pl-nav-bar) + env(safe-area-inset-bottom, 0px) + 8px); }
 }
 .mas-account { display: flex; align-items: center; gap: 14px; padding: 14px 16px; background: var(--pl-soft); }
@@ -1621,7 +1625,8 @@ button.fin-line { width: 100%; border-left: 0; border-right: 0; border-bottom: 0
   .phone-bar .pl-brand-text { display: inline; }
   .phone-bar .pl-brand-initial { display: none; }
   .phone-tools { position: static; margin-left: auto; overflow: visible; }
-  .phone-avatar { overflow: visible; }
+  .phone-avatar { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; margin-left: 0; overflow: visible; }
+  .pl-card-head > a { display: inline-flex; align-items: center; min-height: var(--pl-touch); margin-block: -12px; }
 }
 
 /* Pulido de la fase 1 */

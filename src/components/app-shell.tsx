@@ -127,6 +127,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const volver = pathname.startsWith("/clientes/") ? { href: "/clientes", label: "Clientes" } : pathname.startsWith("/configuracion/") ? { href: "/ajustes", label: "Ajustes" } : !raices.includes(pathname) && !pathname.startsWith("/proyectos/") ? { href: "/mas", label: "Más" } : null;
   return (
     <div className="shell">
+      <a href="#contenido" className="skip-link">Saltar al contenido</a>
       <nav className="nav" aria-label="Principal">
         <Link prefetch={false} href="/" className="nav-brand" aria-label="Inicio"><Brand /><small className="nav-org">{data.organization_name || "Plano"}</small></Link>
         {puedeCrear && <Popover open={nuevo} onClose={() => setNuevo(false)} className="nav-new" align="stretch" trigger={
@@ -174,7 +175,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             {chatBoton("escritorio")}
           </div>
         </header>
-        <main className="shell-main">{children}</main>
+        <main id="contenido" tabIndex={-1} className="shell-main">{children}</main>
       </div>
 
       <Modal open={cuentaMovil} onClose={() => setCuentaMovil(false)} title={actor.name}>{cuentaMovil && <AccountMenu hoja onClose={() => setCuentaMovil(false)} />}</Modal>
