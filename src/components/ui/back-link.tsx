@@ -4,16 +4,24 @@ import { useRouter } from "next/navigation";
 import { ChevronLeft } from "lucide-react";
 
 /**
- * «Volver» que respeta de dónde vienes: si hay historial dentro de Plano vuelve a esa pantalla
- * (con sus filtros, porque viven en la URL); si has entrado directo, va al destino de respaldo.
+ * «Volver» que respeta de dónde vienes solo si el referrer es el mismo destino que el fallback
+ * (p. ej. lista de proyectos con filtros). Si vienes de un flujo (visita, plano) o de fuera,
+ * va al destino de respaldo: así no reabre pantallas ya cerradas.
  * `compact`: en móvil solo queda la flecha, como objetivo táctil de 44 px (cabecera compacta de la ficha).
  */
 export function BackLink({ fallback, children, compact = false }: { fallback: string; children: ReactNode; compact?: boolean }) {
   const router = useRouter();
   function go(event: React.MouseEvent<HTMLAnchorElement>) {
     event.preventDefault();
-    const cameFromPlano = typeof document !== "undefined" && document.referrer.startsWith(window.location.origin) && window.history.length > 1;
-    if (cameFromPlano) router.back(); else router.push(fallback);
+    try {
+      const dest = new URL(fallback, window.location.origin);
+      const ref = document.referrer ? new URL(document.referrer) : null;
+      if (ref && ref.origin === window.location.origin && ref.pathname === dest.pathname && window.history.length > 1) {
+        router.back();
+        return;
+      }
+    } catch { /* fallback abajo */ }
+    router.push(fallback);
   }
   return (
     <a href={fallback} onClick={go} className="muted back-link" data-compact={compact || undefined} style={{ display: "inline-flex", alignItems: "center", gap: 6, textDecoration: "none" }}>

@@ -90,7 +90,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   }, [data.messages, data.projects]);
 
   function abrirChat(lugar: "movil" | "escritorio") {
-    if (proyectoActual) { const q = new URLSearchParams(window.location.search); q.set("chat", "1"); router.push(`${pathname}?${q.toString()}`); }
+    if (proyectoActual) { const q = new URLSearchParams(window.location.search); q.set("chat", "1"); window.history.replaceState(null, "", `${pathname}?${q.toString()}`); }
     else setChats(v => (v === lugar ? null : lugar));
   }
 

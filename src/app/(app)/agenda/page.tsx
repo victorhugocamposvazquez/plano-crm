@@ -31,6 +31,8 @@ export default function AgendaPage() {
   const [persona, setPersona] = useQueryState<string>("p", "");
   const [nuevaParam, setNuevaParam] = useQueryState<"1" | "">("nueva", "");
   const [esMovil, setEsMovil] = useState(false);
+  /** Día y vista en un mismo gesto: useQueryState ya no se pisa al encadenar set. */
+  const irAlDia = (iso: string, aVista?: Vista) => { setDia(iso); if (aVista) setVista(aVista); };
   useEffect(() => { const m = window.matchMedia("(max-width: 767px)"); const sync = () => setEsMovil(m.matches); sync(); m.addEventListener("change", sync); return () => m.removeEventListener("change", sync); }, []);
   const vista: Vista = vistaParam || (esMovil ? "dia" : "semana");
   const [verAbierto, setVerAbierto] = useState(false);
@@ -57,8 +59,8 @@ export default function AgendaPage() {
     </button>
   );
   const Columna = ({ d }: { d: string }) => (
-    <section className="cal-col" data-today={d === hoy || undefined} aria-label={etiquetaDia(d, true)}>
-      <button type="button" className="cal-col-head" onClick={() => { setDia(d); setVista("dia"); }} aria-label={`Ver el ${etiquetaDia(d, true)}`}><span>{capital(etiquetaDia(d))}</span><strong>{Number(d.slice(8))}</strong></button>
+    <section className="cal-col" data-today={d === hoy || undefined} data-on={d === dia || undefined} aria-label={etiquetaDia(d, true)}>
+      <button type="button" className="cal-col-head" onClick={() => irAlDia(d, "dia")} aria-label={`Ver el ${etiquetaDia(d, true)}`} aria-current={d === dia ? "date" : undefined}><span>{capital(etiquetaDia(d))}</span><strong>{Number(d.slice(8))}</strong></button>
       <div className="cal-col-body">
         {delDia(d).map(t => <Bloque key={t.id} t={t} />)}
         {delDia(d).length === 0 && puedeCrear && <button type="button" className="cal-add" aria-label={`Nueva tarea el ${etiquetaDia(d, true)}`} onClick={() => setNueva(d)}><Plus size={15} strokeWidth={1.8} aria-hidden="true" /></button>}
@@ -107,7 +109,7 @@ export default function AgendaPage() {
         <aside className="cal-side" aria-label="Saltar a un día y qué mostrar">
           <div className="mini-cal" role="group" aria-label="Elegir día">
             {iniciales.map(d => <span key={d}>{d}</span>)}
-            {celdas.map(({ iso, enMes }) => <button key={iso} type="button" data-out={!enMes || undefined} data-today={iso === hoy || undefined} data-on={iso === dia || undefined} aria-label={etiquetaDia(iso, true)} onClick={() => setDia(iso)}>{Number(iso.slice(8))}{hayDia.has(iso) && <i aria-hidden="true" />}</button>)}
+            {celdas.map(({ iso, enMes }) => <button key={iso} type="button" data-out={!enMes || undefined} data-today={iso === hoy || undefined} data-on={iso === dia || undefined} aria-label={etiquetaDia(iso, true)} aria-current={iso === dia ? "date" : undefined} onClick={() => setDia(iso)}>{Number(iso.slice(8))}{hayDia.has(iso) && <i aria-hidden="true" />}</button>)}
           </div>
           <div className="cal-show" role="group" aria-label="Qué mostrar">
             <span>Qué mostrar</span>
@@ -142,7 +144,7 @@ export default function AgendaPage() {
                 <div key={iso} className="cal-cell" role="gridcell" data-out={!enMes || undefined} data-on={iso === dia || undefined}>
                   <button type="button" className="cal-cell-day" data-today={iso === hoy || undefined} aria-label={`${etiquetaDia(iso, true)}, ${lista.length} tareas`} onClick={() => setDia(iso)}>{Number(iso.slice(8))}</button>
                   <span className="cal-dots" aria-hidden="true">{lista.slice(0, 4).map(t => <i key={t.id} data-tone={tono(t)} />)}</span>
-                  <div className="cal-pills">{lista.slice(0, 3).map(t => <button key={t.id} type="button" className="cal-pill" data-tone={tono(t)} onClick={() => setAbierta(t)} title={t.title}>{t.title}</button>)}{lista.length > 3 && <button type="button" className="cal-more" onClick={() => { setDia(iso); setVista("dia"); }}>+{lista.length - 3} más</button>}</div>
+                  <div className="cal-pills">{lista.slice(0, 3).map(t => <button key={t.id} type="button" className="cal-pill" data-tone={tono(t)} onClick={() => setAbierta(t)} title={t.title}>{t.title}</button>)}{lista.length > 3 && <button type="button" className="cal-more" onClick={() => irAlDia(iso, "dia")}>+{lista.length - 3} más</button>}</div>
                 </div>
               ); })}
             </div>
