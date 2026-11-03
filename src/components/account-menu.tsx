@@ -10,6 +10,7 @@ import { avisosVisibles, construirAvisos, leerLeidos, marcarLeidos, type Aviso, 
 import { dateLabel, roleNames } from "@/lib/domain";
 import { iniciales } from "@/lib/pasos";
 import { veSeccion } from "@/lib/navegacion";
+import { puestoNombres } from "@/lib/puestos";
 
 const perfilDetalle = { admin: "aprueba presupuestos y cobros", office: "aprueba presupuestos y cobros", manager: "lleva las obras", site: "tareas, mensajes y documentos", viewer: "solo consulta" } as const;
 const iconoAviso: Record<TipoAviso, { icon: typeof AtSign; tone: string }> = { mencion: { icon: AtSign, tone: "info" }, atrasada: { icon: CircleAlert, tone: "danger" }, agenda: { icon: CalendarClock, tone: "success" }, cliente: { icon: MessageCircleQuestion, tone: "warning" }, factura: { icon: Receipt, tone: "danger" } };
@@ -60,20 +61,23 @@ function Salir() {
 
 /** Popover de escritorio y hoja de móvil. En la hoja, Avisos y Tu cuenta son dos pestañas. */
 export function AccountMenu({ onClose, hoja = false }: { onClose: () => void; hoja?: boolean }) {
-  const { actor, data } = useWorkspace();
+  const { actor, data, puesto } = useWorkspace();
   const { avisos, leidos, sinLeer, marcarTodos } = useAvisos();
   const [pestana, setPestana] = useState<"avisos" | "cuenta">(sinLeer > 0 ? "avisos" : "cuenta");
-  const cabecera = <div className="account-menu-id"><span className="avatar avatar-ink" aria-hidden="true">{iniciales(actor.name)}</span><span className="account-menu-name"><strong>{actor.name}</strong><small>{roleNames[actor.role]}</small></span></div>;
+  const cabecera = <div className="account-menu-id"><span className="avatar avatar-ink" aria-hidden="true">{iniciales(actor.name)}</span><span className="account-menu-name"><strong>{actor.name}</strong><small>{puestoNombres[puesto]} · {roleNames[actor.role]}</small></span></div>;
   const cuenta = <>
     <dl className="account-menu-facts">
       <div><dt>Empresa</dt><dd>{data.organization_name || "—"}</dd></div>
-      <div><dt>Perfil</dt><dd>{roleNames[actor.role]} · {perfilDetalle[actor.role]}</dd></div>
+      <div><dt>Puesto</dt><dd>{puestoNombres[puesto]}</dd></div>
+      <div><dt>Permiso</dt><dd>{roleNames[actor.role]} · {perfilDetalle[actor.role]}</dd></div>
     </dl>
-    <div className="account-menu-row"><span>Tema</span><ThemePicker /></div>
-    <div className="account-menu-row"><span>Letra grande</span><TextSizeSwitch /></div>
+    {/* En el móvil, tema, letra y puesto viven en Más; aquí solo en escritorio, que no tiene Más. */}
+    {!hoja && <div className="account-menu-row"><span>Tema</span><ThemePicker /></div>}
+    {!hoja && <div className="account-menu-row"><span>Letra grande</span><TextSizeSwitch /></div>}
     <nav className="account-menu-links" aria-label="Accesos de la cuenta">
+      {hoja && <Link href="/mas" onClick={onClose}><Palette size={16} strokeWidth={1.7} aria-hidden="true" />Puesto, tema y letra</Link>}
+      {!hoja && <Link href="/mas" onClick={onClose}><Palette size={16} strokeWidth={1.7} aria-hidden="true" />Tu puesto</Link>}
       {veSeccion(actor.role, "/ajustes") && <Link href="/ajustes" onClick={onClose}><Settings size={16} strokeWidth={1.7} aria-hidden="true" />Ajustes</Link>}
-      {veSeccion(actor.role, "/configuracion/identidad") && <Link href="/configuracion/identidad" onClick={onClose}><Palette size={16} strokeWidth={1.7} aria-hidden="true" />Logo y colores de la empresa</Link>}
       <Link href="/ayuda" onClick={onClose}><CircleHelp size={16} strokeWidth={1.7} aria-hidden="true" />Ayuda</Link>
     </nav>
     <Salir />

@@ -6,14 +6,16 @@ import { useWorkspace } from "@/components/workspace-provider";
 import { ThemePicker } from "@/components/ui/theme-toggle";
 import { TextSizeSwitch } from "@/components/ui/text-size-toggle";
 import { CommandPalette } from "@/components/command-palette";
-import { roleNames } from "@/lib/domain";
+import { roleNames, type Role } from "@/lib/domain";
+import { Select } from "@/components/ui/select";
+import { puestoDetalle, puestoNombres, puestos, type Puesto } from "@/lib/puestos";
 import { iniciales } from "@/lib/pasos";
 import { veSeccion } from "@/lib/navegacion";
 import { facturasDe, vencidas } from "@/lib/facturas";
 
 /** Tu cuenta y lo que no cabe en la barra inferior: en móvil, Clientes, Catálogo, Finanzas y Ajustes viven aquí. */
 export default function MasPage() {
-  const { actor, data, mode, notify } = useWorkspace();
+  const { actor, data, mode, notify, puesto, cambiarPuesto, verComo } = useWorkspace();
   const [superadmin, setSuperadmin] = useState(false);
   const [buscar, setBuscar] = useState(false);
   const [saliendo, setSaliendo] = useState(false);
@@ -47,7 +49,12 @@ export default function MasPage() {
   return (
     <div className="page mas-page">
       <h1 className="pl-title">Más</h1>
-      <div className="pl-card mas-account"><span className="avatar avatar-ink avatar-big" aria-hidden="true">{iniciales(actor.name)}</span><span><strong>{actor.name}</strong><small>{roleNames[actor.role]} · {data.organization_name}</small></span></div>
+      <div className="pl-card mas-account"><span className="avatar avatar-ink avatar-big" aria-hidden="true">{iniciales(actor.name)}</span><span><strong>{actor.name}</strong><small>{puestoNombres[puesto]} · {roleNames[actor.role]} · {data.organization_name}</small></span></div>
+      <section className="pl-card mas-list" aria-label="Tu puesto">
+        <div className="mas-row mas-pref"><span>Tu puesto</span><Select label="Tu puesto" size="sm" value={puesto} onChange={(p: Puesto) => { cambiarPuesto(p); notify(`Plano se ordena ahora para ${puestoNombres[p].toLocaleLowerCase()}`); }} options={puestos.map(p => ({ value: p, label: puestoNombres[p], hint: puestoDetalle[p] }))} /></div>
+        {verComo && <div className="mas-row mas-pref"><span>Permiso <small className="muted">solo en la demostración</small></span><Select label="Permiso" size="sm" value={actor.role} onChange={(r: Role) => verComo(r)} options={(Object.keys(roleNames) as Role[]).map(r => ({ value: r, label: roleNames[r] }))} /></div>}
+        <p className="mas-note">El puesto decide qué ves primero; el permiso, qué puedes hacer. Hasta que se guarde en el servidor, el puesto se recuerda en este navegador.</p>
+      </section>
       <nav className="pl-card mas-list" aria-label="Secciones">
         {entradas.map(e => { const Icon = e.icon; return <Link key={e.href} href={e.href} className="mas-row"><Icon size={18} strokeWidth={1.6} aria-hidden="true" /><span>{e.label}</span>{e.aviso && <em>{e.aviso}</em>}<ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" /></Link>; })}
         <button type="button" className="mas-row" onClick={() => setBuscar(true)}><Search size={18} strokeWidth={1.6} aria-hidden="true" /><span>Buscar en Plano</span><ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" /></button>

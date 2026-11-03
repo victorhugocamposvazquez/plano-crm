@@ -1152,6 +1152,10 @@ button.article-card:hover { border-color: var(--pl-strong-line); box-shadow: var
 a.mas-row:hover, button.mas-row:hover { background: var(--pl-soft); }
 .mas-row > svg:first-child { flex-shrink: 0; color: var(--pl-muted); }
 .mas-row > span { flex: 1; min-width: 0; }
+.mas-pref { gap: 16px; }
+.mas-pref > span { display: flex; flex-direction: column; gap: 2px; }
+.mas-pref > span small { font-size: var(--pl-text-xs); }
+.mas-note { margin: 0; padding: 10px 16px 14px; color: var(--pl-muted); font-size: var(--pl-text-sm); line-height: var(--pl-leading-base); }
 .mas-row > svg:last-child { flex-shrink: 0; color: var(--pl-muted); }
 .mas-row em { color: var(--pl-danger); font-size: var(--pl-text-md); font-style: normal; font-weight: var(--pl-weight-medium); white-space: nowrap; }
 .mas-pref { justify-content: space-between; }

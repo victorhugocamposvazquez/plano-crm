@@ -1,12 +1,17 @@
 "use client";
 import { createContext, useContext, useState, useEffect, useCallback, useRef, type ReactNode } from "react";
-import { applyCommand, type Workspace, type Actor, type Command, type Document } from "@/lib/domain";
+import { applyCommand, type Workspace, type Actor, type Command, type Document, type Role } from "@/lib/domain";
+import { guardarPuesto, leerPuesto, puestoPorDefecto, type Puesto } from "@/lib/puestos";
 import { createDemo, demoActor } from "@/lib/demo";
 import { supabaseConfigured } from "@/lib/supabase/browser";
 import { readLocalFile, saveLocalFile } from "@/lib/local-files";
 
 const key = "plano.workspace.v1";
-type Context = { data: Workspace; actor: Actor; mode: "demo" | "supabase"; loading: boolean; error: string; notice: string; busy: boolean; refresh: () => Promise<void>; send: (command: Command) => Promise<Workspace>; upload: (file: File, projectId: string, category: Document["category"]) => Promise<Document>; fileUrl: (document: Document) => Promise<string>; notify: (message: string, action?: NoticeAction) => void; noticeAction: NoticeAction | null; dismissNotice: () => void };
+/** En la demostración se puede entrar con otro permiso para probar Plano como cada persona del equipo. */
+const demoRoleKey = "plano.demo.permiso";
+const roles: Role[] = ["admin", "office", "manager", "site", "viewer"];
+function demoRole(): Role { try { const raw = localStorage.getItem(demoRoleKey); return roles.includes(raw as Role) ? (raw as Role) : demoActor.role; } catch { return demoActor.role; } }
+type Context = { data: Workspace; actor: Actor; mode: "demo" | "supabase"; loading: boolean; error: string; notice: string; busy: boolean; refresh: () => Promise<void>; send: (command: Command) => Promise<Workspace>; upload: (file: File, projectId: string, category: Document["category"]) => Promise<Document>; fileUrl: (document: Document) => Promise<string>; puesto: Puesto; cambiarPuesto: (puesto: Puesto) => void; verComo: ((role: Role) => void) | null; notify: (message: string, action?: NoticeAction) => void; noticeAction: NoticeAction | null; dismissNotice: () => void };
 /** Acción opcional de un aviso: «Deshacer» para lo reversible (completar una tarea, moverla de día, quitar un filtro). */
 export type NoticeAction = { label: string; run: () => unknown };
 const WorkspaceContext = createContext<Context | null>(null);
@@ -21,6 +26,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const mode = supabaseConfigured() ? "supabase" : "demo";
   const [data, setData] = useState<Workspace>(() => ({ organization_id: "", organization_name: "PLANO", projects: [], articles: [], budgets: [], versions: [], tasks: [], purchases: [], documents: [], messages: [], activities: [], certifications: [] }));
   const [actor,setActor] = useState<Actor>(demoActor);
+  const [puesto,setPuesto] = useState<Puesto>(puestoPorDefecto(demoActor.role));
   const [loading,setLoading] = useState(true), [error,setError] = useState(""), [notice,setNotice] = useState(""), [noticeAction,setNoticeAction] = useState<NoticeAction | null>(null), [busy,setBusy] = useState(false);
   const lock = useRef(false);
   const pendingRequest = useRef<{ body: string; id: string } | null>(null);
@@ -32,7 +38,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       if (mode === "demo") {
         // La demostración se lee al instante: se espera un momento para no adelantarse a la hidratación de la página.
         await new Promise<void>(resolve => { const seguir = () => setTimeout(resolve, 60); if (document.readyState === "complete") seguir(); else window.addEventListener("load", seguir, { once: true }); });
-        const next = savedDemo(); if (!localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify(next)); setData(next);
+        const next = savedDemo(); if (!localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify(next)); setData(next); setActor({ ...demoActor, role: demoRole() });
       } else {
         const response = await fetch("/api/workspace", { cache: "no-store" });
         if (response.status === 401) { window.location.assign("/login"); return; }
@@ -43,6 +49,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     } catch (e) { setError(e instanceof Error ? e.message : "Error de conexión."); }
     finally { setLoading(false); }
   }, [mode]);
+  // El puesto se lee cuando ya se sabe quién eres y en qué empresa; si no se eligió, lo deduce el permiso.
+  useEffect(() => { if (data.organization_id) setPuesto(leerPuesto(data.organization_id, actor.id, actor.role)); }, [data.organization_id, actor.id, actor.role]);
+  const cambiarPuesto = useCallback((next: Puesto) => { setPuesto(next); if (data.organization_id) guardarPuesto(data.organization_id, actor.id, next); }, [data.organization_id, actor.id]);
+  const verComo = mode === "demo" ? (role: Role) => { try { localStorage.setItem(demoRoleKey, role); } catch { /* sin almacenamiento */ } setActor(a => ({ ...a, role })); } : null;
   useEffect(() => { void refresh(); const onStorage = (e: StorageEvent) => { if (e.key === key) void refresh(); }; window.addEventListener("storage", onStorage); return () => window.removeEventListener("storage", onStorage); }, [refresh]);
   async function send(command: Command): Promise<Workspace> {
     if (lock.current) throw new Error("Espera a que termine el guardado anterior.");
@@ -88,6 +98,8 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     if (mode === "demo") { const file = await readLocalFile(document.storage_path); if (!file) throw new Error("El archivo ya no está disponible en este navegador."); return URL.createObjectURL(file); }
     const response = await fetch(`/api/documents/${document.id}`); const body = await response.json(); if (!response.ok) throw new Error(body.error); return body.url as string;
   }
-  return <WorkspaceContext.Provider value={{ data, actor, mode, loading, error, notice, noticeAction, dismissNotice, busy, refresh, send, upload, fileUrl, notify }}>{children}</WorkspaceContext.Provider>;
+  return <WorkspaceContext.Provider value={{ data, actor, mode, loading, error, notice, noticeAction, dismissNotice, busy, refresh, send, upload, fileUrl, notify, puesto, cambiarPuesto, verComo }}>{children}</WorkspaceContext.Provider>;
 }
 export function useWorkspace() { const value = useContext(WorkspaceContext); if (!value) throw new Error("WorkspaceProvider missing"); return value; }
+/** Puesto actual con respaldo por si una prueba monta la pantalla sin proveedor completo. */
+export function usePuesto(): Puesto { const { puesto, actor } = useWorkspace(); return puesto ?? puestoPorDefecto(actor?.role ?? "office"); }
