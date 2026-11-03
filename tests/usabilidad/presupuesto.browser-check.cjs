@@ -14,7 +14,9 @@ const ws=page=>page.evaluate(()=>JSON.parse(localStorage.getItem('plano.workspac
  const errors=[];
  try{
   const context=await browser.newContext({viewport:{width:1280,height:900}});
-  const page=await context.newPage();page.setDefaultTimeout(20000);
+  const page=await context.newPage();
+  // El aviso de desarrollo de Next se pone sobre la esquina inferior izquierda y tapa el botón de la cuenta: no forma parte de Plano.
+  await page.addInitScript(()=>{const add=()=>{const css=document.createElement('style');css.textContent='nextjs-portal{display:none !important}';(document.head||document.documentElement)?.appendChild(css);};if(document.documentElement)add();else document.addEventListener('DOMContentLoaded',add);});page.setDefaultTimeout(20000);
   page.on('pageerror',e=>{errors.push(e.message);console.error(page.url(),e.message);});
   page.on('console',m=>{if(m.type()==='error' && !/favicon|Failed to load resource/.test(m.text())){errors.push(m.text().slice(0,300));console.error(page.url(),m.text().slice(0,300));}});
   const project=id(10),url=`${base}/proyectos/${project}`;

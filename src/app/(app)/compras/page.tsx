@@ -18,7 +18,7 @@ export default function ComprasPage() {
   return (
     <div className="page">
       <div>
-        <h1 className="pl-title">Todos los materiales</h1>
+        <h1 className="pl-title">Materiales</h1>
         <p className="subtitle">{loading ? "Cargando…" : `${totales.porPedir} por pedir · ${totales.pedidos} ${totales.pedidos === 1 ? "pedido" : "pedidos"} sin recibir · ${totales.recibidos} recibidos · ${totales.enObra} en obra`}</p>
       </div>
 

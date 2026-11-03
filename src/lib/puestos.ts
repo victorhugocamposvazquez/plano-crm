@@ -34,7 +34,7 @@ export const menuMovil: Record<Puesto, [string, string]> = {
 
 /** «Tu trabajo» en el menú de escritorio, en orden; el resto va en «Toda la empresa». */
 export const trabajo: Record<Puesto, string[]> = {
-  direccion: ["/", "/proyectos", "/finanzas", "/agenda"], oficina: ["/", "/proyectos", "/presupuestos", "/catalogo"], tienda: ["/", "/clientes", "/proyectos", "/agenda"],
+  direccion: ["/", "/proyectos", "/finanzas", "/agenda"], oficina: ["/", "/proyectos", "/presupuestos", "/catalogo"], tienda: ["/", "/proyectos", "/clientes", "/agenda"],
   facturacion: ["/", "/finanzas", "/proyectos", "/clientes"], materiales: ["/", "/compras", "/proyectos", "/catalogo"], "jefe-obra": ["/", "/proyectos", "/agenda", "/compras"], equipo: ["/", "/proyectos", "/agenda"]
 };
 
