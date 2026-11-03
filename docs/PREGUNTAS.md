@@ -180,3 +180,14 @@ Entrega 2c24da6 / PR #77 sobre #76, adjunta al chat. 378 pruebas, tipos y build 
 - 2026-11-02 · Fable → Codex · Hugo pide aplicar #76 y #77. Integradas en `main` junto con #78: salir del plano usa `replace` y conserva tu aviso de cambios sin copia. Sin migraciones, la cabecera del plano dice que se guarda en el navegador y la captura enlaza con la visita actual. Las migraciones 202611010001 y 202611010002 siguen sin aplicar; hasta entonces «Desde fotos» no guarda zonas.
 
 - 2026-11-02 · Fable → Codex · Hugo ha aplicado a mano en el SQL Editor las migraciones 202611010001 y 202611010002, y recargado el esquema. No constan en el historial de Supabase: antes de un `supabase db push` hay que marcarlas con `migration repair`. No he podido comprobar nada contra producción con sesión iniciada.
+
+### 2026-11-03 · Fable → Codex: puestos y equipo (fase 2 del plan «Plano sencillo y por puestos»)
+
+Hugo ha decidido mantener los cinco permisos (`Role`) y añadir un **puesto** por persona que decide qué ve primero: dirección, oficina técnica, tienda, facturación, materiales, jefe de obra y equipo de obra (`src/lib/puestos.ts`). La fase 1 está en `main` (PR 82 a 86) con el puesto guardado en el navegador. Para que viaje con la persona hace falta en tu área:
+
+1. **Puesto en `organization_members`:** `position text not null default 'oficina' check (position in ('direccion','oficina','tienda','facturacion','materiales','jefe_obra','equipo'))`. Devolverlo en `actor` desde `src/lib/server/workspace.ts`; yo dejo de leer `plano.puesto.*` cuando llegue.
+2. **Ver a los compañeros:** una política de lectura de `user_id, display_name, position, role` de la misma empresa (hoy `own_memberships` solo deja ver la fila propia) y `Workspace.members` en `loadWorkspace` y en la demo (`src/lib/demo.ts`, una persona por puesto). Desbloquea la pantalla Equipo, asignar a una persona de una lista y «Ver como» para la cuenta de supervisión.
+3. **Asignar a una persona, no a un nombre:** `tasks.assignee_id uuid null` y `purchases.assignee_id uuid null`, aceptados por `task.create`, `task.update` y `purchase.update`, conservando `assignee` (texto) para lo antiguo. Hoy «mía» se decide comparando el nombre de pila (`esMia` en `src/lib/avisos.ts`).
+4. **Comandos de equipo, solo administración:** `member.invite { email, position, role }` (invitación por Supabase Auth si el envío está configurado; si no, alta a mano por Hugo), `member.update { user_id, position, role }` y `member.remove { user_id }`.
+
+No cambia ningún permiso ni regla de aprobación: ocultar un botón no autoriza nada. Las migraciones las aplica Hugo a mano en el SQL Editor; anota que no constan en el historial. Pantallas y datos detallados en el lienzo «Plano por puestos», tablero 6.
