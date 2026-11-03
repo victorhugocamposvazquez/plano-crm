@@ -14,7 +14,9 @@ const ws=page=>page.evaluate(()=>JSON.parse(localStorage.getItem('plano.workspac
  const errors=[];
  try{
   const context=await browser.newContext({viewport:{width:1280,height:900}});
-  const page=await context.newPage();page.setDefaultTimeout(20000);
+  const page=await context.newPage();
+  // El aviso de desarrollo de Next se pone sobre la esquina inferior izquierda y tapa el botón de la cuenta: no forma parte de Plano.
+  await page.addInitScript(()=>{const add=()=>{const css=document.createElement('style');css.textContent='nextjs-portal{display:none !important}';(document.head||document.documentElement)?.appendChild(css);};if(document.documentElement)add();else document.addEventListener('DOMContentLoaded',add);});page.setDefaultTimeout(20000);
   page.on('pageerror',e=>{errors.push(e.message);console.error(page.url(),e.message);});
   page.on('console',m=>{if(m.type()==='error' && !/favicon|Failed to load resource/.test(m.text())){errors.push(m.text().slice(0,300));console.error(page.url(),m.text().slice(0,300));}});
   const project=id(10),url=`${base}/proyectos/${project}`;
@@ -134,7 +136,7 @@ const ws=page=>page.evaluate(()=>JSON.parse(localStorage.getItem('plano.workspac
   await page.goto(`${base}/`);await page.getByRole('navigation',{name:'Principal'}).getByRole('button',{name:'Crear'}).click();await expect(page.getByRole('dialog',{name:'Crear'}).getByRole('menuitem',{name:/^Tarea/})).toBeVisible();await page.keyboard.press('Escape');
   await page.getByRole('button',{name:/^Tu cuenta/}).click();await page.getByRole('button',{name:'Tu cuenta',exact:true}).click();await expect(page.getByRole('dialog').getByRole('link',{name:'Puesto, tema y letra'})).toBeVisible();await expect(page.getByRole('dialog').getByRole('group',{name:'Tema de la interfaz'})).toHaveCount(0);await page.keyboard.press('Escape');
   await page.goto(`${base}/mas`);await expect(page.getByRole('group',{name:'Tema de la interfaz'})).toBeVisible();await expect(page.getByRole('button',{name:'Tu puesto'})).toBeVisible();
-  const otro=id(11);await page.goto(`${base}/proyectos/${otro}`);await expect(page.getByRole('navigation',{name:'Apartados del proyecto'})).toBeVisible();await expect(page.getByRole('navigation',{name:'Principal'})).toBeVisible();await expect(page.getByRole('link',{name:'Inicio'}).locator('visible=true')).toHaveCount(1);await expect(page.getByRole('tablist',{name:'Secciones del proyecto'})).not.toBeVisible();
+  const otro=id(11);await page.goto(`${base}/proyectos/${otro}`);await expect(page.getByRole('navigation',{name:'Apartados del proyecto'})).toBeVisible();await expect(page.getByRole('navigation',{name:'Principal'})).toBeVisible();await expect(page.getByRole('link',{name:'Inicio'}).locator('visible=true')).toHaveCount(0);await expect(page.getByRole('link',{name:'Proyectos'}).locator('visible=true').first()).toBeVisible();await expect(page.getByRole('tablist',{name:'Secciones del proyecto'})).not.toBeVisible();
   await page.getByRole('button',{name:/^Presupuesto/}).first().click();await expect(page.getByRole('button',{name:/^Enviar V\d+ al cliente/})).toBeVisible();await expect(page.getByRole('navigation',{name:'Principal'})).not.toBeVisible();
   await page.getByRole('button',{name:'Añadir',exact:true}).click();const hoja=page.getByRole('dialog',{name:'Añadir del catálogo'});await expect(hoja.getByRole('link',{name:'Plano'})).toBeVisible();await hoja.getByRole('button',{name:'Cerrar'}).click();
   console.log('Composición móvil correcta');

@@ -105,6 +105,8 @@
   --pl-topbar: 77px;
   --pl-header-desktop: 52px;
   --pl-phone-bar: 48px;
+  /* Aire entre bloques en móvil: cada tarjeta respira. */
+  --pl-space-block: 20px;
   --pl-search-height: 60px;
 
   --pl-icon: 19px;

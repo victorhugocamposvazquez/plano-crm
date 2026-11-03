@@ -2,16 +2,16 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowRight, Check } from "lucide-react";
-import { useWorkspace } from "@/components/workspace-provider";
-import { Pill } from "@/components/ui/status";
+import { useWorkspace, usePuesto } from "@/components/workspace-provider";
 import { Button, LinkButton } from "@/components/ui/button";
 import { TaskDialog } from "@/components/project/task-dialog";
 import { budgetHistory } from "@/lib/budget-history";
 import { Onboarding } from "@/components/onboarding";
 import { InstallHint } from "@/components/install-hint";
 import { emitidas, facturasDe, sumaBase } from "@/lib/facturas";
-import { queToca } from "@/lib/siguiente-paso";
-import { enlacePaso, quienActua, quienEtiqueta, textoMovimiento } from "@/lib/pasos";
+import { textoMovimiento } from "@/lib/pasos";
+import { loTuyo, resumenOtras, tituloTuyo } from "@/lib/lo-tuyo";
+import { puestoNombres } from "@/lib/puestos";
 import { veSeccion } from "@/lib/navegacion";
 import { can, dateLabel, money, totals, type Task, type Workspace } from "@/lib/domain";
 import { buildAgenda, greeting, localDate, longDate } from "@/lib/hoy";
@@ -40,18 +40,17 @@ export default function HoyPage() {
   const { data, actor, loading, busy, send, notify } = useWorkspace();
   const today = localDate();
   const agenda = useMemo(() => buildAgenda(data, today), [data, today]);
-  const toca = useMemo(() => queToca(data, today), [data, today]);
-  const conQuien = useMemo(() => toca.map(x => ({ ...x, quien: quienActua(data, x.project, today) })).filter(x => x.quien !== "al-dia"), [toca, data, today]);
-  const orden = { atrasado: 0, "te-espera": 1, cliente: 2, "al-dia": 3 };
-  const piden = [...conQuien].sort((a, b) => orden[a.quien] - orden[b.quien]);
-  const primero = piden.find(x => x.quien === "te-espera") ?? piden.find(x => x.quien === "atrasado");
+  const puesto = usePuesto();
+  // Una sola fuente para Hoy, la barra y el menú: lo tuyo según el puesto, y lo que espera a otros.
+  const { tuyas, otras } = useMemo(() => loTuyo(data, actor, puesto, today), [data, actor, puesto, today]);
+  const primero = tuyas[0];
   const nuevas = useMemo(() => novedades(data, actor.name), [data, actor.name]);
   const cifras = useMemo(() => empresa(data, today), [data, today]);
   const [pendingId, setPendingId] = useState<string | null>(null);
   const [abierta, setAbierta] = useState<Task | null>(null);
   const canToggle = can(actor.role, "task.toggle");
   const firstName = actor.name.split(/[\s·]+/)[0] ?? "";
-  const esperan = conQuien.filter(x => x.quien === "te-espera").length;
+  const esperan = tuyas.length;
 
   async function toggle(task: Task) {
     if (!canToggle || busy) return;
@@ -65,56 +64,62 @@ export default function HoyPage() {
 
   const resumen = loading ? "Cargando…" : [
     longDate(today).replace(/^./, c => c.toUpperCase()),
-    esperan ? `${esperan} ${esperan === 1 ? "cosa te espera" : "cosas te esperan"}` : "nada te espera",
+    esperan ? `${esperan} ${esperan === 1 ? "cosa te toca" : "cosas te tocan"}` : "nada te toca",
     agenda.overdue.length ? `${agenda.overdue.length} ${agenda.overdue.length === 1 ? "tarea atrasada" : "tareas atrasadas"}` : ""
   ].filter(Boolean).join(" · ");
   const tareasHoy = [...agenda.overdue, ...agenda.today];
-  const verEmpresa = veSeccion(actor.role, "/finanzas");
+  const verEmpresa = puesto === "direccion" && veSeccion(actor.role, "/finanzas");
 
   return (
     <div className="page today">
       <div className="today-main">
         <div className="solo-escritorio"><h1 className="pl-title">{greeting()}{firstName ? `, ${firstName}` : ""}</h1><p className="pl-sub">{resumen}</p></div>
-        <div className="solo-movil today-phone-head"><small>{longDate(today).replace(/^./, c => c.toUpperCase())}</small><h1 className="pl-title">Hoy</h1></div>
+        <div className="solo-movil today-phone-head"><small>{longDate(today).replace(/^./, c => c.toUpperCase())} · {puestoNombres[puesto]}</small><h1 className="pl-title">Hoy</h1></div>
         <Onboarding />
         <InstallHint />
 
-        {piden.length > 0 && <section className="solo-movil phone-todo" aria-label="Te esperan a ti">
-          <h2 className="phone-section"><span>Te esperan a ti</span><span className="pl-mono">{piden.filter(x => x.quien !== "cliente").length}</span></h2>
-          {piden.filter(x => x.quien !== "cliente").slice(0, 4).map(({ project, paso, quien }, i) => (
-            <article key={project.id} className="todo-card" data-tone={quienEtiqueta[quien].tone}>
-              <header><strong>{project.name}</strong>{quien !== "te-espera" && <span>{quienEtiqueta[quien].label}</span>}</header>
-              <small>{[project.client_name, project.location].filter(Boolean).join(" · ")}</small>
-              <p>{paso.titulo}</p>
-              <LinkButton variant={i === 0 ? "primary" : "secondary"} href={enlacePaso(project.id, paso)}>{paso.label || "Ver proyecto"}</LinkButton>
+        {tuyas.length > 0 && <section className="solo-movil phone-todo" aria-label={tituloTuyo[puesto]}>
+          <h2 className="phone-section"><span>{tituloTuyo[puesto]}</span><span className="pl-mono">{tuyas.length}</span></h2>
+          {tuyas.slice(0, 4).map((c, i) => (
+            <article key={c.id} className="todo-card" data-tone={c.tono}>
+              <header><span>{c.kicker}</span></header>
+              <strong>{c.titulo}</strong>
+              {c.detalle && <small>{c.detalle}</small>}
+              <LinkButton variant={i === 0 ? "primary" : "secondary"} href={c.href}>{c.label}</LinkButton>
             </article>
           ))}
+          {tuyas.length > 4 && <Link href="/proyectos?quien=yo" className="link-inline text-sm">Ver las {tuyas.length}</Link>}
         </section>}
 
         {primero && (
-          <section className="first-card solo-escritorio" data-tone={quienEtiqueta[primero.quien].tone} aria-label="Lo primero">
-            <div className="first-card-kicker">Lo primero · {quienEtiqueta[primero.quien].label.toLowerCase()}</div>
+          <section className="first-card solo-escritorio" data-tone={primero.tono} aria-label="Lo primero">
+            <div className="first-card-kicker">Lo primero · {primero.kicker}</div>
             <div className="first-card-body">
-              <div><strong>{primero.paso.titulo}</strong><p>{primero.project.name}{primero.project.location ? ` · ${primero.project.location}` : ""}. {primero.paso.detalle}</p></div>
-              <LinkButton variant="primary" data-accent="orange" href={enlacePaso(primero.project.id, primero.paso)}>{primero.paso.label}</LinkButton>
+              <div><strong>{primero.titulo}</strong><p>{primero.detalle}</p></div>
+              <LinkButton variant="primary" data-accent="orange" href={primero.href}>{primero.label}</LinkButton>
             </div>
           </section>
         )}
-        {!primero && !loading && <section className="first-card today-calm" data-tone="success" aria-label="Lo primero"><div className="first-card-body"><div><strong>Hoy no hay nada urgente</strong><p>Ningún proyecto te está esperando.</p></div></div></section>}
+        {!primero && !loading && <section className="first-card today-calm" data-tone="success" aria-label="Lo primero"><div className="first-card-body"><div><strong>Hoy no hay nada urgente</strong><p>Nada de {puestoNombres[puesto].toLocaleLowerCase()} está esperando.</p></div></div></section>}
 
-        {piden.length > 0 && (
-          <section className="pl-card solo-escritorio" aria-label="Proyectos que piden algo">
-            <header className="pl-card-head"><strong>Proyectos que piden algo</strong><Link href="/proyectos">Ver todos →</Link></header>
+        {tuyas.length > 1 && (
+          <section className="pl-card solo-escritorio" aria-label={tituloTuyo[puesto]}>
+            <header className="pl-card-head"><strong>{tituloTuyo[puesto]} <span className="muted" style={{ fontWeight: 400 }}>· {tuyas.length}</span></strong><Link href="/proyectos">Ver todos →</Link></header>
             <div className="need-list">
-              {piden.slice(0, 6).map(({ project, paso, quien }) => (
-                <Link key={project.id} href={enlacePaso(project.id, paso)} className="need-row">
-                  <span className="need-text"><strong>{project.name}{project.location ? <span> · {project.location}</span> : null}</strong><small>{paso.titulo}</small></span>
-                  <Pill label={quienEtiqueta[quien].label} tone={quienEtiqueta[quien].tone} />
-                  <span className="need-action">{paso.label || "Ver proyecto"} <ArrowRight size={14} strokeWidth={1.8} aria-hidden="true" /></span>
+              {tuyas.slice(1, 6).map(c => (
+                <Link key={c.id} href={c.href} className="need-row">
+                  <span className="need-text"><strong>{c.titulo}{c.detalle ? <span> · {c.detalle}</span> : null}</strong><small>{c.kicker}</small></span>
+                  <span className="need-action">{c.label} <ArrowRight size={14} strokeWidth={1.8} aria-hidden="true" /></span>
                 </Link>
               ))}
             </div>
           </section>
+        )}
+        {otras.length > 0 && (
+          <details className="pl-card otras">
+            <summary>Esperan a otros <span className="muted">· {resumenOtras(otras)}</span></summary>
+            {otras.slice(0, 6).map(c => <Link key={c.id} href={c.href} className="news-row" data-tone={c.tono}><span>{c.titulo}<small>{c.kicker}{c.detalle ? ` · ${c.detalle}` : ""}</small></span></Link>)}
+          </details>
         )}
 
         <section className="pl-card" aria-label="Hoy en obra">
@@ -138,10 +143,6 @@ export default function HoyPage() {
       </div>
 
       <aside className="today-side" aria-label="Novedades y cifras">
-        {piden.some(x => x.quien === "cliente") && <section className="pl-card side-card solo-movil" aria-label="Esperando al cliente">
-          <strong>Esperando al cliente</strong>
-          {piden.filter(x => x.quien === "cliente").map(({ project, paso }) => <Link key={project.id} href={enlacePaso(project.id, paso)} className="news-row" data-tone="info"><span>{project.name}<small>{paso.titulo}</small></span></Link>)}
-        </section>}
         <section className="pl-card side-card">
           <strong>Novedades</strong>
           {nuevas.length === 0 && <p className="muted text-sm">Aún no hay novedades.</p>}

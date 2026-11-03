@@ -14,12 +14,18 @@ import { localDate } from "@/lib/hoy";
 import { finanzas } from "@/lib/resumen";
 import { comparar, csvGestoria, periodos, resumenPeriodo, seriesFinanzas, type Periodo, type Serie } from "@/lib/finanzas-periodo";
 import { useQueryState } from "@/lib/use-query-state";
+import { usePuesto } from "@/components/workspace-provider";
+import { puedesFacturarYa } from "@/lib/cobros";
+import { recordatorioFactura, vencidas } from "@/lib/facturas";
 
 const euros = (c: number) => (c === 0 ? "0 €" : c >= 100000 ? `${new Intl.NumberFormat("es-ES", { maximumFractionDigits: 1 }).format(c / 100000)} k€` : `${Math.round(c / 100)} €`);
 
 /** Lo aceptado, lo preparado para cobrar y lo que falta, por periodo y por proyecto. Importes sin IVA. */
 export default function FinanzasPage() {
   const { data, actor } = useWorkspace();
+  const puesto = usePuesto();
+  // Facturación entra en «Cobros»: tres cifras y lo que toca hoy. «Todo» conserva periodos, gráfica y tablas.
+  const [vista, setVista] = useQueryState<"cobros" | "todo">("vista", puesto === "facturacion" ? "cobros" : "todo");
   const [periodo, setPeriodo] = useQueryState<Periodo>("periodo", "mes");
   const [proyecto, setProyecto] = useQueryState<string>("proyecto", "");
   const [desplazamiento, setDesplazamiento] = useState(0);
@@ -40,6 +46,9 @@ export default function FinanzasPage() {
   const nombreProyecto = (id: string) => data.projects.find(p => p.id === id);
   const series = seriesFinanzas.filter(s => activas.has(s.id)).map(s => ({ ...s, values: r.series[s.id] }));
   const puedeFacturar = can(actor.role, "invoice.create");
+  const vencidasAhora = vencidas(todas, hoy), facturable = puedesFacturarYa(data).filter(x => !proyecto || x.project.id === proyecto);
+  const mes = hoy.slice(0, 7), cobradoMes = sumaBase(todas.filter(f => f.paid_on?.startsWith(mes)));
+  const recordar = (f: (typeof todas)[number]) => `https://wa.me/?text=${encodeURIComponent(recordatorioFactura(f))}`;
 
   function exportar() {
     const blob = new Blob([`﻿${csvGestoria(data, proyecto)}`], { type: "text/csv;charset=utf-8" });
@@ -66,6 +75,51 @@ export default function FinanzasPage() {
         </div>
       </div>
 
+      <div className="pl-seg fin-vista" role="group" aria-label="Qué ver">
+        <button type="button" aria-pressed={vista === "cobros"} onClick={() => setVista("cobros")}>Cobros</button>
+        <button type="button" aria-pressed={vista === "todo"} onClick={() => setVista("todo")}>Todo</button>
+      </div>
+
+      {vista === "cobros" && <div className="fin-cobros">
+        <div className="stat-row fin-cobros-cifras">
+          <div className="pl-card stat" data-tone={vencidasAhora.length ? "danger" : undefined}><span>Vencido · con IVA</span><strong className="pl-mono" data-tone={vencidasAhora.length ? "danger" : undefined}>{money(sumaTotal(vencidasAhora))}</strong><small>{vencidasAhora.length ? `${vencidasAhora.length} ${vencidasAhora.length === 1 ? "factura" : "facturas"}` : "Nada vencido"}</small></div>
+          <div className="pl-card stat"><span>Puedes facturar ya</span><strong className="pl-mono">{money(facturable.reduce((s, x) => s + x.importe, 0))}</strong><small>{facturable.length ? `${facturable.length} ${facturable.length === 1 ? "proyecto" : "proyectos"} · sin IVA` : "Nada pendiente por avance"}</small></div>
+          <div className="pl-card stat"><span>Cobrado este mes</span><strong className="pl-mono" data-tone="success">{money(cobradoMes)}</strong><small>sin IVA</small></div>
+        </div>
+
+        <section className="pl-card fin-due" aria-label="Vencidas">
+          <header className="pl-card-head"><strong>Vencidas</strong></header>
+          {vencidasAhora.length === 0 && <p className="muted text-sm" style={{ padding: "14px 16px", margin: 0 }}>Ninguna factura vencida.</p>}
+          {vencidasAhora.map(f => (
+            <div key={f.id} className="fin-cobro-row">
+              <button type="button" className="fin-due-row" onClick={() => setFacturaParam(f.id)} aria-haspopup="dialog"><span><strong>{f.number} · {nombreProyecto(f.project_id)?.name}</strong><small data-alerta>Venció el {f.due_date ? dateLabel(f.due_date) : "—"} · {f.client_name}</small></span><span className="pl-mono">{money(f.total)}</span></button>
+              <a className="btn btn-primary" data-accent="orange" href={recordar(f)} target="_blank" rel="noopener">Reclamar</a>
+            </div>
+          ))}
+        </section>
+
+        <section className="pl-card fin-due" aria-label="Puedes facturar ya">
+          <header className="pl-card-head"><strong>Puedes facturar ya</strong></header>
+          {facturable.length === 0 && <p className="muted text-sm" style={{ padding: "14px 16px", margin: 0 }}>Nada que facturar por avance de obra.</p>}
+          {facturable.map(x => (
+            <div key={x.project.id} className="fin-cobro-row">
+              <Link href={`/proyectos/${x.project.id}?s=cobros`} className="fin-due-row"><span><strong>{x.project.name}</strong><small>{x.progress} % de obra hecha · {x.project.client_name}</small></span><span className="pl-mono">{money(x.importe)}</span></Link>
+              {puedeFacturar && <Button onClick={() => setNueva({ project_id: x.project.id })}>Hacer la factura</Button>}
+            </div>
+          ))}
+        </section>
+
+        <section className="pl-card fin-due" aria-label="Pendientes de cobro">
+          <header className="pl-card-head"><strong>Emitidas, pendientes de cobro</strong></header>
+          {deudas.filter(f => estadoFactura(f, hoy) !== "vencida").length === 0 && <p className="muted text-sm" style={{ padding: "14px 16px", margin: 0 }}>Todo lo emitido está cobrado o vencido.</p>}
+          {deudas.filter(f => estadoFactura(f, hoy) !== "vencida").map(f => (
+            <button key={f.id} type="button" className="fin-due-row" onClick={() => setFacturaParam(f.id)} aria-haspopup="dialog"><span><strong>{f.number} · {nombreProyecto(f.project_id)?.name}</strong><small>Vence el {f.due_date ? dateLabel(f.due_date) : "—"} · {f.client_name}</small></span><span className="pl-mono">{money(f.total)}</span></button>
+          ))}
+        </section>
+        <p className="pl-note">Gráfica, trimestre, año y la tabla por proyecto siguen en «Todo».</p>
+      </div>}
+
+      {vista === "todo" && <>
       <div className="fin-controls">
         <div className="pl-seg" role="group" aria-label="Periodo">{periodos.map(p => <button key={p.id} type="button" aria-pressed={periodo === p.id} onClick={() => { setPeriodo(p.id); setDesplazamiento(0); }}><span className="solo-escritorio-inline">{p.label}</span><span className="solo-movil-inline">{{ semana: "Sem.", mes: "Mes", trimestre: "Trim.", ano: "Año" }[p.id]}</span></button>)}</div>
         <div className="fin-nav">
@@ -149,6 +203,7 @@ export default function FinanzasPage() {
         </>}
       </section>
       <p className="pl-note">Plano registra las facturas y les hace seguimiento: no sustituye a la factura oficial. Gastos, beneficio y margen aparecerán cuando Plano pueda registrar gastos; hoy no se muestran cifras aproximadas.</p>
+      </>}
       <InvoicePanel open={Boolean(nueva) || Boolean(facturaParam)} onClose={() => { setNueva(null); setFacturaParam(""); }} invoiceId={facturaParam || null} inicial={nueva ?? undefined} />
     </div>
   );
