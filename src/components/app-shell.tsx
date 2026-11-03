@@ -6,6 +6,7 @@ import { House, Layers2, CalendarDays, Users, Ellipsis, Plus, Search, BookOpen, 
 import { CommandPalette } from "@/components/command-palette";
 import { QuickCreateList, QuickCreatePanels, useQuickCreate, opcionesPara } from "@/components/quick-create";
 import { AccountMenu, AvatarRing, useAvisos } from "@/components/account-menu";
+import { BandContext, type Banda } from "@/components/band";
 import { Brand } from "@/components/ui/brand";
 import { Modal } from "@/components/ui/modal";
 import { Popover } from "@/components/ui/popover";
@@ -69,6 +70,7 @@ export function AppShell({ children }: { children: ReactNode }) {
   const [cuenta, setCuenta] = useState(false);
   const [cuentaMovil, setCuentaMovil] = useState(false);
   const [crearMovil, setCrearMovil] = useState(false);
+  const [banda, setBanda] = useState<Banda | null>(null);
   const [chats, setChats] = useState<"movil" | "escritorio" | null>(null);
   const crear = useQuickCreate();
   const { sinLeer: avisosSinLeer } = useAvisos();
@@ -137,8 +139,11 @@ export function AppShell({ children }: { children: ReactNode }) {
   const botonCrear = <button type="button" className="nav-plus" aria-label="Crear" aria-haspopup="dialog" aria-expanded={crearMovil} onClick={() => setCrearMovil(true)}><Plus size={22} strokeWidth={2} aria-hidden="true" /></button>;
   const migas = miga(pathname, data);
   // En móvil, las secciones que viven en Más vuelven a Más; una ficha de cliente, a Clientes.
-  const volver = pathname.startsWith("/clientes/") ? { href: "/clientes", label: "Clientes" } : pathname.startsWith("/configuracion/") ? { href: "/ajustes", label: "Ajustes" } : !raices.includes(pathname) && !pathname.startsWith("/proyectos/") ? { href: "/mas", label: "Más" } : null;
+  // Si la pantalla no ha dicho a dónde se vuelve, se deduce de la ruta. Los flujos de visita, plano y captura llevan su propia cabecera.
+  const porRuta: Banda | null = pathname.startsWith("/clientes/") ? { href: "/clientes", label: "Clientes" } : pathname.startsWith("/configuracion/") ? { href: "/ajustes", label: "Ajustes" } : /^\/proyectos\/[0-9a-f-]{36}$/.test(pathname) ? { href: "/proyectos", label: "Proyectos" } : !raices.includes(pathname) && !pathname.startsWith("/proyectos/") ? { href: "/mas", label: "Más" } : null;
+  const volver = banda ?? porRuta;
   return (
+    <BandContext.Provider value={{ banda, setBanda }}>
     <div className="shell">
       <a href="#contenido" className="skip-link">Saltar al contenido</a>
       <nav className="nav" aria-label="Principal">
@@ -164,18 +169,22 @@ export function AppShell({ children }: { children: ReactNode }) {
       </nav>
 
       <div className="shell-column">
-        <div className="phone-bar">
-          <Link prefetch={false} href="/" className="phone-bar-brand" aria-label="Inicio"><Brand /></Link>
+        <div className="phone-bar" data-volver={volver ? "" : undefined}>
+          {volver
+            ? (volver.href && !volver.onClick
+              ? <Link prefetch={false} href={volver.href} className="phone-back"><ChevronLeft size={20} strokeWidth={1.8} aria-hidden="true" /><span>{volver.label}</span></Link>
+              : <button type="button" className="phone-back" onClick={volver.onClick}><ChevronLeft size={20} strokeWidth={1.8} aria-hidden="true" /><span>{volver.label}</span></button>)
+            : <Link prefetch={false} href="/" className="phone-bar-brand" aria-label="Inicio"><Brand /></Link>}
           {raices.includes(pathname) && <div className="phone-tools">
           <button type="button" className="phone-tool" onClick={() => setSearch(true)} aria-label="Buscar en Plano"><Search size={19} strokeWidth={1.6} aria-hidden="true" /></button>
           {chatBoton("movil")}
           <button type="button" className="phone-avatar" onClick={() => setCuentaMovil(true)} aria-label={`Tu cuenta · ${actor.name}${avisosSinLeer ? ` · ${avisosSinLeer} avisos sin leer` : ""}`} aria-haspopup="dialog" aria-expanded={cuentaMovil}><AvatarRing name={actor.name} count={avisosSinLeer} /></button>
           </div>}
+          {!raices.includes(pathname) && (volver?.accion || proyectoActual) && <div className="phone-tools">
+            {volver?.accion && <button type="button" className="pill-action" onClick={volver.accion.onClick}>{volver.accion.label}</button>}
+            {proyectoActual && chatBoton("movil")}
+          </div>}
         </div>
-        {volver && <div className="phone-subnav">
-          <Link prefetch={false} href={volver.href} className="phone-back"><ChevronLeft size={18} strokeWidth={1.8} aria-hidden="true" />{volver.label}</Link>
-          {puedeCrear && <button type="button" className="phone-plus" aria-label="Crear" aria-haspopup="dialog" onClick={() => setCrearMovil(true)}><Plus size={18} strokeWidth={2} aria-hidden="true" /></button>}
-        </div>}
         <header className="deskbar">
           <nav className="crumbs" aria-label="Estás en">
             {migas.map((m, i) => <span key={`${m.label}-${i}`}>{i > 0 && <span aria-hidden="true"> › </span>}{m.href ? <Link prefetch={false} href={m.href}>{m.label}</Link> : <span aria-current="page">{m.label}</span>}</span>)}
@@ -194,5 +203,6 @@ export function AppShell({ children }: { children: ReactNode }) {
       <CommandPalette open={search} onClose={() => setSearch(false)} />
       {notice && <div className="notice" role="status"><span>{notice}</span>{noticeAction && <button type="button" className="notice-action" onClick={() => { const run = noticeAction.run; dismissNotice(); void run(); }}>{noticeAction.label}</button>}</div>}
     </div>
+    </BandContext.Provider>
   );
 }

@@ -32,6 +32,7 @@ import { pasoVisible, type TipoAccion } from "@/lib/siguiente-paso";
 import { pasoDe, pasos, quienActua, quienEtiqueta, textoMovimiento, tituloPaso } from "@/lib/pasos";
 import { veSeccion } from "@/lib/navegacion";
 import { seccionInicial, seccionesDelPuesto } from "@/lib/puestos";
+import { useBanda } from "@/components/band";
 import { claveCliente } from "@/lib/resumen";
 import { projectProgress, projectStatus, money, totals, dateLabel, kindNames, can, purchaseStatus, type Task, type Command } from "@/lib/domain";
 import "@/styles/project-workspace.css";
@@ -66,8 +67,6 @@ export default function ProyectoPage() {
   useEffect(()=>{setBorradorPlano(Boolean(cargarBorrador(id)));},[id]);
   const mensajes=data.messages.filter(m=>m.project_id===id);
   useEffect(()=>{if(chatAbierto)marcarVisto(id);},[chatAbierto,id,mensajes.length]);
-  const [sinLeerChat,setSinLeerChat]=useState(0);
-  useEffect(()=>{const contar=()=>setSinLeerChat(sinLeerPorProyecto(data.messages,actor.name).get(id) ?? 0);contar();window.addEventListener("plano:chat-visto",contar);return()=>window.removeEventListener("plano:chat-visto",contar);},[data.messages,actor.name,id]);
   const editBudget=()=>{if(editable)navigate({s:"budget",v:editable.id,vista:"items",editar:"1"});};
 
   async function crearPresupuesto() {
@@ -121,6 +120,8 @@ export default function ProyectoPage() {
   const pendingTasks=tasks.filter(t=>t.status==="pending"),doneTasks=tasks.filter(t=>t.status==="done");
   const documents=data.documents.filter(d=>d.project_id===id),purchases=data.purchases.filter(p=>p.project_id===id),cobros=data.certifications.filter(c=>c.project_id===id),facturas=facturasDe(data,id);
   const activities=data.activities.filter(a=>a.project_id===id);
+  // En móvil la banda fija hace de «Volver»: desde una sección, al resumen; desde el resumen, a Proyectos (lo deduce el armazón). Va antes de las salidas tempranas para no cambiar el orden de los hooks.
+  useBanda(!project || section==="overview"?null:{label:project.name,onClick:()=>selectSection("overview"),accion:section==="work" && can(actor.role,"task.create")?{label:"+ Tarea",onClick:()=>setSolicitud("tarea")}:undefined});
   if(!hydrated || loading)return <p className="muted">Cargando el proyecto…</p>;
   if(!project)return <div className="empty"><strong>Proyecto no encontrado</strong><LinkButton href="/proyectos" variant="ghost">Volver a proyectos</LinkButton></div>;
   const hoy=localDate();
@@ -151,10 +152,6 @@ export default function ProyectoPage() {
   const anteriorEnviada=history?.versions.find(v=>v.status==="issued" && (!approved || v.number>approved.number) && v.id!==versionEnviar?.id);
 
   return <div className="page project-workspace" data-seccion={section}>
-    {section!=="overview" && section!=="budget" && <div className="ficha-subnav">
-      <button type="button" className="phone-back" onClick={()=>selectSection("overview")}><ChevronLeft size={18} strokeWidth={1.8} aria-hidden="true"/>{project.name}</button>
-      {section==="work" && can(actor.role,"task.create") && <button type="button" className="pill-action" onClick={()=>setSolicitud("tarea")}>+ Tarea</button>}
-    </div>}
     {section!=="overview" && section!=="budget" && <h2 className="ficha-subtitle">{{work:"Obra",purchases:"Materiales",documents:"Planos y fotos",cobros:"Cobros"}[section]}</h2>}
     <header className="ficha-head">
       <BackLink fallback="/proyectos" compact>Proyectos</BackLink>
@@ -272,7 +269,6 @@ export default function ProyectoPage() {
     {section==="purchases" && <div className="ficha-enter"><PurchasesPanel projectId={project.id} purchases={purchases} approvedLabel={approved?`V${approved.number}`:undefined}/></div>}
     {section==="documents" && <div className="ficha-enter"><DocumentsPanel project={project} documents={documents}/></div>}
     {section==="cobros" && <div className="ficha-enter"><CobrosPanel projectId={project.id} cobros={cobros} facturas={facturas} approved={approved} progress={progress}/></div>}
-    <button type="button" className="ficha-fab" onClick={()=>navigate({chat:"1"})} aria-label={sinLeerChat?`Chat, ${sinLeerChat} sin leer`:"Chat"} aria-haspopup="dialog"><MessageSquare size={18} strokeWidth={1.8} aria-hidden="true"/>Chat{sinLeerChat>0 && <span className="avatar-count">{sinLeerChat}</span>}</button>
     <TaskDialog task={abierta?data.tasks.find(t=>t.id===abierta.id) ?? null:null} onClose={()=>setAbierta(null)}/>
     {editable && <BudgetEditor open={editando} onClose={()=>navigate({editar:null})} project={project} version={editable} guiaInicial={editable.items.length===0}/>}
     {versionEnviar && <SendDialog open={accion==="enviar"} onClose={()=>navigate({accion:null})} project={project} version={versionEnviar} approved={approved} previousSent={anteriorEnviada}/>}
