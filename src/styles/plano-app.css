@@ -133,6 +133,9 @@
   .nav-new-button span { display: inline; }
   .nav-new .popover-panel { width: auto; right: 0; }
   .nav-group { display: block; margin: 14px 10px 4px; color: var(--pl-muted); font-size: var(--pl-text-xs); }
+  .nav-group-toggle { display: flex; align-items: center; justify-content: space-between; width: calc(100% - 20px); min-height: 32px; padding: 0; border: 0; background: none; font: inherit; font-size: var(--pl-text-xs); color: var(--pl-muted); cursor: pointer; text-align: left; }
+  .nav-group-toggle:hover { color: var(--pl-ink); }
+  .nav-item[data-plegado] { display: none; }
   .nav-item, .nav-item:not([data-primary]) { font-size: var(--pl-text-ui); padding: 7px 10px; min-height: 38px; align-items: center; color: var(--pl-ink); }
   .nav-item[aria-current="page"] { background: var(--pl-selected); }
   .nav-item[aria-current="page"]::after { display: none; }
@@ -215,6 +218,16 @@
 /* ---------- Hoy ---------- */
 .today { display: grid; grid-template-columns: minmax(0, 1fr); gap: 20px; }
 .today-main, .today-side { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
+/* Lo que espera a otros: plegado, una fila por cosa */
+.otras { overflow: hidden; }
+.otras > summary { display: flex; align-items: center; gap: 6px; min-height: 48px; padding: 0 18px; font-size: var(--pl-text-ui); font-weight: var(--pl-weight-medium); list-style: none; cursor: pointer; }
+.otras > summary > .muted { flex: 1; min-width: 0; font-weight: var(--pl-weight-regular); }
+.otras > summary { white-space: nowrap; }
+.otras > summary > .muted { white-space: normal; }
+.otras > summary::-webkit-details-marker { display: none; }
+.otras > summary::before { content: ""; width: 7px; height: 7px; border-right: 1.5px solid var(--pl-muted); border-bottom: 1.5px solid var(--pl-muted); transform: rotate(-45deg); transition: transform 0.15s; flex-shrink: 0; }
+.otras[open] > summary::before { transform: rotate(45deg); }
+.otras .news-row { border-top: var(--pl-hairline) solid var(--pl-line); }
 .first-card { border: var(--pl-hairline) solid var(--pl-line); border-radius: var(--pl-radius-card); background: var(--pl-surface); overflow: hidden; }
 .first-card[data-tone="warning"] { border-color: var(--pl-warning-line); }
 .first-card[data-tone="info"] { border-color: var(--pl-info-line); }
@@ -985,6 +998,11 @@ button.article-card:hover { border-color: var(--pl-strong-line); box-shadow: var
   .todo-card[data-tone="danger"] { border-color: var(--pl-danger-line); background: var(--pl-danger-bg); }
   .todo-card header { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
   .todo-card header strong { min-width: 0; font-size: var(--pl-text-ui); font-weight: var(--pl-weight-semibold); }
+  .todo-card > strong { font-size: var(--pl-text-ui); font-weight: var(--pl-weight-semibold); letter-spacing: var(--pl-tracking-ui); }
+  .todo-card[data-tone="info"] { border-color: var(--pl-info-line); background: var(--pl-info-bg); }
+  .todo-card[data-tone="info"] header span { color: var(--pl-info); }
+  .todo-card[data-tone="success"] { border-color: var(--pl-success-line); background: var(--pl-success-bg); }
+  .todo-card[data-tone="success"] header span { color: var(--pl-success); }
   .todo-card header span { flex-shrink: 0; color: var(--pl-warning); font-size: var(--pl-text-xs); font-weight: var(--pl-weight-semibold); }
   .todo-card[data-tone="danger"] header span { color: var(--pl-danger); }
   .todo-card > small { color: var(--pl-muted); font-size: var(--pl-text-md); }
@@ -1650,4 +1668,10 @@ button.fin-line { width: 100%; border-left: 0; border-right: 0; border-bottom: 0
   .material-name small.solo-movil-inline { display: block !important; color: var(--pl-muted); font-weight: var(--pl-weight-regular); }
   .material-action { height: var(--pl-touch); }
   .task-line { grid-template-columns: 22px minmax(0, 1fr) minmax(0, 150px) 64px 40px; min-height: var(--pl-touch); }
+}
+
+/* En móvil la línea de tarea ya dice responsable y fecha en el texto pequeño: sobran las columnas de escritorio. */
+@media (max-width: 767px) {
+  .task-line { grid-template-columns: auto minmax(0, 1fr); }
+  .task-line-who, .task-line-date { display: none; }
 }

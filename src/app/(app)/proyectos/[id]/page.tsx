@@ -7,8 +7,8 @@ import { Drawer } from "@/components/ui/drawer";
 import { BackLink } from "@/components/ui/back-link";
 import { TaskDialog } from "@/components/project/task-dialog";
 import { useQueryPatch } from "@/lib/use-query-state";
-import { useWorkspace } from "@/components/workspace-provider";
-import { Tabs } from "@/components/ui/tabs";
+import { useWorkspace, usePuesto } from "@/components/workspace-provider";
+import { Tabs, type TabOption } from "@/components/ui/tabs";
 import { Button, LinkButton } from "@/components/ui/button";
 import { Meter, progressTone } from "@/components/ui/status";
 import { localDate } from "@/lib/hoy";
@@ -31,6 +31,7 @@ import { marcarVisto, sinLeerPorProyecto } from "@/lib/chat-visto";
 import { pasoVisible, type TipoAccion } from "@/lib/siguiente-paso";
 import { pasoDe, pasos, quienActua, quienEtiqueta, textoMovimiento, tituloPaso } from "@/lib/pasos";
 import { veSeccion } from "@/lib/navegacion";
+import { seccionInicial, seccionesDelPuesto } from "@/lib/puestos";
 import { claveCliente } from "@/lib/resumen";
 import { projectProgress, projectStatus, money, totals, dateLabel, kindNames, can, purchaseStatus, type Task, type Command } from "@/lib/domain";
 import "@/styles/project-workspace.css";
@@ -44,8 +45,12 @@ export default function ProyectoPage() {
   const hydrated=useSyncExternalStore(subscribe,clientSnapshot,serverSnapshot);
   const {id}=useParams<{id:string}>(),params=useSearchParams(),navigate=useQueryPatch();
   const {data,loading,actor,busy,send,notify}=useWorkspace();
+  const puesto=usePuesto();
+  // Sin sección en la URL, la ficha abre donde trabaja cada puesto; las pestañas ponen primero lo suyo.
+  const ordenSecciones=[...seccionesDelPuesto[puesto],...sections.filter(s=>!seccionesDelPuesto[puesto].includes(s))];
+  const ordenPuesto=(xs:TabOption<Section>[])=>[...xs].sort((a,b)=>ordenSecciones.indexOf(a.id)-ordenSecciones.indexOf(b.id));
   const requested=params.get("s") as Section|null;
-  const section:Section=requested && sections.includes(requested)?requested:params.get("editar")==="1"?"budget":"overview";
+  const section:Section=requested && sections.includes(requested)?requested:params.get("editar")==="1"?"budget":seccionInicial[puesto];
   const selectSection=(s:Section)=>navigate({s:s==="overview"?null:s,editar:null,accion:null});
   const budgetId=params.get("p"),chatAbierto=params.get("chat")==="1",accion=params.get("accion");
   const [abierta,setAbierta]=useState<Task|null>(null),[pendingTask,setPendingTask]=useState<string|null>(null);
@@ -164,14 +169,14 @@ export default function ProyectoPage() {
         <ProjectMenu project={project} approvedVersion={approved} puedeEstimar={canBudget} onChat={()=>navigate({chat:"1"})} solicitud={solicitud} onAtendida={()=>setSolicitud(null)} planoHref={planoHref} fotosHref={fotosHref} onManual={aMano} borrador={editable}/>
       </div>
     </header>
-    <Tabs label="Secciones del proyecto" value={section} onChange={selectSection} options={[
+    <Tabs label="Secciones del proyecto" value={section} onChange={selectSection} options={ordenPuesto([
       {id:"overview",label:"Resumen"},
       {id:"budget",label:"Presupuesto",dot:working?.status==="draft"?"warning":working?.status==="issued"?"info":undefined},
       {id:"work",label:"Obra",hint:enObra?`${progress} %`:undefined,dot:pendingTasks.some(t=>t.due_date<hoy)?"danger":undefined},
       {id:"purchases",label:"Materiales",dot:esperando.length?"info":sinPedir?"warning":undefined},
       {id:"documents",label:"Planos y fotos",hint:documents.length?String(documents.length):undefined},
       {id:"cobros",label:"Cobros",dot:vencidas(facturasDe(data,id),hoy).length?"danger":undefined}
-    ]}/>
+    ])}/>
 
     {section==="overview" && <section className="ficha-resumen ficha-enter" aria-label="Resumen del proyecto">
       {verSiguiente && paso && <section className="first-card" data-tone={etiqueta.tone==="success"?"warning":etiqueta.tone} aria-label="Siguiente paso">
@@ -191,7 +196,7 @@ export default function ProyectoPage() {
           {id:"purchases" as const,icon:Package,tone:"danger",label:"Materiales",hint:materialDetalle},
           {id:"documents" as const,icon:ImageIcon,tone:"muted",label:"Planos y fotos",hint:documents.length?`${documents.length} archivo${documents.length===1?"":"s"}`:"Sin archivos"},
           {id:"cobros" as const,icon:Receipt,tone:"info",label:"Cobros",hint:approved?(facturasVencidas?`${facturasVencidas} ${facturasVencidas===1?"factura vencida":"facturas vencidas"}`:`Cobrado · ${money(facturado)} facturado, sin IVA`):"Cuando el cliente acepte",valor:approved||facturas.length?money(cobrado):""}
-        ].map(a=>{const Icon=a.icon;return <button key={a.id} type="button" className="ficha-list-row" onClick={()=>selectSection(a.id)}>
+        ].sort((a,b)=>ordenSecciones.indexOf(a.id)-ordenSecciones.indexOf(b.id)).map(a=>{const Icon=a.icon;return <button key={a.id} type="button" className="ficha-list-row" onClick={()=>selectSection(a.id)}>
           <span className="ficha-list-icon" data-tone={a.tone}><Icon size={17} strokeWidth={1.8} aria-hidden="true"/></span>
           <span className="ficha-list-text"><strong>{a.label}{a.actual && <span className="pulse-dot" aria-hidden="true"/>}</strong><small>{a.hint}</small></span>
           {a.valor && <span className="pl-mono ficha-list-value">{a.valor}</span>}

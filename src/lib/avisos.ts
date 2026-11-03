@@ -11,8 +11,9 @@ import { money, type Actor, type Workspace } from "./domain";
 export type TipoAviso = "mencion" | "atrasada" | "agenda" | "cliente" | "factura";
 export type Aviso = { id: string; tipo: TipoAviso; quien: string; texto: string; cuando: string; href: string };
 
-const primerNombre = (nombre: string) => nombre.split(/[\s·]+/)[0] ?? "";
-const esMia = (assignee: string, yo: string) => Boolean(yo) && normalizar(assignee).split(/[\s·,]+/).includes(normalizar(yo));
+export const primerNombre = (nombre: string) => nombre.split(/[\s·]+/)[0] ?? "";
+/** Una tarea es tuya si tu nombre de pila está en el campo «responsable» (texto libre hasta que exista assignee_id). */
+export const esMia = (assignee: string, yo: string) => Boolean(yo) && normalizar(assignee).split(/[\s·,]+/).includes(normalizar(yo));
 
 export function construirAvisos(data: Workspace, actor: Actor, hoy = localDate()): Aviso[] {
   const yo = primerNombre(actor.name), avisos: Aviso[] = [];
