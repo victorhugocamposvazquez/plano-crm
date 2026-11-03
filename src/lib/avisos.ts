@@ -12,8 +12,8 @@ export type TipoAviso = "mencion" | "atrasada" | "agenda" | "cliente" | "factura
 export type Aviso = { id: string; tipo: TipoAviso; quien: string; texto: string; cuando: string; href: string };
 
 export const primerNombre = (nombre: string) => nombre.split(/[\s·]+/)[0] ?? "";
-/** Una tarea es tuya si tu nombre de pila está en el campo «responsable» (texto libre hasta que exista assignee_id). */
-export const esMia = (assignee: string, yo: string) => Boolean(yo) && normalizar(assignee).split(/[\s·,]+/).includes(normalizar(yo));
+/** El UUID decide la asignación; solo los datos antiguos sin ID usan el nombre de pila. */
+export const esMia = (assignee: string, yo: string, assigneeId?: string | null, actorId?: string) => assigneeId ? assigneeId === actorId : Boolean(yo) && normalizar(assignee).split(/[\s·,]+/).includes(normalizar(yo));
 
 export function construirAvisos(data: Workspace, actor: Actor, hoy = localDate()): Aviso[] {
   const yo = primerNombre(actor.name), avisos: Aviso[] = [];
@@ -28,7 +28,7 @@ export function construirAvisos(data: Workspace, actor: Actor, hoy = localDate()
   const isoManana = localDate(manana);
   for (const t of data.tasks) {
     if (t.status !== "pending") continue;
-    const mia = esMia(t.assignee, yo);
+    const mia = esMia(t.assignee, yo, t.assignee_id, actor.id);
     if (t.due_date < hoy && (mia || seVeTodo)) avisos.push({ id: `a-${t.id}`, tipo: "atrasada", quien: t.title, texto: `venció el ${new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short" }).format(new Date(`${t.due_date}T12:00:00`))} · ${nombre(t.project_id)}`, cuando: `${t.due_date}T12:00:00`, href: `/proyectos/${t.project_id}?s=work` });
     else if (mia && (t.due_date === hoy || t.due_date === isoManana)) avisos.push({ id: `g-${t.id}-${t.due_date}`, tipo: "agenda", quien: t.title, texto: `${t.due_date === hoy ? "hoy" : "mañana"} · ${nombre(t.project_id)}`, cuando: `${t.due_date}T08:00:00`, href: `/proyectos/${t.project_id}?s=work` });
   }

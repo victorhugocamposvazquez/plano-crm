@@ -11,7 +11,7 @@ beforeAll(async()=>{
   db=new PGlite();
   await db.exec(`
     create role anon nologin; create role authenticated nologin;
-    create schema auth; create table auth.users(id uuid primary key);
+    create schema auth; create table auth.users(id uuid primary key,email text,invited_at timestamptz);
     create function auth.uid() returns uuid language sql stable as $$select nullif(current_setting('request.jwt.claim.sub',true),'')::uuid$$;
     grant usage on schema auth to authenticated; grant execute on function auth.uid() to authenticated;
     create schema storage;
@@ -27,8 +27,8 @@ beforeEach(async()=>{
   await db.exec(`reset role; truncate public.organizations cascade; truncate auth.users cascade; truncate storage.objects;`);
   await db.query(`insert into auth.users(id) select unnest($1::uuid[])`,[[admin,site,viewer,manager,outsider]]);
   await db.query(`insert into public.organizations(id,name) values($1,'GARAL prueba'),($2,'Otra empresa')`,[org,otherOrg]);
-  for(const [id,role] of [[admin,"admin"],[site,"site"],[viewer,"viewer"],[manager,"manager"]]) await db.query(`insert into public.organization_members values($1,$2,$3,$4)`,[org,id,`Usuario ${role}`,role]);
-  await db.query(`insert into public.organization_members values($1,$2,'Otra persona','admin')`,[otherOrg,outsider]);
+  for(const [id,role] of [[admin,"admin"],[site,"site"],[viewer,"viewer"],[manager,"manager"]]) await db.query(`insert into public.organization_members(organization_id,user_id,display_name,role) values($1,$2,$3,$4)`,[org,id,`Usuario ${role}`,role]);
+  await db.query(`insert into public.organization_members(organization_id,user_id,display_name,role) values($1,$2,'Otra persona','admin')`,[otherOrg,outsider]);
 });
 afterAll(async()=>{await db?.close();});
 async function asUser<T>(user:string,fn:()=>Promise<T>):Promise<T>{
@@ -415,5 +415,65 @@ describe("Preparación PDF persistente en PostgreSQL",()=>{
     await expect(save(f.projectId,modified)).rejects.toThrow(/PDF original/);
     expect((await db.query("select * from plan_captures")).rows).toHaveLength(0);
     await expect(save(f.projectId,f.draft,-1)).rejects.toThrow(/no válida/);
+  });
+});
+
+describe("Puestos, compañeros y responsables aislados por empresa",()=>{
+  it("lee compañeros sin correos y no permite cambios de puestos a equipo ni consulta",async()=>{
+    const rows=await asUser(site,()=>db.query<{user_id:string;display_name:string;position:string;role:string}>("select user_id,display_name,position,role from organization_members order by user_id"));
+    expect(rows.rows).toHaveLength(4);expect(rows.rows.every(row=>Object.keys(row).sort().join(',')==='display_name,position,role,user_id')).toBe(true);
+    expect(rows.rows.some((row)=>row.user_id===outsider)).toBe(false);
+    for(const user of [site,viewer,manager])await expect(command({type:"member.update",user_id:admin,position:"direccion",role:"admin"},user)).rejects.toThrow(/permiso|administración/);
+    await expect(asUser(site,()=>db.exec("update organization_members set position='direccion'"))).rejects.toThrow(/permission denied/);
+    await command({type:"member.update",user_id:manager,position:"jefe_obra",role:"manager"});
+    expect((await asUser(site,()=>db.query<{position:string}>("select position from organization_members where user_id=$1",[manager]))).rows[0].position).toBe("jefe_obra");
+  });
+  it("protege al último admin, la baja propia, los puestos desconocidos y la pertenencia",async()=>{
+    await expect(command({type:"member.remove",user_id:admin})).rejects.toThrow(/ti mismo/);
+    await expect(command({type:"member.update",user_id:admin,position:"oficina",role:"office"})).rejects.toThrow(/conservar/);
+    await expect(command({type:"member.update",user_id:manager,position:"inventado",role:"manager"})).rejects.toThrow(/no válidos/);
+    await expect(command({type:"member.remove",user_id:outsider})).rejects.toThrow(/encontrada/);
+    await command({type:"member.update",user_id:manager,position:"direccion",role:"admin"});
+    await command({type:"member.update",user_id:admin,position:"oficina",role:"office"});
+    await expect(command({type:"member.update",user_id:manager,position:"equipo",role:"site"})).rejects.toThrow(/administración/);
+    await expect(command({type:"member.update",user_id:manager,position:"oficina",role:"office"},manager)).rejects.toThrow(/conservar/);
+  });
+  it("asigna UUID de compañero y deriva nombre; rechaza otra empresa en tareas y compras",async()=>{
+    const p=await project();
+    await command({type:"task.create",project_id:p,title:"Visita",trade:"Obra",assignee_id:manager,assignee:"Falso",due_date:"2026-11-03",weight:5});
+    const t=(await db.query<{id:string;assignee:string;assignee_id:string}>("select id,assignee,assignee_id from tasks")).rows[0];
+    expect(t).toMatchObject({assignee_id:manager,assignee:"Usuario manager"});
+    await expect(command({type:"task.update",id:t.id,assignee_id:outsider})).rejects.toThrow(/empresa/);
+    await expect(command({type:"task.create",project_id:p,title:"Otra",trade:"Obra",assignee_id:outsider,due_date:"2026-11-03",weight:1})).rejects.toThrow(/empresa/);
+    await command({type:"task.update",id:t.id,title:"Cambio"});expect((await db.query<{assignee_id:string}>("select assignee_id from tasks")).rows[0].assignee_id).toBe(manager);
+    await command({type:"purchase.create",project_id:p,name:"Material",supplier:"Ejemplo",quantity:2,unit:"ud"});
+    const purchase=(await db.query<{id:string}>("select id from purchases")).rows[0].id;
+    await expect(command({type:"purchase.update",id:purchase,assignee_id:outsider})).rejects.toThrow(/empresa/);
+    await command({type:"purchase.update",id:purchase,assignee_id:manager,assignee:"Falso"});
+    expect((await db.query("select assignee_id,assignee,status from purchases")).rows[0]).toEqual({assignee_id:manager,assignee:"Usuario manager",status:"planned"});
+    await command({type:"member.remove",user_id:manager});
+    expect((await db.query("select assignee_id,assignee from tasks")).rows[0]).toEqual({assignee_id:null,assignee:"Usuario manager"});
+    expect((await db.query("select assignee_id,assignee from purchases")).rows[0]).toEqual({assignee_id:null,assignee:"Usuario manager"});
+    await command({type:"task.update",id:t.id,assignee:"Equipo externo"});expect((await db.query("select assignee_id,assignee from tasks")).rows[0]).toEqual({assignee_id:null,assignee:"Equipo externo"});
+  });
+  it("prepara una invitación una vez, oculta el correo y bloquea su reclamo repetido",async()=>{
+    const key=demoId(910),input={type:"member.invite",email:"persona@example.test",role:"site",position:"equipo"};
+    const prepare=(user=admin)=>asUser(user,()=>db.query("select execute_command($1,$2::jsonb,$3)",[org,JSON.stringify(input),key]));
+    await expect(prepare(site)).rejects.toThrow(/permiso/);await prepare();await prepare();
+    expect((await db.query("select * from member_invitations")).rows).toHaveLength(1);
+    expect((await asUser(site,()=>db.query("select * from member_invitations"))).rows).toHaveLength(0);
+    await expect(asUser(site,()=>db.query("select command from command_receipts"))).rejects.toThrow(/permission denied/);
+    expect(JSON.stringify((await asUser(site,()=>db.query("select text from activities"))).rows)).not.toContain(input.email);
+    expect((await asUser(outsider,()=>db.query("select * from member_invitations"))).rows).toHaveLength(0);
+    await expect(asUser(site,()=>db.query("select claim_member_invitation($1,$2)",[org,key]))).rejects.toThrow(/permiso/);
+    const claim=await asUser(admin,()=>db.query<{claim:{send:boolean}}>("select claim_member_invitation($1,$2) as claim",[org,key]));expect(claim.rows[0].claim.send).toBe(true);
+    await expect(asUser(admin,()=>db.query("select claim_member_invitation($1,$2)",[org,key]))).rejects.toThrow(/ya se ha iniciado/);
+    const invited=demoId(911);await db.query("insert into auth.users(id,email,invited_at) values($1,'persona@example.test',statement_timestamp())",[invited]);
+    await expect(asUser(admin,()=>db.query("select complete_member_invitation($1,$2,$3)",[org,key,outsider]))).rejects.toThrow(/corresponde/);
+    const recovered=await asUser(admin,()=>db.query<{claim:{user_id:string;send:boolean}}>("select claim_member_invitation($1,$2) as claim",[org,key]));expect(recovered.rows[0].claim).toMatchObject({user_id:invited,send:false});
+    await asUser(admin,()=>db.query("select complete_member_invitation($1,$2,$3)",[org,key,invited]));
+    await asUser(admin,()=>db.query("select complete_member_invitation($1,$2,$3)",[org,key,invited]));
+    expect((await db.query("select position,role,display_name from organization_members where user_id=$1",[invited])).rows[0]).toEqual({position:"equipo",role:"site",display_name:"Persona invitada"});
+    expect((await db.query("select * from member_invitations where status='sent'")).rows).toHaveLength(1);
   });
 });

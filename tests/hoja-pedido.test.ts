@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import { pedidosPorProveedor, lineasHoja, numeroHoja, proveedorSlug } from "@/lib/hoja-pedido";
 import type { Purchase } from "@/lib/domain";
 
-const base = { organization_id: "o", project_id: "p", unit: "ud" as const, received_quantity: 0, delivered_quantity: 0 };
+const base = { assignee_id: null, assignee: "", organization_id: "o", project_id: "p", unit: "ud" as const, received_quantity: 0, delivered_quantity: 0 };
 const compras: Purchase[] = [
   { ...base, id: "1", name: "Placas", supplier: "Almacén Pérez", quantity: 10, status: "planned" },
   { ...base, id: "2", name: "Tornillería", supplier: "almacen perez", quantity: 5, status: "ordered" },

@@ -107,3 +107,41 @@ describe("Permisos y seguimiento",()=>{
   });
   it("el progreso refleja tareas ponderadas, no cobros",()=>{expect(projectProgress(createDemo(),demoId(10))).toBe(40);});
 });
+
+describe("Puestos, equipo y asignación por identidad",()=>{
+  it("el puesto no concede permisos y solo admin gestiona el equipo",()=>{
+    for(const role of ["office","manager","site","viewer"] as const){
+      const actor={...demoActor,role,position:"direccion" as const};
+      expect(()=>applyCommand(createDemo(),{type:"member.update",user_id:demoId(701),position:"tienda",role:"office"},actor)).toThrow(/permiso/);
+      expect(can(role,"member.remove")).toBe(false);expect(can(role,"member.invite")).toBe(false);
+    }
+    expect(can("site","purchase.update")).toBe(true);expect(can("manager","budget.approve")).toBe(false);
+  });
+  it("guarda puestos del servidor sin cambiar roles ni la versión aprobada",()=>{
+    const before=createDemo(),next=applyCommand(before,{type:"member.update",user_id:demoId(701),position:"facturacion",role:"office"},demoActor);
+    expect(next.members.find(m=>m.user_id===demoId(701))).toMatchObject({position:"facturacion",role:"office"});expect(next.versions).toEqual(before.versions);
+    expect(Object.keys(next.members[0]).sort()).toEqual(["display_name","position","role","user_id"]);
+    expect(new Set(next.members.map(m=>m.position)).size).toBe(6);
+    expect(()=>applyCommand(before,{type:"member.remove",user_id:demoActor.id},demoActor)).toThrow(/ti mismo/);
+    expect(()=>applyCommand(before,{type:"member.update",user_id:demoActor.id,position:"oficina",role:"office"},demoActor)).toThrow(/conservar/);
+  });
+  it("asigna por UUID con nombre del equipo, rechaza ajenos y conserva las asignaciones antiguas",()=>{
+    const before=createDemo();
+    let next=applyCommand(before,{type:"task.update",id:demoId(200),assignee_id:demoId(705),assignee:"Nombre manipulado"},demoActor);
+    expect(next.tasks[0]).toMatchObject({assignee_id:demoId(705),assignee:"Dani · Demo"});
+    next=applyCommand(next,{type:"task.update",id:demoId(200),title:"Nuevo título"},demoActor);
+    expect(next.tasks[0].assignee_id).toBe(demoId(705));
+    next=applyCommand(next,{type:"task.update",id:demoId(200),assignee:"Contrata externa"},demoActor);
+    expect(next.tasks[0]).toMatchObject({assignee_id:null,assignee:"Contrata externa"});
+    expect(()=>applyCommand(next,{type:"task.update",id:demoId(200),assignee_id:demoId(999)},demoActor)).toThrow(/empresa/);
+    next=applyCommand(next,{type:"purchase.update",id:demoId(300),assignee_id:demoId(704)},demoActor);
+    expect(next.purchases[0]).toMatchObject({assignee_id:demoId(704),assignee:"Pablo · Demo",status:"ordered",received_quantity:40});
+    const removed=applyCommand(next,{type:"member.remove",user_id:demoId(704)},demoActor);
+    expect(removed.purchases[0]).toMatchObject({assignee_id:null,assignee:"Pablo · Demo"});
+  });
+  it("crea una tarea asignada sin exigir texto duplicado y no simula correos en demo",()=>{
+    const next=applyCommand(createDemo(),{type:"task.create",project_id:demoId(10),title:"Visita",trade:"Obra",assignee_id:demoId(705),due_date:"2026-11-03",weight:5},demoActor);
+    expect(next.tasks.at(-1)).toMatchObject({assignee_id:demoId(705),assignee:"Dani · Demo"});
+    expect(()=>applyCommand(next,{type:"member.invite",email:"prueba@example.test",role:"site",position:"equipo"},demoActor)).toThrow(/no envía/);
+  });
+});

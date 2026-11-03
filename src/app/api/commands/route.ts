@@ -1,12 +1,20 @@
 import { can,commandSchema } from "@/lib/domain";
+import { inviteMember } from "@/lib/server/member-invitation";
 import { z } from "zod";
 import { authenticated,loadWorkspace } from "@/lib/server/workspace";
 import { ApiError,endpoint,body,json,databaseError } from "@/lib/server/http";
 export async function POST(request:Request) { return endpoint(async()=>{
   const command=await body(request,commandSchema), context=await authenticated();
   if(!can(context.actor.role,command.type)) throw new ApiError(403,"Tu perfil no tiene permiso para esta acción.");
+  if(command.type==="member.invite" && !request.headers.get("idempotency-key"))throw new ApiError(400,"La invitación necesita una clave de solicitud para evitar duplicados.");
   const requestId=z.uuid().parse(request.headers.get("idempotency-key") || crypto.randomUUID());
-  const {error}=await context.supabase.rpc("execute_command",{p_organization_id:context.organizationId,p_command:command,p_request_id:requestId});
-  if(error) databaseError(error);
-  return json({ workspace:await loadWorkspace(context) });
+  if(command.type==="member.invite")await inviteMember(context,command,requestId);
+  else { const {error}=await context.supabase.rpc("execute_command",{p_organization_id:context.organizationId,p_command:command,p_request_id:requestId});
+  if(error) {
+    const known=["La persona no pertenece a esta empresa.","La empresa debe conservar al menos una persona administradora.","No puedes quitarte a ti mismo del equipo.","Datos de equipo no válidos.","Persona no encontrada."];
+    if(known.includes(error.message ?? ""))throw new ApiError(error.code==="P0002"?404:400,error.message!);
+    databaseError(error);
+  } }
+  const workspace=await loadWorkspace(context),me=workspace.members?.find(m=>m.user_id===context.actor.id);
+  return json({ workspace, actor:me?{id:me.user_id,name:me.display_name,role:me.role,position:me.position}:context.actor });
 }); }

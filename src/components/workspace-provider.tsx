@@ -10,7 +10,7 @@ const key = "plano.workspace.v1";
 /** En la demostración se puede entrar con otro permiso para probar Plano como cada persona del equipo. */
 const demoRoleKey = "plano.demo.permiso";
 const roles: Role[] = ["admin", "office", "manager", "site", "viewer"];
-function demoRole(): Role { try { const raw = localStorage.getItem(demoRoleKey); return roles.includes(raw as Role) ? (raw as Role) : demoActor.role; } catch { return demoActor.role; } }
+function demoRole(fallback: Role = demoActor.role): Role { try { const raw = localStorage.getItem(demoRoleKey); return roles.includes(raw as Role) ? (raw as Role) : fallback; } catch { return fallback; } }
 type Context = { data: Workspace; actor: Actor; mode: "demo" | "supabase"; loading: boolean; error: string; notice: string; busy: boolean; refresh: () => Promise<void>; send: (command: Command) => Promise<Workspace>; upload: (file: File, projectId: string, category: Document["category"]) => Promise<Document>; fileUrl: (document: Document) => Promise<string>; puesto: Puesto; cambiarPuesto: (puesto: Puesto) => void; verComo: ((role: Role) => void) | null; notify: (message: string, action?: NoticeAction) => void; noticeAction: NoticeAction | null; dismissNotice: () => void };
 /** Acción opcional de un aviso: «Deshacer» para lo reversible (completar una tarea, moverla de día, quitar un filtro). */
 export type NoticeAction = { label: string; run: () => unknown };
@@ -20,11 +20,15 @@ function savedDemo(): Workspace {
   if (!raw) return createDemo();
   const parsed = JSON.parse(raw);
   if (!parsed.organization_id || !Array.isArray(parsed.projects) || !Array.isArray(parsed.versions) || !Array.isArray(parsed.certifications)) throw new Error("No se ha podido abrir la demostración guardada. Conserva los datos del navegador y contacta con soporte.");
+  // Completa la demo antigua sin vincular nombres libres a UUID por suposición.
+  parsed.members ??= createDemo().members;
+  parsed.tasks = parsed.tasks.map((t: Workspace["tasks"][number]) => ({...t,assignee_id:t.assignee_id ?? null}));
+  parsed.purchases = parsed.purchases.map((p: Workspace["purchases"][number]) => ({...p,assignee_id:p.assignee_id ?? null,assignee:p.assignee ?? ""}));
   return parsed;
 }
 export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const mode = supabaseConfigured() ? "supabase" : "demo";
-  const [data, setData] = useState<Workspace>(() => ({ organization_id: "", organization_name: "PLANO", projects: [], articles: [], budgets: [], versions: [], tasks: [], purchases: [], documents: [], messages: [], activities: [], certifications: [] }));
+  const [data, setData] = useState<Workspace>(() => ({ organization_id: "", organization_name: "PLANO", members: [], projects: [], articles: [], budgets: [], versions: [], tasks: [], purchases: [], documents: [], messages: [], activities: [], certifications: [] }));
   const [actor,setActor] = useState<Actor>(demoActor);
   const [puesto,setPuesto] = useState<Puesto>(puestoPorDefecto(demoActor.role));
   const [loading,setLoading] = useState(true), [error,setError] = useState(""), [notice,setNotice] = useState(""), [noticeAction,setNoticeAction] = useState<NoticeAction | null>(null), [busy,setBusy] = useState(false);
@@ -38,7 +42,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       if (mode === "demo") {
         // La demostración se lee al instante: se espera un momento para no adelantarse a la hidratación de la página.
         await new Promise<void>(resolve => { const seguir = () => setTimeout(resolve, 60); if (document.readyState === "complete") seguir(); else window.addEventListener("load", seguir, { once: true }); });
-        const next = savedDemo(); if (!localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify(next)); setData(next); setActor({ ...demoActor, role: demoRole() });
+        const next = savedDemo(); if (!localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify(next)); setData(next); const me=next.members.find(m=>m.user_id===demoActor.id)!; setActor({id:me.user_id,name:me.display_name,role:demoRole(me.role),position:me.position});
       } else {
         const response = await fetch("/api/workspace", { cache: "no-store" });
         if (response.status === 401) { window.location.assign("/login"); return; }
@@ -49,10 +53,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     } catch (e) { setError(e instanceof Error ? e.message : "Error de conexión."); }
     finally { setLoading(false); }
   }, [mode]);
-  // El puesto se lee cuando ya se sabe quién eres y en qué empresa; si no se eligió, lo deduce el permiso.
-  useEffect(() => { if (data.organization_id) setPuesto(leerPuesto(data.organization_id, actor.id, actor.role)); }, [data.organization_id, actor.id, actor.role]);
-  const cambiarPuesto = useCallback((next: Puesto) => { setPuesto(next); if (data.organization_id) guardarPuesto(data.organization_id, actor.id, next); }, [data.organization_id, actor.id]);
-  const verComo = mode === "demo" ? (role: Role) => { try { localStorage.setItem(demoRoleKey, role); } catch { /* sin almacenamiento */ } setActor(a => ({ ...a, role })); } : null;
+  // El puesto real viene del servidor. Cambiar la vista previa no modifica puesto ni permisos.
+  useEffect(() => { if (data.organization_id) setPuesto(mode==="demo" ? leerPuesto(data.organization_id,actor.id,actor.role,actor.position) : actor.position); }, [data.organization_id, actor.id, actor.role, actor.position, mode]);
+  const cambiarPuesto = useCallback((next: Puesto) => { setPuesto(next); if (mode === "demo" && data.organization_id) guardarPuesto(data.organization_id, actor.id, next); }, [data.organization_id, actor.id, mode]);
+  const verComo = mode === "demo" ? (role: Role) => { try { localStorage.setItem(demoRoleKey, role); } catch { /* sin almacenamiento */ } setActor(a => ({ ...a, role, position:puestoPorDefecto(role) })); } : null;
   useEffect(() => { void refresh(); const onStorage = (e: StorageEvent) => { if (e.key === key) void refresh(); }; window.addEventListener("storage", onStorage); return () => window.removeEventListener("storage", onStorage); }, [refresh]);
   async function send(command: Command): Promise<Workspace> {
     if (lock.current) throw new Error("Espera a que termine el guardado anterior.");
@@ -65,9 +69,10 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         const serialized = JSON.stringify(command);
         if (pendingRequest.current?.body !== serialized) pendingRequest.current = { body: serialized, id: crypto.randomUUID() };
         const response = await fetch("/api/commands", { method: "POST", headers: { "Content-Type": "application/json", "Idempotency-Key": pendingRequest.current.id }, body: serialized });
-        const result = await response.json(); if (!response.ok) throw new Error(result.error || "No se pudo guardar el cambio."); next = result.workspace;
+        const result = await response.json(); if (!response.ok) throw new Error(result.error || "No se pudo guardar el cambio."); next = result.workspace; if(result.actor)setActor(result.actor);
         pendingRequest.current = null;
       }
+      if(mode==="demo"){const me=next.members.find(m=>m.user_id===actor.id);if(me)setActor({...actor,name:me.display_name,position:me.position,role:demoRole(me.role)});}
       setData(next); return next;
     } finally { lock.current = false; setBusy(false); }
   }
@@ -102,4 +107,4 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
 }
 export function useWorkspace() { const value = useContext(WorkspaceContext); if (!value) throw new Error("WorkspaceProvider missing"); return value; }
 /** Puesto actual con respaldo por si una prueba monta la pantalla sin proveedor completo. */
-export function usePuesto(): Puesto { const { puesto, actor } = useWorkspace(); return puesto ?? puestoPorDefecto(actor?.role ?? "office"); }
+export function usePuesto(): Puesto { const { puesto, actor } = useWorkspace(); return puesto ?? actor?.position ?? puestoPorDefecto(actor?.role ?? "office"); }

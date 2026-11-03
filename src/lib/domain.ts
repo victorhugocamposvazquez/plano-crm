@@ -1,9 +1,13 @@
 import type { RoomDraft, RoomImport } from "./captura/room-draft";
 import type { PlanDraft } from "./captura/plan-draft";
 import { z } from "zod";
+import type { Puesto } from "./puestos";
+export const positionSchema = z.enum(["direccion", "oficina", "tienda", "facturacion", "materiales", "jefe_obra", "equipo"]);
+const roleSchema = z.enum(["admin", "office", "manager", "site", "viewer"]);
 
 export type Role = "admin" | "office" | "manager" | "site" | "viewer";
-export type Actor = { id: string; name: string; role: Role };
+export type Actor = { id: string; name: string; role: Role; position: Puesto };
+export type OrganizationMember = { user_id: string; display_name: string; position: Puesto; role: Role };
 export type Project = { id: string; organization_id: string; code: string; name: string; client_name: string; location: string; kind: "integral" | "partial" | "carpentry"; status: "lead" | "estimating" | "planning" | "active" | "completed"; created_at: string };
 export type Article = { id: string; organization_id: string; code: string; name: string; chapter: string; unit: string; unit_price: number; vat_rate: number };
 export type Budget = { id: string; organization_id: string; project_id: string; title: string; approved_version_id: string | null; created_at: string };
@@ -18,18 +22,21 @@ export type BudgetVersion = { id: string; organization_id: string; budget_id: st
 /** Cada guardado conserva cambios y fecha de servidor; las copias de versión no son ediciones. */
 export type BudgetItemEdit = { item_id: string; version_id: string; draft_revision: number; kind: ItemChange["kind"]; fields: string[]; occurred_at: string; actor_name: string };
 export type BudgetItemEvent = BudgetItemEdit & { id: string; organization_id: string; budget_id: string; actor_id: string; before_item?: BudgetItem; after_item?: BudgetItem };
-export type Task = { id: string; organization_id: string; project_id: string; title: string; trade: string; assignee: string; due_date: string; status: "pending" | "done"; weight: number };
-export type Purchase = { id: string; organization_id: string; project_id: string; name: string; supplier: string; quantity: number; received_quantity: number; delivered_quantity: number; unit: string; status: "planned" | "ordered" | "received" | "delivered" };
+export type Task = { id: string; organization_id: string; project_id: string; title: string; trade: string; assignee: string; assignee_id: string | null; due_date: string; status: "pending" | "done"; weight: number };
+export type Purchase = { id: string; organization_id: string; project_id: string; name: string; supplier: string; assignee: string; assignee_id: string | null; quantity: number; received_quantity: number; delivered_quantity: number; unit: string; status: "planned" | "ordered" | "received" | "delivered" };
 export type Document = { id: string; organization_id: string; project_id: string; name: string; category: "plan" | "contract" | "technical" | "before" | "during" | "after" | "other"; storage_path: string; mime_type: string; size_bytes: number; created_at: string };
 export type Message = { id: string; organization_id: string; project_id: string; body: string; author_name: string; created_at: string; edited_at?: string | null; deleted_at?: string | null; reactions?: Record<string, string[]> | null };
 export type Activity = { id: string; organization_id: string; project_id: string | null; text: string; actor_name: string; created_at: string };
 export type Certification = { id: string; organization_id: string; project_id: string; budget_version_id: string; title: string; amount: number; status: "draft"; created_at: string };
 /** Registro de factura: el número se asigna al enviarla, en serie anual sin huecos. No sustituye a la factura oficial. */
 export type Invoice = { id: string; organization_id: string; project_id: string; certification_id: string | null; client_name: string; concept: string; base: number; vat_rate: number; tax: number; total: number; status: "draft" | "sent" | "paid"; number: string | null; number_year: number | null; number_seq: number | null; issue_date: string | null; due_date: string | null; paid_on: string | null; created_by_name: string; created_at: string; updated_at: string };
-export type Workspace = { organization_id: string; organization_name: string; projects: Project[]; articles: Article[]; budgets: Budget[]; versions: BudgetVersion[]; tasks: Task[]; purchases: Purchase[]; documents: Document[]; messages: Message[]; activities: Activity[]; certifications: Certification[]; plan_captures?: PlanDraft[]; room_captures?: RoomDraft[]; room_imports?: RoomImport[]; budget_item_events?: BudgetItemEvent[]; invoices?: Invoice[] };
+export type Workspace = { organization_id: string; organization_name: string; members: OrganizationMember[]; projects: Project[]; articles: Article[]; budgets: Budget[]; versions: BudgetVersion[]; tasks: Task[]; purchases: Purchase[]; documents: Document[]; messages: Message[]; activities: Activity[]; certifications: Certification[]; plan_captures?: PlanDraft[]; room_captures?: RoomDraft[]; room_imports?: RoomImport[]; budget_item_events?: BudgetItemEvent[]; invoices?: Invoice[] };
 
 const text = z.string().trim().min(1).max(500);
 export const commandSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal("member.invite"), email: z.email().trim().toLowerCase().max(254), position: positionSchema, role: roleSchema }),
+  z.object({ type: z.literal("member.update"), user_id: z.uuid(), position: positionSchema, role: roleSchema }),
+  z.object({ type: z.literal("member.remove"), user_id: z.uuid() }),
   z.object({ type: z.literal("project.create"), name: text, client_name: text, location: z.string().trim().max(500), kind: z.enum(["integral", "partial", "carpentry"]) }),
   z.object({ type: z.literal("project.status"), id: z.uuid(), status: z.enum(["lead", "estimating", "planning", "active", "completed"]) }),
   z.object({ type: z.literal("budget.create"), project_id: z.uuid(), title: text }),
@@ -40,12 +47,12 @@ export const commandSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("article.create"), code: text, name: text, chapter: z.string().trim().min(1).max(120), unit: z.enum(["m²", "ml", "ud", "h", "global"]), unit_price: z.number().int().min(0).max(100000000), vat_rate: z.number().min(0).max(30).multipleOf(0.01) }),
   z.object({ type: z.literal("article.update"), id: z.uuid(), code: text.optional(), name: text.optional(), chapter: z.string().trim().min(1).max(120).optional(), unit: z.enum(["m²", "ml", "ud", "h", "global"]).optional(), unit_price: z.number().int().min(0).max(100000000).optional(), vat_rate: z.number().min(0).max(30).multipleOf(0.01).optional() }),
   z.object({ type: z.literal("article.delete"), id: z.uuid() }),
-  z.object({ type: z.literal("task.create"), project_id: z.uuid(), title: text, trade: text, assignee: z.string().max(120), due_date: z.iso.date(), weight: z.number().int().min(1).max(100) }),
+  z.object({ type: z.literal("task.create"), project_id: z.uuid(), title: text, trade: text, assignee: z.string().max(120).optional(), assignee_id: z.uuid().nullable().optional(), due_date: z.iso.date(), weight: z.number().int().min(1).max(100) }),
   z.object({ type: z.literal("task.toggle"), id: z.uuid(), status: z.enum(["pending", "done"]) }),
-  z.object({ type: z.literal("task.update"), id: z.uuid(), title: text.optional(), trade: text.optional(), assignee: z.string().max(120).optional(), due_date: z.iso.date().optional(), weight: z.number().int().min(1).max(100).optional() }),
+  z.object({ type: z.literal("task.update"), id: z.uuid(), title: text.optional(), trade: text.optional(), assignee: z.string().max(120).optional(), assignee_id: z.uuid().nullable().optional(), due_date: z.iso.date().optional(), weight: z.number().int().min(1).max(100).optional() }),
   z.object({ type: z.literal("task.delete"), id: z.uuid() }),
   z.object({ type: z.literal("purchase.create"), project_id: z.uuid(), name: text, supplier: text, quantity: z.number().positive().max(1000000), unit: z.enum(["m²", "ml", "ud", "h", "global"]) }),
-  z.object({ type: z.literal("purchase.update"), id: z.uuid(), status: z.enum(["planned", "ordered", "received", "delivered"]), received_quantity: z.number().min(0), delivered_quantity: z.number().min(0) }),
+  z.object({ type: z.literal("purchase.update"), id: z.uuid(), assignee_id: z.uuid().nullable().optional(), assignee: z.string().max(120).optional(), status: z.enum(["planned", "ordered", "received", "delivered"]).optional(), received_quantity: z.number().min(0).optional(), delivered_quantity: z.number().min(0).optional() }),
   z.object({ type: z.literal("message.send"), project_id: z.uuid(), body: z.string().trim().min(1).max(5000) }),
   z.object({ type: z.literal("message.edit"), id: z.uuid(), body: z.string().trim().min(1).max(5000) }),
   z.object({ type: z.literal("message.delete"), id: z.uuid() }),
@@ -100,6 +107,7 @@ export function compareVersions(before: BudgetVersion, after: BudgetVersion): It
 }
 export const impuestoFactura = (base: number, vatRate: number) => roundRatio(BigInt(base) * BigInt(Math.round(vatRate * 100)), 10000n);
 export function can(role: Role, action: Command["type"]) {
+  if (action.startsWith("member.")) return role === "admin";
   if (role === "viewer") return false;
   if (role === "site") return ["task.toggle", "message.send", "message.edit", "message.delete", "message.react", "document.add", "purchase.update"].includes(action);
   if (action === "budget.approve" || action === "certification.create" || action.startsWith("invoice.")) return role === "admin" || role === "office";
@@ -115,8 +123,27 @@ export function applyCommand(previous: Workspace, input: Command, actor: Actor, 
   if (projectId && !state.projects.some(p => p.id === projectId)) throw new Error("Proyecto no encontrado.");
   const version = (id: string) => { const v = state.versions.find(v => v.id === id); if (!v) throw new Error("Revisión no encontrada."); const b = state.budgets.find(b => b.id === v.budget_id)!; projectId = b.project_id; return { v, b }; };
   const newVersion = (budgetId: string, number: number, items: BudgetItem[], reason: string): BudgetVersion => ({ id: uuid(), organization_id: org, budget_id: budgetId, number, status: "draft", draft_revision: 0, items, notes: "", change_reason: reason, created_by_name: actor.name, created_at: now, updated_at: now, approved_at: null, approval_reference: null });
+  const assignment = (input: { assignee_id?: string | null; assignee?: string }, current = { assignee_id: null as string | null, assignee: "" }) => {
+    if (input.assignee_id) { const member = state.members.find(m => m.user_id === input.assignee_id); if (!member) throw new Error("La persona no pertenece a esta empresa."); return { assignee_id: member.user_id, assignee: member.display_name }; }
+    if (input.assignee_id === null || input.assignee !== undefined) return { assignee_id: null, assignee: input.assignee ?? "" };
+    return current;
+  };
   let activity = "";
   switch (command.type) {
+    case "member.invite": throw new Error("La demostración no envía invitaciones. El alta se realiza en Supabase Auth.");
+    case "member.update": {
+      const member = state.members.find(m => m.user_id === command.user_id); if (!member) throw new Error("Persona no encontrada.");
+      if (member.role === "admin" && command.role !== "admin" && state.members.filter(m => m.role === "admin").length <= 1) throw new Error("La empresa debe conservar al menos una persona administradora.");
+      member.role = command.role; member.position = command.position; activity = `Puesto y permiso actualizados: ${member.display_name}`; break;
+    }
+    case "member.remove": {
+      const member = state.members.find(m => m.user_id === command.user_id); if (!member) throw new Error("Persona no encontrada.");
+      if (member.user_id === actor.id) throw new Error("No puedes quitarte a ti mismo del equipo.");
+      if (member.role === "admin" && state.members.filter(m => m.role === "admin").length <= 1) throw new Error("La empresa debe conservar al menos una persona administradora.");
+      state.tasks.forEach(t => { if(t.assignee_id === member.user_id)t.assignee_id = null; });
+      state.purchases.forEach(p => { if(p.assignee_id === member.user_id)p.assignee_id = null; });
+      state.members = state.members.filter(m => m.user_id !== member.user_id); activity = `Persona retirada del equipo: ${member.display_name}`; break;
+    }
     case "project.create": {
       projectId = uuid();
       state.projects.unshift({ id: projectId, organization_id: org, code: `PL-${String(state.projects.length + 1).padStart(3, "0")}`, name: command.name, client_name: command.client_name, location: command.location, kind: command.kind, status: "lead", created_at: now });
@@ -182,15 +209,17 @@ export function applyCommand(previous: Workspace, input: Command, actor: Actor, 
     }
     case "task.create": {
       const { type: _, ...fields } = command; void _;
-      state.tasks.push({ id: uuid(), organization_id: org, ...fields, status: "pending" }); activity = `Tarea planificada: ${command.title}`; break;
+      state.tasks.push({ id: uuid(), organization_id: org, ...fields, ...assignment(command), status: "pending" }); activity = `Tarea planificada: ${command.title}`; break;
     }
     case "task.toggle": {
       const t = state.tasks.find(t => t.id === command.id); if (!t) throw new Error("Tarea no encontrada."); t.status = command.status; projectId = t.project_id; activity = `${t.status === "done" ? "Completada" : "Reabierta"}: ${t.title}`; break;
     }
     case "task.update": {
       const t = state.tasks.find(t => t.id === command.id); if (!t) throw new Error("Tarea no encontrada.");
+      const assigned = assignment(command,t);
       const { type: _, id: __, ...cambios } = command; void _; void __;
       Object.assign(t, Object.fromEntries(Object.entries(cambios).filter(([, v]) => v !== undefined)));
+      Object.assign(t, assigned);
       projectId = t.project_id; activity = `Tarea actualizada: ${t.title}`; break;
     }
     case "task.delete": {
@@ -199,13 +228,15 @@ export function applyCommand(previous: Workspace, input: Command, actor: Actor, 
     }
     case "purchase.create": {
       const { type: _, ...fields } = command; void _;
-      state.purchases.push({ id: uuid(), organization_id: org, ...fields, received_quantity: 0, delivered_quantity: 0, status: "planned" }); activity = `Material añadido: ${command.name}`; break;
+      state.purchases.push({ id: uuid(), organization_id: org, ...fields, assignee: "", assignee_id: null, received_quantity: 0, delivered_quantity: 0, status: "planned" }); activity = `Material añadido: ${command.name}`; break;
     }
     case "purchase.update": {
       const p = state.purchases.find(p => p.id === command.id); if (!p) throw new Error("Pedido no encontrado.");
-      if (command.received_quantity > p.quantity || command.delivered_quantity > command.received_quantity) throw new Error("Las cantidades entregadas no pueden superar las recibidas, ni estas las pedidas.");
-      if ((command.status === "planned" && command.received_quantity !== 0) || (command.status === "received" && command.received_quantity !== p.quantity) || (command.status === "delivered" && command.delivered_quantity !== p.quantity)) throw new Error("El estado no coincide con las cantidades recibidas o entregadas.");
-      p.status = command.status; p.received_quantity = command.received_quantity; p.delivered_quantity = command.delivered_quantity; projectId = p.project_id; activity = `${p.name}: ${purchaseStatus[p.status]}`; break;
+      const received = command.received_quantity ?? p.received_quantity, delivered = command.delivered_quantity ?? p.delivered_quantity, status = command.status ?? p.status;
+      if (received > p.quantity || delivered > received) throw new Error("Las cantidades entregadas no pueden superar las recibidas, ni estas las pedidas.");
+      if ((status === "planned" && received !== 0) || (status === "received" && received !== p.quantity) || (status === "delivered" && delivered !== p.quantity)) throw new Error("El estado no coincide con las cantidades recibidas o entregadas.");
+      Object.assign(p, assignment(command,p));
+      p.status = status; p.received_quantity = received; p.delivered_quantity = delivered; projectId = p.project_id; activity = `${p.name}: ${purchaseStatus[p.status]}`; break;
     }
     case "message.send": state.messages.push({ id: uuid(), organization_id: org, project_id: command.project_id, body: command.body, author_name: actor.name, created_at: now }); activity = "Mensaje en la conversación del proyecto"; break;
     case "message.edit": {

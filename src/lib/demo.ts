@@ -1,5 +1,5 @@
 import type { BudgetItem, Workspace, Actor } from "./domain";
-export const demoActor: Actor = { id: "00000000-0000-4000-8000-000000000001", name: "Alex · Demo", role: "admin" };
+export const demoActor: Actor = { id: "00000000-0000-4000-8000-000000000001", name: "Alex · Demo", role: "admin", position: "direccion" };
 export const demoId = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
 export function createDemo(): Workspace {
   const org = demoId(2), now = new Date();
@@ -26,6 +26,15 @@ export function createDemo(): Workspace {
   revised.push({ id: demoId(106), chapter: "Carpintería", description: "Armario a medida, dormitorio principal", quantity: 1, unit: "ud", unit_price: 166200, adjustment_percent: 0, vat_rate: 21, inclusion: "optional" });
   return {
     organization_id: org, organization_name: "GARAL · Demostración", projects, articles,
+    members: [
+      {user_id:demoActor.id,display_name:demoActor.name,position:"direccion",role:"admin"},
+      {user_id:demoId(701),display_name:"Marta · Demo",position:"oficina",role:"office"},
+      {user_id:demoId(702),display_name:"Lara · Demo",position:"tienda",role:"office"},
+      {user_id:demoId(703),display_name:"Noa · Demo",position:"facturacion",role:"office"},
+      {user_id:demoId(704),display_name:"Pablo · Demo",position:"materiales",role:"office"},
+      {user_id:demoId(705),display_name:"Dani · Demo",position:"jefe_obra",role:"manager"},
+      {user_id:demoId(706),display_name:"Ana · Demo",position:"equipo",role:"site"}
+    ],
     budgets: projects.slice(0,4).map((p,i) => ({ id: demoId(50+i), organization_id: org, project_id: p.id, title: i === 3 ? "Carpintería interior" : "Presupuesto de reforma", approved_version_id: i === 0 ? demoId(60) : null, created_at: date(-20) })),
     versions: [
       { id: demoId(60), organization_id: org, budget_id: demoId(50), number: 1, status: "approved", draft_revision: 1, items, notes: "Propuesta de demostración. Precios ficticios, sin validez comercial.", change_reason: "Propuesta inicial", created_by_name: "Marta · Demo", created_at: date(-20), updated_at: date(-18), approved_at: date(-18), approval_reference: "Aprobación ficticia para probar el flujo" },
@@ -33,18 +42,18 @@ export function createDemo(): Workspace {
       ...[1,2,3].map(i => ({ id: demoId(61+i), organization_id: org, budget_id: demoId(50+i), number: 1, status: "draft" as const, draft_revision: 0, items: structuredClone(i === 3 ? items.slice(3,4) : items.slice(0, i===1 ? 5 : 3)), notes: "Datos de ejemplo", change_reason: "Propuesta inicial", created_by_name: "Alex · Demo", created_at: date(-10), updated_at: date(-2), approved_at: null, approval_reference: null }))
     ],
     tasks: [
-      { id: demoId(200), organization_id: org, project_id: demoId(10), title: "Protecciones y preparación de la vivienda", trade: "Albañilería", assignee: "Equipo de obra", due_date: date(-10).slice(0,10), status: "done", weight: 10 },
-      { id: demoId(201), organization_id: org, project_id: demoId(10), title: "Demoliciones y retirada de escombros", trade: "Albañilería", assignee: "Equipo de obra", due_date: date(-5).slice(0,10), status: "done", weight: 30 },
-      { id: demoId(202), organization_id: org, project_id: demoId(10), title: "Replantear tabiquería con el electricista", trade: "Coordinación", assignee: "Alex", due_date: date(0).slice(0,10), status: "pending", weight: 20 },
-      { id: demoId(203), organization_id: org, project_id: demoId(10), title: "Ejecutar instalaciones y revestimientos", trade: "Instalaciones", assignee: "Equipo de obra", due_date: date(7).slice(0,10), status: "pending", weight: 40 },
-      { id: demoId(204), organization_id: org, project_id: demoId(12), title: "Desmontar cocina y proteger pavimento", trade: "Carpintería", assignee: "Dani", due_date: date(-2).slice(0,10), status: "done", weight: 30 },
-      { id: demoId(205), organization_id: org, project_id: demoId(12), title: "Confirmar medidas de la encimera", trade: "Carpintería", assignee: "Dani", due_date: date(0).slice(0,10), status: "pending", weight: 20 },
-      { id: demoId(206), organization_id: org, project_id: demoId(12), title: "Instalar muebles y rematar encuentros", trade: "Carpintería", assignee: "Dani", due_date: date(5).slice(0,10), status: "pending", weight: 50 },
-      { id: demoId(207), organization_id: org, project_id: demoId(11), title: "Revisar propuesta con el cliente", trade: "Oficina", assignee: "Marta", due_date: date(1).slice(0,10), status: "pending", weight: 10 }
+      { id: demoId(200), organization_id: org, project_id: demoId(10), title: "Protecciones y preparación de la vivienda", trade: "Albañilería", assignee_id: null, assignee: "Equipo de obra", due_date: date(-10).slice(0,10), status: "done", weight: 10 },
+      { id: demoId(201), organization_id: org, project_id: demoId(10), title: "Demoliciones y retirada de escombros", trade: "Albañilería", assignee_id: null, assignee: "Equipo de obra", due_date: date(-5).slice(0,10), status: "done", weight: 30 },
+      { id: demoId(202), organization_id: org, project_id: demoId(10), title: "Replantear tabiquería con el electricista", trade: "Coordinación", assignee_id: null, assignee: "Alex", due_date: date(0).slice(0,10), status: "pending", weight: 20 },
+      { id: demoId(203), organization_id: org, project_id: demoId(10), title: "Ejecutar instalaciones y revestimientos", trade: "Instalaciones", assignee_id: null, assignee: "Equipo de obra", due_date: date(7).slice(0,10), status: "pending", weight: 40 },
+      { id: demoId(204), organization_id: org, project_id: demoId(12), title: "Desmontar cocina y proteger pavimento", trade: "Carpintería", assignee_id: null, assignee: "Dani", due_date: date(-2).slice(0,10), status: "done", weight: 30 },
+      { id: demoId(205), organization_id: org, project_id: demoId(12), title: "Confirmar medidas de la encimera", trade: "Carpintería", assignee_id: null, assignee: "Dani", due_date: date(0).slice(0,10), status: "pending", weight: 20 },
+      { id: demoId(206), organization_id: org, project_id: demoId(12), title: "Instalar muebles y rematar encuentros", trade: "Carpintería", assignee_id: null, assignee: "Dani", due_date: date(5).slice(0,10), status: "pending", weight: 50 },
+      { id: demoId(207), organization_id: org, project_id: demoId(11), title: "Revisar propuesta con el cliente", trade: "Oficina", assignee_id: null, assignee: "Marta", due_date: date(1).slice(0,10), status: "pending", weight: 10 }
     ],
     purchases: [
-      { id: demoId(300), organization_id: org, project_id: demoId(10), name: "Placas de yeso laminado", supplier: "Proveedor de ejemplo", quantity: 80, unit: "m²", received_quantity: 40, delivered_quantity: 40, status: "ordered" },
-      { id: demoId(301), organization_id: org, project_id: demoId(12), name: "Muebles de cocina", supplier: "Taller de ejemplo", quantity: 1, unit: "global", received_quantity: 0, delivered_quantity: 0, status: "planned" }
+      { id: demoId(300), organization_id: org, project_id: demoId(10), name: "Placas de yeso laminado", supplier: "Proveedor de ejemplo", assignee_id: null, assignee: "", quantity: 80, unit: "m²", received_quantity: 40, delivered_quantity: 40, status: "ordered" },
+      { id: demoId(301), organization_id: org, project_id: demoId(12), name: "Muebles de cocina", supplier: "Taller de ejemplo", assignee_id: null, assignee: "", quantity: 1, unit: "global", received_quantity: 0, delivered_quantity: 0, status: "planned" }
     ],
     documents: [], certifications: [],
     invoices: [

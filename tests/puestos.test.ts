@@ -1,11 +1,11 @@
-import { describe, it, expect } from "vitest";
-import { menuMovil, permisoPorDefecto, puestoPorDefecto, puestos, seccionInicial, seccionesDelPuesto, trabajo, esPuesto } from "@/lib/puestos";
+import { describe, it, expect, vi, afterEach } from "vitest";
+import { leerPuesto, menuMovil, permisoPorDefecto, puestoPorDefecto, puestos, seccionInicial, seccionesDelPuesto, trabajo, esPuesto } from "@/lib/puestos";
 
 describe("Puestos", () => {
   it("cada permiso tiene un puesto por defecto y cada puesto un permiso orientativo", () => {
     expect(puestoPorDefecto("admin")).toBe("direccion");
     expect(puestoPorDefecto("office")).toBe("oficina");
-    expect(puestoPorDefecto("manager")).toBe("jefe-obra");
+    expect(puestoPorDefecto("manager")).toBe("jefe_obra");
     expect(puestoPorDefecto("site")).toBe("equipo");
     for (const p of puestos) expect(permisoPorDefecto[p]).toBeTruthy();
   });
@@ -24,7 +24,7 @@ describe("Puestos", () => {
       expect(trabajo[p][0]).toBe("/");
       expect(seccionesDelPuesto[p][0]).toBe(seccionInicial[p]);
     }
-    expect(seccionInicial["jefe-obra"]).toBe("work");
+    expect(seccionInicial["jefe_obra"]).toBe("work");
     expect(seccionInicial.facturacion).toBe("cobros");
     expect(seccionInicial.materiales).toBe("purchases");
   });
@@ -33,4 +33,10 @@ describe("Puestos", () => {
     expect(esPuesto("gerente")).toBe(false);
     expect(esPuesto(null)).toBe(false);
   });
+});
+
+afterEach(()=>vi.unstubAllGlobals());
+it("recupera el puesto legado de jefe de obra y usa el puesto oficial como respaldo",()=>{
+  vi.stubGlobal("localStorage",{getItem:()=>"jefe-obra"});expect(leerPuesto("empresa","persona","office")).toBe("jefe_obra");
+  vi.stubGlobal("localStorage",{getItem:()=>null});expect(leerPuesto("empresa","persona","office","materiales")).toBe("materiales");
 });

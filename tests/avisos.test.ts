@@ -4,7 +4,7 @@ import { createDemo, demoActor, demoId } from "@/lib/demo";
 
 const base = () => { const d = createDemo(); d.messages = []; d.tasks = []; d.invoices = []; return d; };
 const msg = (body: string, author = "Dani · Demo", extra = {}) => ({ id: demoId(900), organization_id: "o", project_id: demoId(10), body, author_name: author, created_at: "2026-10-30T10:00:00Z", ...extra });
-const tarea = (due: string, assignee = "Alex", extra = {}) => ({ id: demoId(901), organization_id: "o", project_id: demoId(10), title: "Pedir placa", trade: "Compras", assignee, due_date: due, status: "pending" as const, weight: 10, ...extra });
+const tarea = (due: string, assignee = "Alex", extra = {}) => ({ id: demoId(901), organization_id: "o", project_id: demoId(10), title: "Pedir placa", trade: "Compras", assignee_id: null, assignee, due_date: due, status: "pending" as const, weight: 10, ...extra });
 
 describe("avisos", () => {
   it("una mención a mi nombre avisa; la mía propia o a otro no", () => {
@@ -33,4 +33,12 @@ describe("avisos", () => {
     expect(avisosVisibles(lista, new Set(["a", "b", "c"])).map(a => a.id)).toEqual(["a", "d", "e"]);
     expect(avisosVisibles(lista, new Set(["a", "b", "c", "d", "e"])).map(a => a.id)).toEqual(["a", "b", "c"]);
   });
+});
+
+it("un UUID asignado prevalece sobre nombres repetidos o modificados",()=>{
+  const data=base(),actor={...demoActor,role:"site" as const};
+  data.tasks=[tarea("2026-11-03","Alex",{assignee_id:demoId(999)})];
+  expect(construirAvisos(data,actor,"2026-11-03")).toEqual([]);
+  data.tasks=[tarea("2026-11-03","Nombre antiguo",{assignee_id:actor.id})];
+  expect(construirAvisos(data,actor,"2026-11-03").map(a=>a.tipo)).toEqual(["agenda"]);
 });
