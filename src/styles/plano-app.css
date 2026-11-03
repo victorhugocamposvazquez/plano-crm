@@ -1677,3 +1677,28 @@ button.fin-line { width: 100%; border-left: 0; border-right: 0; border-bottom: 0
   .task-line { grid-template-columns: auto minmax(0, 1fr); }
   .task-line-who, .task-line-date { display: none; }
 }
+
+/* Finanzas → Cobros y Materiales → Por hacer: la vista de trabajo de facturación y de materiales */
+.fin-vista { align-self: flex-start; }
+.fin-cobros { display: flex; flex-direction: column; gap: var(--pl-space-block, 20px); }
+.fin-cobros-cifras { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.fin-cobros .stat > strong[data-tone="danger"] { color: var(--pl-danger); }
+.fin-cobros .stat > small { color: var(--pl-muted); font-size: var(--pl-text-sm); }
+.fin-cobro-row { display: flex; align-items: center; gap: 10px; padding-right: 14px; border-top: var(--pl-hairline) solid var(--pl-line); }
+.fin-cobro-row .fin-due-row { flex: 1; min-width: 0; border-top: 0; }
+.fin-cobro-row .btn { flex-shrink: 0; height: 36px; }
+a.fin-due-row { text-decoration: none; color: inherit; }
+.materiales-grupo { display: flex; flex-direction: column; gap: 12px; }
+.materiales-titulo { margin: 0; font-size: var(--pl-text-h3); font-weight: var(--pl-weight-semibold); letter-spacing: var(--pl-tracking-h3); }
+.materiales-titulo .pl-mono { margin-left: 6px; font-size: var(--pl-text-md); font-weight: var(--pl-weight-regular); }
+.materiales-enobra { padding: 0 14px 14px; }
+@media (max-width: 767px) {
+  .fin-cobros-cifras { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .fin-cobros .stat { padding: 12px 10px; }
+  .fin-cobros .stat > strong { font-size: var(--pl-text-h3); }
+  /* En móvil la fila ocupa todo el ancho y la acción baja a su propia línea, a ancho completo. */
+  .fin-cobro-row { flex-wrap: wrap; padding: 0 14px 12px 14px; }
+  .fin-cobro-row .fin-due-row { flex: 1 1 100%; padding-left: 0; padding-right: 0; }
+  .fin-cobro-row .btn { flex: 1 1 100%; height: 44px; }
+}
+
