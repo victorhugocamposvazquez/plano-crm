@@ -42,7 +42,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       if (mode === "demo") {
         // La demostración se lee al instante: se espera un momento para no adelantarse a la hidratación de la página.
         await new Promise<void>(resolve => { const seguir = () => setTimeout(resolve, 60); if (document.readyState === "complete") seguir(); else window.addEventListener("load", seguir, { once: true }); });
-        const next = savedDemo(); if (!localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify(next)); setData(next); const me=next.members.find(m=>m.user_id===demoActor.id)!; setActor({id:me.user_id,name:me.display_name,role:demoRole(me.role),position:me.position});
+        const next = savedDemo(); if (!localStorage.getItem(key)) localStorage.setItem(key, JSON.stringify(next)); setData(next); const me=next.members.find(m=>m.user_id===demoActor.id)!; const role=demoRole(me.role); setActor({id:me.user_id,name:me.display_name,role,position:role===me.role?me.position:puestoPorDefecto(role)});
       } else {
         const response = await fetch("/api/workspace", { cache: "no-store" });
         if (response.status === 401) { window.location.assign("/login"); return; }
@@ -72,7 +72,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
         const result = await response.json(); if (!response.ok) throw new Error(result.error || "No se pudo guardar el cambio."); next = result.workspace; if(result.actor)setActor(result.actor);
         pendingRequest.current = null;
       }
-      if(mode==="demo"){const me=next.members.find(m=>m.user_id===actor.id);if(me)setActor({...actor,name:me.display_name,position:me.position,role:demoRole(me.role)});}
+      if(mode==="demo"){const me=next.members.find(m=>m.user_id===actor.id);if(me){const role=demoRole(me.role);setActor({...actor,name:me.display_name,position:role===me.role?me.position:puestoPorDefecto(role),role});}}
       setData(next); return next;
     } finally { lock.current = false; setBusy(false); }
   }

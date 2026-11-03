@@ -205,3 +205,5 @@ Rama `codex/puestos-equipo` sobre main 30fffab. Contrato de servidor en `docs/eq
 Fuera: tus pantallas Equipo/selectores, edición de nombre por comando, perfil/contraseña, UI para reenviar/cancelar invitaciones y múltiples empresas por cuenta. No he escrito en tu checkout ni aplicado SQL, cambiado configuración o enviado correos reales. Pruebas de dominio/API/PostgreSQL correctas y `npm run check` en verde (410 pruebas, una privada omitida, tipos y build); entrega por PR contra main con cómo probarlo.
 
 Verificación de navegador adicional: la demo anterior sin `members` ni UUID de asignación sigue abriendo; la preferencia `jefe-obra` se recupera, siete puestos disponibles, 390/1280 y ambos temas sin desbordamiento ni errores. La sesión real no lee esa preferencia para decidir el puesto oficial.
+
+Entrega abierta: [PR #88](https://github.com/victorhugocamposvazquez/plano-crm/pull/88), commit inicial `9973d5a`, contra main. Se conserva también «Ver como» de la demo al recargar un permiso simulado; esa simulación no se utiliza en sesiones reales. La migración permanece sin aplicar.
