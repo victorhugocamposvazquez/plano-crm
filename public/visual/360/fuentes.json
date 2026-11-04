@@ -1,0 +1,33 @@
+{
+  "provider": "Poly Haven",
+  "license": "CC0-1.0",
+  "license_url": "https://polyhaven.com/license",
+  "downloaded_at": "2026-11-04",
+  "use": "Fotos 360 de ejemplo para la demostración de la visita 360; se sustituirán por las de la cámara de GARAL.",
+  "files": [
+    {
+      "asset": "old_room",
+      "file": "old_room.jpg",
+      "source": "https://dl.polyhaven.org/file/ph-assets/HDRIs/extra/Tonemapped%20JPG/old_room.jpg",
+      "bytes_original": 4760052,
+      "note": "reducida a 4096×2048 para la web"
+    },
+    {
+      "asset": "small_empty_house",
+      "file": "small_empty_house.jpg",
+      "source": "https://dl.polyhaven.org/file/ph-assets/HDRIs/extra/Tonemapped%20JPG/small_empty_house.jpg",
+      "bytes_original": 3118783,
+      "note": "reducida a 4096×2048 para la web"
+    },
+    {
+      "asset": "laminate_floor_02 (recorte)",
+      "file": "muestras/madera.jpg",
+      "source": "../materiales/laminate_floor_02_diff_1k.jpg"
+    },
+    {
+      "asset": "marble_tiles (recorte)",
+      "file": "muestras/marmol.jpg",
+      "source": "../materiales/marble_tiles_diff_1k.jpg"
+    }
+  ]
+}

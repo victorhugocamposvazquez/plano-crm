@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Footprints, ListPlus, Receipt, ArrowLeftRight, MessageSquare, Ellipsis, Pencil, LayoutTemplate, Camera, ChevronRight } from "lucide-react";
+import { Footprints, ListPlus, Receipt, ArrowLeftRight, MessageSquare, Ellipsis, Pencil, LayoutTemplate, Camera, ChevronRight, Orbit } from "lucide-react";
 import { Menu } from "@/components/ui/menu";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
@@ -78,7 +78,10 @@ export function ProjectMenu({ project, approvedVersion, puedeEstimar, onChat, so
     { id: "estado", label: "Cambiar de fase", hint: `Ahora: ${projectStatus[project.status]}`, icon: <ArrowLeftRight size={16} strokeWidth={1.7} />, disabled: !can(actor.role, "project.status"), onSelect: () => abrir("estado") },
     { id: "tarea", label: "Planificar tarea", hint: "Oficio, responsable y fecha", icon: <ListPlus size={16} strokeWidth={1.7} />, disabled: !can(actor.role, "task.create"), onSelect: () => abrir("tarea") },
     { id: "certificacion", label: "Preparar cobro", hint: approvedVersion ? `Quedan ${money(saldo)} sin IVA de la V${approvedVersion.number}` : "Necesita un presupuesto aceptado", icon: <Receipt size={16} strokeWidth={1.7} />, disabled: !approvedVersion || !can(actor.role, "certification.create"), onSelect: () => abrir("certificacion") },
-    ...(puedeEstimar ? [{ id: "visita", label: "Desde fotos", hint: "Fotos de la obra, notas y una cifra orientativa", icon: <Footprints size={16} strokeWidth={1.7} />, onSelect: () => router.push(`/proyectos/nueva?proyecto=${project.id}`) }] : []),
+    ...(puedeEstimar ? [
+      { id: "visita", label: "Desde fotos", hint: "Fotos de la obra, notas y una cifra orientativa", icon: <Footprints size={16} strokeWidth={1.7} />, onSelect: () => router.push(`/proyectos/nueva?proyecto=${project.id}`) },
+      { id: "visita360", label: "Visita 360", hint: "Recorre la estancia y di qué va en cada sitio", icon: <Orbit size={16} strokeWidth={1.7} />, onSelect: () => router.push(`/proyectos/${project.id}/visita360`) }
+    ] : []),
     { id: "chat", label: "Abrir el chat", hint: "Conversación del equipo", icon: <MessageSquare size={16} strokeWidth={1.7} />, onSelect: onChat }
   ];
 
