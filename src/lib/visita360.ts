@@ -20,87 +20,12 @@ export const esFoto360 = (doc: { name: string; mime_type: string }) => doc.name.
 /** Una foto 360 equirectangular es el doble de ancha que de alta (se admite un margen pequeño). */
 export const proporcion360 = (ancho: number, alto: number) => alto > 0 && Math.abs(ancho / alto - 2) <= 0.08;
 
-export type Colocacion = { id: string; article_id: string; quantity: number; yaw: number; pitch: number; origen: "voz" | "toque"; aproximada: boolean; foto: string; superficie?: { tipo: TipoSuperficie; puntos: { yaw: number; pitch: number }[]; huecos?: { yaw: number; pitch: number }[][] };
-  /** Superficie detectada en la foto: máscara comprimida del tamaño analizado. */
-  zona?: { tipo: TipoSuperficie; mascara: string; w: number; h: number } };
-/** Contorno del suelo de una estancia: las esquinas tocadas en la foto, siguiendo la base de paredes y muebles. */
-export type Contorno = { yaw: number; pitch: number }[];
-export type Zona = { id: string; nombre: string };
-
-/** Altura supuesta de la cámara 360 sobre el suelo. Solo afecta a la superficie estimada, no a cómo se ve. */
-export const alturaCamara = 1.5;
-/** Punto del suelo al que apunta una dirección; `null` si mira al horizonte o hacia arriba. */
-export function puntoSuelo(d: { yaw: number; pitch: number }): { x: number; z: number } | null {
-  if (d.pitch > -0.03) return null;
-  const distancia = alturaCamara / Math.tan(-d.pitch);
-  if (distancia > 25) return null;
-  return { x: Math.sin(d.yaw) * distancia, z: Math.cos(d.yaw) * distancia };
-}
-/** Superficie del contorno en m², redondeada a medio metro. Es una estimación: depende de la altura de la cámara. */
-export function areaContorno(contorno: Contorno): number {
-  const p = contorno.map(puntoSuelo).filter((x): x is { x: number; z: number } => Boolean(x));
-  if (p.length < 3) return 0;
-  let a = 0;
-  for (let i = 0; i < p.length; i++) { const j = (i + 1) % p.length; a += p[i].x * p[j].z - p[j].x * p[i].z; }
-  return Math.round(Math.abs(a / 2) * 2) / 2;
-}
-/** Dirección al centro del contorno: ahí va la marca del suelo. */
-export function centroContorno(contorno: Contorno): { yaw: number; pitch: number } {
-  const p = contorno.map(puntoSuelo).filter((x): x is { x: number; z: number } => Boolean(x));
-  if (!p.length) return contorno[0] ?? { yaw: 0, pitch: -0.6 };
-  const x = p.reduce((s, q) => s + q.x, 0) / p.length, z = p.reduce((s, q) => s + q.z, 0) / p.length;
-  return { yaw: Math.atan2(x, z), pitch: -Math.atan2(alturaCamara, Math.hypot(x, z)) };
-}
-export const esSuelo = (article: Pick<Article, "chapter" | "name">) => muestra(article).superficie === "suelo";
-/** Altura supuesta del techo; solo se usa para dibujar un techo marcado. */
-export const alturaTecho = 2.6;
-
-/** `vertices` y `plano` traen primero el contorno y luego cada hueco; `huecos` dice dónde empieza cada uno. */
-export type Geometria = { vertices: [number, number, number][]; plano: [number, number][]; huecos: number[]; area: number; centro: { yaw: number; pitch: number } };
-const dir = (d: { yaw: number; pitch: number }) => ({ x: Math.cos(d.pitch) * Math.sin(d.yaw), y: Math.sin(d.pitch), z: Math.cos(d.pitch) * Math.cos(d.yaw) });
-const areaPlano = (p: [number, number][]) => { let a = 0; for (let i = 0; i < p.length; i++) { const j = (i + 1) % p.length; a += p[i][0] * p[j][1] - p[j][0] * p[i][1]; } return Math.abs(a / 2); };
-const centroDe = (v: [number, number, number][]) => { const x = v.reduce((s, q) => s + q[0], 0) / v.length, y = v.reduce((s, q) => s + q[1], 0) / v.length, z = v.reduce((s, q) => s + q[2], 0) / v.length; return { yaw: Math.atan2(x, z), pitch: Math.atan2(y, Math.hypot(x, z)) }; };
-
 /**
- * Convierte las esquinas tocadas en la foto en una superficie real, con la cámara en el origen y el suelo a `alturaCamara` por debajo.
- * Suelo y techo: cada punto es el corte de su rayo con el plano horizontal. Pared, puerta o mueble: las dos primeras esquinas son
- * donde toca el suelo y fijan un plano vertical; el resto se proyecta sobre él. Devuelve un error legible si los puntos no sirven.
+ * Una cosa puesta en una estancia: el artículo, cuánto y dónde se marcó en la foto.
+ * `deMedidas`: la cantidad sale de las medidas de la estancia y se recalcula si cambian. `aproximada`: falta medir la estancia.
  */
-export function geometriaSuperficie(tipo: TipoSuperficie, puntos: Contorno, huecos: Contorno[] = []): Geometria | { error: string } {
-  if (puntos.length < 3) return { error: "Hacen falta al menos tres esquinas." };
-  const vertices: [number, number, number][] = [], plano: [number, number][] = [];
-  const todos = [...puntos, ...huecos.filter(h => h.length >= 3).flat()];
-  if (tipo === "suelo" || tipo === "techo") {
-    const y = tipo === "suelo" ? -alturaCamara : alturaTecho - alturaCamara;
-    for (const p of todos) {
-      const d = dir(p);
-      if (tipo === "suelo" ? d.y > -0.03 : d.y < 0.03) return { error: tipo === "suelo" ? "Toca solo puntos del suelo, por debajo del horizonte." : "Toca solo puntos del techo, por encima del horizonte." };
-      const t = y / d.y; if (t > 30) return { error: "Una esquina queda demasiado lejos; acércala a la base de la pared." };
-      vertices.push([d.x * t, y, d.z * t]); plano.push([d.x * t, d.z * t]);
-    }
-  } else {
-    const b1 = puntoSuelo(puntos[0]), b2 = puntoSuelo(puntos[1]);
-    if (!b1 || !b2) return { error: "Las dos primeras esquinas tienen que ser donde la superficie toca el suelo." };
-    const ex = b2.x - b1.x, ez = b2.z - b1.z, largo = Math.hypot(ex, ez);
-    if (largo < 0.1) return { error: "Las dos primeras esquinas están demasiado juntas." };
-    const ux = ex / largo, uz = ez / largo, nx = -uz, nz = ux;
-    const B = [b1.x, -alturaCamara, b1.z];
-    const nb = nx * B[0] + nz * B[2];
-    for (const p of todos) {
-      const d = dir(p), nd = nx * d.x + nz * d.z;
-      if (Math.abs(nd) < 1e-4) return { error: "Una esquina cae fuera de esa pared." };
-      const t = nb / nd; if (t <= 0 || t > 30) return { error: "Una esquina cae fuera de esa pared." };
-      const P: [number, number, number] = [d.x * t, d.y * t, d.z * t];
-      vertices.push(P); plano.push([(P[0] - B[0]) * ux + (P[2] - B[2]) * uz, P[1] - B[1]]);
-    }
-  }
-  const n = puntos.length, inicios: number[] = []; let i = n;
-  for (const h of huecos.filter(h => h.length >= 3)) { inicios.push(i); i += h.length; }
-  const exterior = areaPlano(plano.slice(0, n));
-  const restar = inicios.reduce((s, ini, k) => s + areaPlano(plano.slice(ini, inicios[k + 1] ?? plano.length)), 0);
-  const area = Math.max(0, Math.round((exterior - restar) * 2) / 2);
-  return { vertices, plano, huecos: inicios, area, centro: centroDe(vertices.slice(0, n)) };
-}
+export type Colocacion = { id: string; article_id: string; quantity: number; yaw: number; pitch: number; origen: "voz" | "toque"; aproximada: boolean; foto: string; deMedidas?: boolean };
+export type Zona = { id: string; nombre: string };
 
 export type Orden =
   | { tipo: "añadir"; article: Article; quantity: number | null; zona?: Zona }
@@ -112,26 +37,21 @@ export type Orden =
 
 export const claveVisita = (projectId: string) => `plano.visita360.${projectId}`;
 
-/** Dónde va un material en la estancia: `suelo` y `techo` son planos horizontales; `pared` es cualquier plano vertical (pared, puerta, frente de mueble). */
+/** En qué superficie de la estancia va un material: de ahí sale su cantidad con las medidas. */
 export type TipoSuperficie = "suelo" | "techo" | "pared";
-/** Cómo se dibuja: una textura (CC0) repetida cada `escala` metros, o un color que conserva las luces y sombras de la foto. */
-export type Acabado = { textura: string; escala: number; opacidad: number } | { color: string; opacidad: number };
-const madera = { textura: "/visual/materiales/laminate_floor_02_diff_1k.jpg", escala: 1.4, opacidad: 0.96 };
-const baldosa = { textura: "/visual/materiales/marble_tiles_diff_1k.jpg", escala: 0.9, opacidad: 0.96 };
-
-/** Muestra del material (para la marca y el catálogo), dónde se pone y con qué acabado se dibuja. */
-/** Si al pedirlo por voz se aplica a toda la superficie de la estancia (suelo, paredes, techo) o solo a lo que se toque. */
+/** Si va por toda una superficie de la estancia (suelo, paredes, techo): su cantidad sale de las medidas. */
 export const seAplicaATodo = (article: Pick<Article, "chapter" | "name">) => /pavimento|tarima|parquet|suelo|baldosa|porcelanico|gres|pintura|pintar|alicatad|azulejo|revestimiento|techo/.test(normalizar(`${article.chapter} ${article.name}`));
-export function muestra(article: Pick<Article, "chapter" | "name">): { imagen?: string; color: string; superficie?: TipoSuperficie; acabado?: Acabado; suelo?: string } {
+/** Muestra del material (para la marca y el catálogo) y en qué superficie de la estancia va. */
+export function muestra(article: Pick<Article, "chapter" | "name">): { imagen?: string; color: string; superficie?: TipoSuperficie } {
   const t = normalizar(`${article.chapter} ${article.name}`);
-  if (/pavimento|tarima|parquet|suelo/.test(t)) return { imagen: "/visual/360/muestras/madera.jpg", color: "#a77b4f", superficie: "suelo", acabado: madera, suelo: madera.textura };
-  if (/baldosa|porcelanico|gres/.test(t) && !/pared|alicatad|azulejo/.test(t)) return { imagen: "/visual/360/muestras/marmol.jpg", color: "#d8d6d0", superficie: "suelo", acabado: baldosa, suelo: baldosa.textura };
-  if (/alicatad|azulejo|revestimiento/.test(t)) return { imagen: "/visual/360/muestras/marmol.jpg", color: "#d8d6d0", superficie: "pared", acabado: { ...baldosa, escala: 0.6 } };
-  if (/falso techo|techo/.test(t)) return { color: "#f4f2ee", superficie: "techo", acabado: { color: "#f6f4ef", opacidad: 0.9 } };
-  if (/pintura|pintar/.test(t)) return { color: "#f3efe6", superficie: "pared", acabado: { color: "#f6f3ec", opacidad: 0.9 } };
-  if (/demolic|derribo|retirada/.test(t)) return { color: "#b4532a", superficie: "pared", acabado: { color: "#c8402c", opacidad: 0.5 } };
-  if (/albanil|tabique|yeso|pladur/.test(t)) return { color: "#d9d4cc", superficie: "pared", acabado: { color: "#ebe8e2", opacidad: 0.88 } };
-  if (/carpinter|madera|armario|puerta|mueble|cocina/.test(t)) return { imagen: "/visual/360/muestras/madera.jpg", color: "#a77b4f", superficie: "pared", acabado: { ...madera, escala: 0.9 } };
+  if (/pavimento|tarima|parquet|suelo/.test(t)) return { imagen: "/visual/360/muestras/madera.jpg", color: "#a77b4f", superficie: "suelo" };
+  if (/baldosa|porcelanico|gres/.test(t) && !/pared|alicatad|azulejo/.test(t)) return { imagen: "/visual/360/muestras/marmol.jpg", color: "#d8d6d0", superficie: "suelo" };
+  if (/alicatad|azulejo|revestimiento/.test(t)) return { imagen: "/visual/360/muestras/marmol.jpg", color: "#d8d6d0", superficie: "pared" };
+  if (/falso techo|techo/.test(t)) return { color: "#f4f2ee", superficie: "techo" };
+  if (/pintura|pintar/.test(t)) return { color: "#f3efe6", superficie: "pared" };
+  if (/demolic|derribo|retirada/.test(t)) return { color: "#b4532a", superficie: "pared" };
+  if (/albanil|tabique|yeso|pladur/.test(t)) return { color: "#d9d4cc", superficie: "pared" };
+  if (/carpinter|madera|armario|puerta|mueble|cocina/.test(t)) return { imagen: "/visual/360/muestras/madera.jpg", color: "#a77b4f", superficie: "pared" };
   if (/fontaner|bano|sanitari/.test(t)) return { imagen: "/visual/360/muestras/marmol.jpg", color: "#d8d6d0" };
   if (/electric|luz|enchufe/.test(t)) return { color: "#f2c14e" };
   return { color: "#8a9199" };

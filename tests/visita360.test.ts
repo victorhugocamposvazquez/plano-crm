@@ -1,13 +1,11 @@
 import { describe, it, expect } from "vitest";
-import { interpretarOrden, partidasDe, buscarArticulo, cantidadPorDefecto, esFoto360, proporcion360, geometriaSuperficie, muestra, alturaCamara, alturaTecho, type Zona } from "@/lib/visita360";
+import { interpretarOrden, partidasDe, buscarArticulo, cantidadPorDefecto, esFoto360, proporcion360, muestra, type Zona } from "@/lib/visita360";
 import { createDemo, demoId } from "@/lib/demo";
 
 const { articles } = createDemo();
 const zonas: Zona[] = [{ id: "cocina", nombre: "Cocina" }, { id: "salon", nombre: "Salón" }, { id: "bano", nombre: "Baño" }];
 const orden = (texto: string) => interpretarOrden(texto, articles, zonas);
 const nombre = (texto: string) => { const o = orden(texto); return o && "article" in o ? o.article.name : o?.tipo ?? null; };
-/** Dirección desde la cámara (en el origen) hasta un punto (x, y, z). */
-const hacia = (x: number, y: number, z: number) => ({ yaw: Math.atan2(x, z), pitch: Math.atan2(y, Math.hypot(x, z)) });
 
 describe("Órdenes de la visita 360", () => {
   it("entiende cantidad, unidad y artículo dichos como en obra", () => {
@@ -27,7 +25,7 @@ describe("Órdenes de la visita 360", () => {
     expect(orden("pon una puerta aquí")).toMatchObject({ tipo: "añadir", zona: undefined });
     expect(orden("vamos al baño")).toEqual({ tipo: "cambiar", zona: { id: "bano", nombre: "Baño" } });
   });
-  it("sin cantidad no la inventa: la mide la superficie marcada o se pone una por defecto", () => {
+  it("sin cantidad no la inventa: sale de las medidas de la estancia o se pone una por defecto", () => {
     expect(orden("pon tarima en el suelo")).toMatchObject({ tipo: "añadir", quantity: null });
     expect(cantidadPorDefecto("m²")).toBe(10);
   });
@@ -43,41 +41,14 @@ describe("Órdenes de la visita 360", () => {
   });
 });
 
-describe("Superficies marcadas en la foto", () => {
-  it("cada material sabe dónde va", () => {
+describe("Dónde va cada material", () => {
+  it("cada material sabe en qué superficie de la estancia va", () => {
     const por = (code: string) => muestra(articles.find(a => a.code === code)!).superficie;
     expect(por("PAV-001")).toBe("suelo");
     expect(por("PIN-001")).toBe("pared");
     expect(por("ALB-001")).toBe("pared");
     expect(por("CAR-001")).toBe("pared");
     expect(por("ELE-001")).toBeUndefined();
-  });
-  it("un suelo de 4 × 3 m marcado por sus esquinas mide 12 m²", () => {
-    const y = -alturaCamara;
-    const g = geometriaSuperficie("suelo", [hacia(-2, y, 1), hacia(2, y, 1), hacia(2, y, 4), hacia(-2, y, 4)]);
-    expect("error" in g ? g.error : g.area).toBe(12);
-  });
-  it("una pared de 3 m marcada por la base y luego por arriba mide 3 × su altura", () => {
-    const y = -alturaCamara, alto = 2.5;
-    const g = geometriaSuperficie("pared", [hacia(-1.5, y, 3), hacia(1.5, y, 3), hacia(1.5, y + alto, 3), hacia(-1.5, y + alto, 3)]);
-    expect("error" in g ? g.error : g.area).toBe(7.5);
-  });
-  it("una ventana marcada como hueco se descuenta de la pared", () => {
-    const y = -alturaCamara;
-    const pared = [hacia(-1.5, y, 3), hacia(1.5, y, 3), hacia(1.5, y + 2.5, 3), hacia(-1.5, y + 2.5, 3)];
-    const ventana = [hacia(-0.5, y + 1, 3), hacia(0.5, y + 1, 3), hacia(0.5, y + 2, 3), hacia(-0.5, y + 2, 3)];
-    const g = geometriaSuperficie("pared", pared, [ventana]);
-    expect("error" in g ? g.error : [g.area, g.huecos]).toEqual([6.5, [4]]);
-  });
-  it("un techo marcado mide lo mismo que el suelo que tiene debajo", () => {
-    const y = alturaTecho - alturaCamara;
-    const g = geometriaSuperficie("techo", [hacia(-2, y, 1), hacia(2, y, 1), hacia(2, y, 3), hacia(-2, y, 3)]);
-    expect("error" in g ? g.error : g.area).toBe(8);
-  });
-  it("explica por qué no sirven los puntos", () => {
-    expect(geometriaSuperficie("suelo", [hacia(0, 1, 2), hacia(1, -1, 2), hacia(-1, -1, 2)])).toHaveProperty("error");
-    expect(geometriaSuperficie("pared", [hacia(0, 1, 2), hacia(1, 1, 2), hacia(1, 2, 2)])).toHaveProperty("error");
-    expect(geometriaSuperficie("suelo", [hacia(0, -1, 2)])).toHaveProperty("error");
   });
 });
 

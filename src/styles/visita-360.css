@@ -58,40 +58,33 @@
 .v360-linea .v360-muestra, .v360-lista .v360-muestra { width: 28px; height: 28px; border-radius: 6px; }
 .v360-linea-texto { display: flex; align-items: center; gap: 10px; min-width: 0; }
 .v360-linea-texto > span { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
-.v360-suelo { min-height: 40px; padding: 0 14px; border: 0; border-radius: var(--pl-radius-full); background: rgb(255 255 255 / 0.94); color: #16232e; font: inherit; font-size: var(--pl-text-sm); font-weight: var(--pl-weight-medium); cursor: pointer; box-shadow: var(--pl-shadow-float); }
 .v360-escribir { display: flex; gap: 8px; }
 .v360-escribir input { flex: 1; min-width: 0; height: 46px; padding: 0 14px; border: var(--pl-hairline) solid var(--pl-line); border-radius: var(--pl-radius-control); background: var(--pl-bg); color: var(--pl-ink); font: inherit; font-size: var(--pl-text-base); }
 .v360-escribir .btn { width: 46px; height: 46px; padding: 0; justify-content: center; }
 .v360-linea strong { display: block; }
 .v360-lista .v360-linea-texto { flex: 1; }
-/* Retocar una zona detectada: la barra con lo que se ha marcado, arriba para dejar libre el suelo. */
-.v360-stage[data-marcando] canvas { cursor: crosshair !important; }
-.v360-marcar { position: absolute; left: 12px; right: 12px; top: 12px; display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: var(--pl-radius-card); background: rgb(255 255 255 / 0.96); color: #16232e; box-shadow: var(--pl-shadow-float); }
-.v360-marcar p { margin: 0; font-size: var(--pl-text-md); line-height: var(--pl-leading-base); }
-.v360-marcar > div { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-.v360-marcar > div > .pl-mono { margin-right: auto; font-size: var(--pl-text-sm); color: #5f676d; }
-.v360-marcar .btn { min-height: 40px; color: #16232e; background: #ffffff; border-color: #cbd0cb; }
-.v360-marcar .btn-primary { background: #16232e; color: #ffffff; border-color: #16232e; }
-.v360-marcar .btn:disabled { opacity: 0.5; }
 .v360-cuenta { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; margin-left: 6px; padding: 0 5px; border-radius: var(--pl-radius-full); background: var(--pl-orange); color: var(--pl-on-orange); font-size: var(--pl-text-xs); font-weight: var(--pl-weight-semibold); }
 .v360-grupo { display: flex; flex-direction: column; }
 .v360-grupo + .v360-grupo { border-top: var(--pl-hairline) solid var(--pl-line); }
 .v360-zona { align-self: flex-start; margin: 12px 16px 2px; padding: 0; border: 0; background: none; color: var(--pl-muted); font: inherit; font-size: var(--pl-text-xs); font-weight: var(--pl-weight-semibold); letter-spacing: 0.04em; text-transform: uppercase; cursor: pointer; }
 .v360-zona[aria-pressed="true"] { color: var(--pl-ink); }
 .v360-grupo .v360-linea:first-of-type { border-top: 0; }
+/* Medidas de la estancia: una franja bajo la foto con lo medido y lo que sale (suelo, paredes, techo). */
+.v360-medidas { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border: var(--pl-hairline) solid var(--pl-line); border-radius: var(--pl-radius-card); background: var(--pl-bg); color: var(--pl-ink); }
+.v360-medidas > svg { flex-shrink: 0; color: var(--pl-muted); }
+.v360-medidas p { flex: 1; min-width: 0; margin: 0; font-size: var(--pl-text-md); line-height: var(--pl-leading-base); }
+.v360-medidas small { display: block; color: var(--pl-muted); font-size: var(--pl-text-sm); }
+.v360-medidas[data-sin] { border-style: dashed; }
+.v360-medidas[data-sin] > svg { color: var(--pl-orange); }
+.v360-grupo-cabeza { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin: 12px 16px 2px; }
+.v360-grupo-cabeza .v360-zona { margin: 0; }
+.v360-zona-medidas { padding: 0; border: 0; background: none; color: var(--pl-muted); font: inherit; font-size: var(--pl-text-sm); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; min-height: var(--pl-touch); }
+.v360-form-medidas { display: flex; flex-direction: column; gap: 12px; }
+.v360-campos { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.v360-resultado { margin: 0; padding: 10px 12px; border-radius: var(--pl-radius-control); background: var(--pl-soft); font-size: var(--pl-text-md); }
 @media (max-width: 767px) {
-  .v360-marcar { left: 8px; right: 8px; top: 8px; padding: 10px 12px; }
-  .v360-marcar .btn { flex: 1 1 auto; }
-  .v360-marcar > div > .pl-mono { flex: 1 1 100%; }
+  .v360-medidas { flex-wrap: wrap; }
+  .v360-medidas p { flex-basis: calc(100% - 32px); }
+  .v360-medidas .btn { flex: 1 1 100%; }
+  .v360-campos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
-.v360-marcar p { max-width: 72ch; }
-@media (max-width: 767px) {
-  /* En el teléfono la barra de retoque ocupa lo mínimo: dos líneas de texto y botones bajos, para dejar la foto a la vista. */
-  .v360-marcar p { font-size: var(--pl-text-sm); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
-  .v360-marcar > div { display: flex; flex-wrap: wrap; gap: 6px; }
-  .v360-marcar > div > .pl-mono { display: none; }
-  .v360-marcar .btn { flex: 0 0 auto; min-height: 38px; padding: 0 10px; font-size: var(--pl-text-sm); }
-  .v360-marcar .btn-primary { flex: 1 1 auto; }
-}
-/* Mientras se analiza la foto, un aviso discreto arriba: la foto sigue viéndose. */
-.v360-analizando { inset: auto; top: 12px; left: 50%; transform: translateX(-50%); padding: 8px 14px; border-radius: var(--pl-radius-full); background: rgb(22 35 46 / 0.8); }
