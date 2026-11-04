@@ -69,10 +69,10 @@ export const capabilities: Capability[] = [
   },
   {
     id: "fotos", name: "Análisis automático de fotos y 360", status: "partial",
-    summary: "Visita 360: detecta suelo, paredes y techo con SAM 2.1 en el navegador, los mide y los pinta con materiales del catálogo.",
-    available: ["Órdenes por voz o escritas por estancia («tarima en la cocina»), toque para una sola pared y retoque con deshacer.", "SAM 2.1 (Apache 2.0) en el navegador con WebGPU, sin coste por uso; detección propia por color como respaldo.", "Medidas aproximadas (≈) suponiendo la cámara a 1,5 m, pasadas al borrador del presupuesto."],
-    pending: ["Guardar las visitas en el servidor; alojar el modelo propio; medir en móviles.", "Medir lo que tapan los muebles (distribución de la estancia) y reconocer elementos por texto (SAM 3.1); una imagen sin referencia métrica no acredita dimensiones."],
-    evidence: [{ label: "Visita 360: tecnología y evolución", path: "docs/captura/visita-360.md" }, { label: "SAM sobre la foto 360", path: "src/lib/sam360.ts" }, { label: "Fuentes, medidas y cuestiones pendientes", path: "docs/captura/estancias-catalogo.md" }],
+    summary: "Visita 360 para situarse y marcar; las cantidades salen de las medidas con láser, no de la foto.",
+    available: ["Órdenes por voz o escritas por estancia («tarima en la cocina») y medidas dichas («mide 4 por 3 y 2,6 de alto»).", "Suelo, paredes y techo calculados con las medidas, descontando puertas y ventanas, y pasados al borrador."],
+    pending: ["Simulación de la vista con IA (de pago por imagen) y guardar las visitas en el servidor.", "Reconocer elementos y medir desde imágenes sin referencia: probado y descartado por ahora (ver la documentación)."],
+    evidence: [{ label: "Visita 360: tecnología y evolución", path: "docs/captura/visita-360.md" }, { label: "Medidas y superficies", path: "src/lib/medidas.ts" }, { label: "Fuentes, medidas y cuestiones pendientes", path: "docs/captura/estancias-catalogo.md" }],
   },
   {
     id: "virtual", name: "Entorno virtual y cambio de acabados", status: "partial",
