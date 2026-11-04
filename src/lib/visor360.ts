@@ -1,23 +1,61 @@
 import * as THREE from "three";
+import type { Acabado } from "./visita360";
 
 /**
  * Visor de fotografía 360 (equirectangular) con three.js: una esfera vista desde dentro.
  * Arrastrar gira la vista; la rueda o el pellizco acercan; un toque corto devuelve la dirección (yaw, pitch) a la que apunta.
- * No mide nada: las cantidades las pone la persona. Solo sirve para situar lo que se dice en la estancia.
+ * Las superficies marcadas (suelo, paredes, muebles) se dibujan como polígonos reales en el espacio, con su perspectiva,
+ * y su color se multiplica por la luz de la foto en ese punto: así conservan sombras, reflejos y rincones.
  */
 export type Direccion = { yaw: number; pitch: number };
+export type SuperficieVisor = { id: string; vertices: [number, number, number][]; plano: [number, number][]; huecos: number[]; acabado: Acabado };
 export type Visor360 = {
   /** Proyecta una dirección a píxeles del contenedor; `visible` es falso si queda detrás de la cámara. */
   proyectar(d: Direccion): { x: number; y: number; visible: boolean };
   centro(): Direccion;
   mirar(d: Direccion): void;
   cambiarFoto(url: string): Promise<void>;
-  /** Pone una textura de suelo bajo la cámara, fundida hacia los bordes, para enseñar cómo quedaría. `null` la quita. */
-  probarSuelo(url: string | null): void;
+  /** Sustituye las superficies dibujadas sobre la foto. */
+  superficies(lista: SuperficieVisor[]): void;
+  /** Enseña la foto tal como está, sin las superficies. */
+  verOriginal(si: boolean): void;
   dispose(): void;
 };
 
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
+
+const vertexShader = `
+varying vec3 vMundo;
+varying vec2 vUv;
+void main() {
+  vUv = uv;
+  vMundo = (modelMatrix * vec4(position, 1.0)).xyz;
+  gl_Position = projectionMatrix * viewMatrix * vec4(vMundo, 1.0);
+}`;
+// Misma correspondencia dirección → foto que la esfera (SphereGeometry con la x invertida).
+const fragmentShader = `
+uniform sampler2D foto;
+uniform sampler2D mapa;
+uniform bool conMapa;
+uniform vec3 color;
+uniform float base;
+uniform float opacidad;
+uniform float lodLuz;
+varying vec3 vMundo;
+varying vec2 vUv;
+const float PI = 3.141592653589793;
+void main() {
+  vec3 d = normalize(vMundo);
+  vec2 uvFoto = vec2(fract(atan(d.z, d.x) / (2.0 * PI)), 1.0 - acos(clamp(d.y, -1.0, 1.0)) / PI);
+  vec3 f = texture2D(foto, uvFoto).rgb;
+  // La luz sale de la foto desenfocada: trae sombras y cambios de luz, no el dibujo de las baldosas ni las juntas.
+  vec3 borrosa = textureLod(foto, uvFoto, lodLuz).rgb;
+  float l = dot(borrosa, vec3(0.2126, 0.7152, 0.0722));
+  float luz = clamp(l / max(base, 0.02), 0.55, 1.35);
+  vec3 albedo = conMapa ? texture2D(mapa, vUv).rgb : color;
+  gl_FragColor = vec4(mix(f, albedo * luz, opacidad), 1.0);
+  gl_FragColor = linearToOutputTexel(gl_FragColor);
+}`;
 
 export function crearVisor360(container: HTMLElement, url: string, opciones: { alTocar?: (d: Direccion) => void; alMover?: () => void; alCargar?: () => void; alFallar?: (e: unknown) => void } = {}): Visor360 {
   const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "low-power" });
@@ -29,16 +67,23 @@ export function crearVisor360(container: HTMLElement, url: string, opciones: { a
   container.appendChild(canvas);
 
   const scene = new THREE.Scene();
-  const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 100);
+  const camera = new THREE.PerspectiveCamera(75, 1, 0.05, 100);
   const geometry = new THREE.SphereGeometry(50, 64, 40);
   geometry.scale(-1, 1, 1); // se ve desde dentro
   const material = new THREE.MeshBasicMaterial({ color: 0x222222 });
   const sphere = new THREE.Mesh(geometry, material);
+  sphere.renderOrder = 0;
   scene.add(sphere);
+  const grupo = new THREE.Group(); scene.add(grupo);
 
   let yaw = 0, pitch = -0.12, fov = 75, zoomTocado = false, disposed = false, raf = 0;
   let velocidadYaw = 0, velocidadPitch = 0;
   const loader = new THREE.TextureLoader();
+  const texturas = new Map<string, THREE.Texture>();
+  let fotoTex: THREE.Texture | null = null;
+  // Copia pequeña de la foto para medir su luz media en cada superficie.
+  let muestreo: { data: Uint8ClampedArray; w: number; h: number } | null = null;
+  let actuales: SuperficieVisor[] = [];
 
   function cargar(src: string) {
     return new Promise<void>((resolve, reject) => {
@@ -46,8 +91,73 @@ export function crearVisor360(container: HTMLElement, url: string, opciones: { a
         if (disposed) { texture.dispose(); return; }
         texture.colorSpace = THREE.SRGBColorSpace; texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
         const anterior = material.map; material.map = texture; material.color.set(0xffffff); material.needsUpdate = true; anterior?.dispose();
-        render(); opciones.alCargar?.(); resolve();
+        fotoTex = texture; muestreo = null;
+        try {
+          const img = texture.image as CanvasImageSource;
+          const w = 512, h = 256, lienzo = document.createElement("canvas"); lienzo.width = w; lienzo.height = h;
+          const ctx = lienzo.getContext("2d", { willReadFrequently: true })!; ctx.drawImage(img, 0, 0, w, h);
+          muestreo = { data: ctx.getImageData(0, 0, w, h).data, w, h };
+        } catch { muestreo = null; }
+        construir(); render(); opciones.alCargar?.(); resolve();
       }, undefined, e => { opciones.alFallar?.(e); reject(e); });
+    });
+  }
+
+  /** Luz media de la foto (lineal) en las direcciones de una superficie, para que el material guarde las sombras pero no oscurezca. */
+  function luzMedia(v: [number, number, number][]): number {
+    if (!muestreo) return 0.35;
+    const c = v.reduce((s, p) => [s[0] + p[0] / v.length, s[1] + p[1] / v.length, s[2] + p[2] / v.length] as [number, number, number], [0, 0, 0] as [number, number, number]);
+    const puntos: [number, number, number][] = [c];
+    for (const p of v) for (const k of [0.25, 0.5, 0.75]) puntos.push([c[0] + (p[0] - c[0]) * k, c[1] + (p[1] - c[1]) * k, c[2] + (p[2] - c[2]) * k]);
+    const lin = (c8: number) => { const s = c8 / 255; return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4; };
+    let suma = 0;
+    for (const [x, y, z] of puntos) {
+      const len = Math.hypot(x, y, z) || 1, dx = x / len, dy = y / len, dz = z / len;
+      let u = Math.atan2(dz, dx) / (2 * Math.PI); u -= Math.floor(u);
+      const vv = Math.acos(clamp(dy, -1, 1)) / Math.PI;
+      const px = Math.min(muestreo.w - 1, Math.floor(u * muestreo.w)), py = Math.min(muestreo.h - 1, Math.floor(vv * muestreo.h));
+      const i = (py * muestreo.w + px) * 4;
+      suma += 0.2126 * lin(muestreo.data[i]) + 0.7152 * lin(muestreo.data[i + 1]) + 0.0722 * lin(muestreo.data[i + 2]);
+    }
+    return suma / puntos.length;
+  }
+
+  function textura(src: string) {
+    let t = texturas.get(src);
+    if (!t) {
+      t = loader.load(src, () => render());
+      t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+      texturas.set(src, t);
+    }
+    return t;
+  }
+
+  function construir() {
+    for (const m of [...grupo.children] as THREE.Mesh[]) { m.geometry.dispose(); (m.material as THREE.Material).dispose(); grupo.remove(m); }
+    const foto = fotoTex; if (!foto) return;
+    const lodLuz = Math.max(3, Math.log2(((foto.image as { width?: number } | undefined)?.width ?? 4096) / 96));
+    actuales.forEach((s, i) => {
+      if (s.vertices.length < 3) return;
+      let caras: number[][];
+      const v2 = s.plano.map(([u, v]) => new THREE.Vector2(u, v)), corte = s.huecos[0] ?? v2.length;
+      const huecos = s.huecos.map((ini, k) => v2.slice(ini, s.huecos[k + 1] ?? v2.length));
+      try { caras = THREE.ShapeUtils.triangulateShape(v2.slice(0, corte), huecos); } catch { return; }
+      if (!caras.length) return;
+      const conMapa = "textura" in s.acabado, escala = "textura" in s.acabado ? s.acabado.escala : 1;
+      const geo = new THREE.BufferGeometry();
+      geo.setAttribute("position", new THREE.Float32BufferAttribute(s.vertices.flat(), 3));
+      geo.setAttribute("uv", new THREE.Float32BufferAttribute(s.plano.flatMap(([u, v]) => [u / escala, v / escala]), 2));
+      geo.setIndex(caras.flat());
+      const mat = new THREE.ShaderMaterial({
+        // Con profundidad: suelo, paredes y muebles se tapan entre sí como en la estancia; la esfera de la foto queda siempre detrás.
+        vertexShader, fragmentShader, side: THREE.DoubleSide, depthWrite: true, depthTest: true,
+        uniforms: {
+          foto: { value: foto }, mapa: { value: "textura" in s.acabado ? textura(s.acabado.textura) : null }, conMapa: { value: conMapa },
+          color: { value: new THREE.Color("color" in s.acabado ? s.acabado.color : "#ffffff") }, base: { value: luzMedia(s.vertices) }, opacidad: { value: s.acabado.opacidad },
+          lodLuz: { value: lodLuz }
+        }
+      });
+      const mesh = new THREE.Mesh(geo, mat); mesh.renderOrder = 1 + i; mesh.name = s.id; grupo.add(mesh);
     });
   }
 
@@ -63,15 +173,6 @@ export function crearVisor360(container: HTMLElement, url: string, opciones: { a
     if (!zoomTocado) fov = w / h < 1 ? 100 : 75;
     renderer.setSize(w, h, false); camera.aspect = w / h; render();
   }
-
-  // Suelo de prueba: un disco de 3,6 m a 1,5 m bajo la cámara, opaco hasta cerca del borde y fundido al final.
-  const sueloGeo = new THREE.CircleGeometry(3.6, 72); sueloGeo.rotateX(-Math.PI / 2); sueloGeo.translate(0, -1.5, 0);
-  const degradado = document.createElement("canvas"); degradado.width = degradado.height = 256;
-  const g = degradado.getContext("2d")!; const grad = g.createRadialGradient(128, 128, 30, 128, 128, 128); grad.addColorStop(0, "#fff"); grad.addColorStop(0.82, "#fff"); grad.addColorStop(1, "#000"); g.fillStyle = grad; g.fillRect(0, 0, 256, 256);
-  const alpha = new THREE.CanvasTexture(degradado);
-  const sueloMat = new THREE.MeshBasicMaterial({ transparent: true, alphaMap: alpha, opacity: 0.97, depthWrite: false });
-  const suelo = new THREE.Mesh(sueloGeo, sueloMat); suelo.visible = false; scene.add(suelo);
-  let sueloUrl: string | null = null;
   const observer = new ResizeObserver(redimensionar); observer.observe(container);
 
   // Arrastre con el dedo o el ratón; un toque corto sin desplazamiento es «poner algo aquí».
@@ -126,12 +227,13 @@ export function crearVisor360(container: HTMLElement, url: string, opciones: { a
     centro: () => ({ yaw, pitch }),
     mirar(d) { cancelAnimationFrame(raf); yaw = d.yaw; pitch = clamp(d.pitch, -Math.PI / 2 + 0.05, Math.PI / 2 - 0.05); render(); },
     cambiarFoto: cargar,
-    probarSuelo(url) {
-      if (url === sueloUrl) return; sueloUrl = url;
-      if (!url) { suelo.visible = false; render(); return; }
-      loader.load(url, t => { if (disposed || sueloUrl !== url) { t.dispose(); return; } t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(5, 5); t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); sueloMat.map?.dispose(); sueloMat.map = t; sueloMat.needsUpdate = true; suelo.visible = true; render(); });
-    },
-    dispose() { disposed = true; cancelAnimationFrame(raf); observer.disconnect(); material.map?.dispose(); material.dispose(); geometry.dispose(); sueloMat.map?.dispose(); sueloMat.dispose(); alpha.dispose(); sueloGeo.dispose(); renderer.dispose(); canvas.remove(); }
+    superficies(lista) { actuales = lista; construir(); render(); },
+    verOriginal(si) { grupo.visible = !si; render(); },
+    dispose() {
+      disposed = true; cancelAnimationFrame(raf); observer.disconnect();
+      for (const m of grupo.children as THREE.Mesh[]) { m.geometry.dispose(); (m.material as THREE.Material).dispose(); }
+      texturas.forEach(t => t.dispose()); material.map?.dispose(); material.dispose(); geometry.dispose(); renderer.dispose(); canvas.remove();
+    }
   };
   redimensionar();
   void cargar(url);
