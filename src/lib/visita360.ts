@@ -13,6 +13,12 @@ export const panoramas: Panorama[] = [
   { id: "small_empty_house", nombre: "Casa vacía", url: "/visual/360/small_empty_house.jpg", nota: "Foto 360 de ejemplo · Poly Haven, CC0" }
 ];
 
+/** Las fotos 360 propias se guardan como documento del proyecto con este prefijo en el nombre: así viajan con el proyecto sin cambiar la base de datos. */
+export const prefijo360 = "360 · ";
+export const esFoto360 = (doc: { name: string; mime_type: string }) => doc.name.startsWith(prefijo360) && /^image\/(jpeg|png|webp)$/.test(doc.mime_type);
+/** Una foto 360 equirectangular es el doble de ancha que de alta (se admite un margen pequeño). */
+export const proporcion360 = (ancho: number, alto: number) => alto > 0 && Math.abs(ancho / alto - 2) <= 0.08;
+
 export type Colocacion = { id: string; article_id: string; quantity: number; yaw: number; pitch: number; origen: "voz" | "toque"; aproximada: boolean };
 export type Orden =
   | { tipo: "añadir"; article: Article; quantity: number; aproximada: boolean }

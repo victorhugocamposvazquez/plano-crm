@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Mic, MicOff, Send, Trash2 } from "lucide-react";
+import { ArrowLeft, ImagePlus, Mic, MicOff, Send, Trash2 } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
 import { useBanda } from "@/components/band";
 import { Button } from "@/components/ui/button";
@@ -10,7 +10,7 @@ import { Modal } from "@/components/ui/modal";
 import { budgetHistory } from "@/lib/budget-history";
 import { can, lineTotal, money, totals, type Article, type Project } from "@/lib/domain";
 import { normalizar } from "@/lib/busqueda";
-import { cantidadPorDefecto, claveVisita, describirOrden, interpretarOrden, muestra, panoramas, partidasDe, type Colocacion, type Orden } from "@/lib/visita360";
+import { cantidadPorDefecto, claveVisita, describirOrden, esFoto360, interpretarOrden, muestra, panoramas, partidasDe, prefijo360, proporcion360, type Colocacion, type Orden, type Panorama } from "@/lib/visita360";
 import type { Direccion, Visor360 } from "@/lib/visor360";
 import "@/styles/visita-360.css";
 
@@ -29,13 +29,49 @@ function leerGuardadas(projectId: string): Colocacion[] {
 }
 
 export function Visita360({ project, budgetId }: { project: Project; budgetId: string | null }) {
-  const { data, actor, send, notify, busy } = useWorkspace();
+  const { data, actor, send, notify, busy, upload, fileUrl } = useWorkspace();
   const router = useRouter();
   const puede = can(actor.role, "budget.save");
   const salida = `/proyectos/${project.id}?s=budget${budgetId ? `&p=${budgetId}` : ""}`;
   useBanda({ label: project.name, href: salida });
 
-  const [foto, setFoto] = useState(panoramas[0]);
+  const [foto, setFoto] = useState<Panorama>(panoramas[0]);
+  const [propias, setPropias] = useState<Panorama[]>([]);
+  const [subiendo, setSubiendo] = useState(false);
+  const entrada = useRef<HTMLInputElement>(null);
+  const puedeSubir = can(actor.role, "document.add");
+  // Las fotos 360 del proyecto son documentos con el prefijo «360 · »; la más reciente se abre primero.
+  const docs360 = useMemo(() => data.documents.filter(d => d.project_id === project.id && esFoto360(d)).sort((a, b) => b.created_at.localeCompare(a.created_at)), [data.documents, project.id]);
+  useEffect(() => {
+    let vivo = true;
+    Promise.all(docs360.map(async d => { try { return { id: d.id, nombre: d.name.slice(prefijo360.length).replace(/\.[a-z0-9]+$/i, "") || "Foto 360", url: await fileUrl(d), nota: "Foto 360 del proyecto" }; } catch { return null; } }))
+      .then(lista => { if (!vivo) return; const ok = lista.filter((x): x is Panorama => Boolean(x)); setPropias(ok); if (ok.length) setFoto(f => panoramas.some(p => p.id === f.id) ? ok[0] : f); });
+    return () => { vivo = false; };
+  // fileUrl cambia en cada render del proveedor; basta con recalcular cuando cambian los documentos.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [docs360]);
+  const fotos = [...propias, ...panoramas];
+
+  /** Comprueba que es una foto 360, la reduce a 4096 px de ancho si hace falta (los móviles no cargan texturas mayores) y la sube al proyecto. */
+  async function subirFoto(file: File) {
+    if (!puedeSubir || subiendo) return;
+    setSubiendo(true);
+    try {
+      const bitmap = await createImageBitmap(file);
+      if (!proporcion360(bitmap.width, bitmap.height)) { notify("No parece una foto 360: tiene que ser el doble de ancha que de alta (por ejemplo 6000 × 3000)."); bitmap.close(); return; }
+      let final: Blob = file;
+      if (bitmap.width > 4096) {
+        const lienzo = document.createElement("canvas"); lienzo.width = 4096; lienzo.height = 2048;
+        lienzo.getContext("2d")!.drawImage(bitmap, 0, 0, 4096, 2048);
+        final = await new Promise<Blob>((resolve, reject) => lienzo.toBlob(b => b ? resolve(b) : reject(new Error("No se ha podido preparar la foto.")), "image/jpeg", 0.88));
+      }
+      bitmap.close();
+      const nombre = `${prefijo360}${file.name.replace(/\.[a-z0-9]+$/i, "")}.jpg`;
+      await upload(new File([final], nombre, { type: final === file ? file.type : "image/jpeg" }), project.id, "before");
+      notify("Foto 360 subida al proyecto");
+    } catch (e) { notify(e instanceof Error ? e.message : "No se ha podido subir la foto 360."); }
+    finally { setSubiendo(false); if (entrada.current) entrada.current.value = ""; }
+  }
   const [colocaciones, setColocaciones] = useState<Colocacion[]>(() => leerGuardadas(project.id));
   const [cargando, setCargando] = useState(true);
   const [fallo, setFallo] = useState("");
@@ -175,7 +211,11 @@ export function Visita360({ project, budgetId }: { project: Project; budgetId: s
         <p>{foto.nota}. Toca un sitio o di qué va ahí; la cantidad la pones tú.</p>
       </div>
       <div className="v360-fotos" role="group" aria-label="Estancia">
-        {panoramas.map(p => <button key={p.id} type="button" aria-pressed={p.id === foto.id} onClick={() => setFoto(p)}>{p.nombre}</button>)}
+        {fotos.map(p => <button key={p.id} type="button" aria-pressed={p.id === foto.id} onClick={() => setFoto(p)}>{p.nombre}</button>)}
+        {puedeSubir && <>
+          <button type="button" className="v360-subir" onClick={() => entrada.current?.click()} disabled={subiendo}><ImagePlus size={16} strokeWidth={1.7} aria-hidden="true" />{subiendo ? "Subiendo…" : "Subir foto 360"}</button>
+          <input ref={entrada} type="file" accept="image/jpeg,image/png,image/webp" hidden onChange={e => { const f = e.target.files?.[0]; if (f) void subirFoto(f); }} aria-label="Elegir una foto 360" />
+        </>}
       </div>
     </header>
 

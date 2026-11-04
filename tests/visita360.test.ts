@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { interpretarOrden, partidasDe, buscarArticulo, cantidadPorDefecto } from "@/lib/visita360";
+import { interpretarOrden, partidasDe, buscarArticulo, cantidadPorDefecto, esFoto360, proporcion360 } from "@/lib/visita360";
 import { createDemo, demoId } from "@/lib/demo";
 
 const { articles } = createDemo();
@@ -40,5 +40,12 @@ describe("Órdenes de la visita 360", () => {
     ], articles);
     expect(items).toHaveLength(2);
     expect(items[0]).toMatchObject({ quantity: 15.5, unit: "m²", inclusion: "included" });
+  });
+  it("reconoce las fotos 360 del proyecto por nombre y proporción", () => {
+    expect(esFoto360({ name: "360 · salón.jpg", mime_type: "image/jpeg" })).toBe(true);
+    expect(esFoto360({ name: "salón.jpg", mime_type: "image/jpeg" })).toBe(false);
+    expect(esFoto360({ name: "360 · plano.pdf", mime_type: "application/pdf" })).toBe(false);
+    expect(proporcion360(8192, 4096)).toBe(true);
+    expect(proporcion360(4000, 3000)).toBe(false);
   });
 });
