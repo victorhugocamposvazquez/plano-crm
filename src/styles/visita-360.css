@@ -64,15 +64,10 @@
 .v360-escribir .btn { width: 46px; height: 46px; padding: 0; justify-content: center; }
 .v360-linea strong { display: block; }
 .v360-lista .v360-linea-texto { flex: 1; }
-/* Marcar una superficie: el trazo de las esquinas y la barra con lo que hay que hacer. */
+/* Retocar una zona detectada: la barra con lo que se ha marcado, arriba para dejar libre el suelo. */
 .v360-stage[data-marcando] canvas { cursor: crosshair !important; }
-.v360-trazo { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
-.v360-trazo polygon { fill: rgb(226 90 18 / 0.18); stroke: #ffffff; stroke-width: 2.5; stroke-linejoin: round; filter: drop-shadow(0 0 1.5px rgb(0 0 0 / 0.6)); }
-.v360-trazo circle { fill: var(--pl-orange); stroke: #ffffff; stroke-width: 2.5; }
-.v360-trazo circle[data-base] { fill: #2c5a85; }
 .v360-marcar { position: absolute; left: 12px; right: 12px; top: 12px; display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-radius: var(--pl-radius-card); background: rgb(255 255 255 / 0.96); color: #16232e; box-shadow: var(--pl-shadow-float); }
 .v360-marcar p { margin: 0; font-size: var(--pl-text-md); line-height: var(--pl-leading-base); }
-.v360-marcar .v360-aviso { color: #a52a1f; font-weight: var(--pl-weight-medium); }
 .v360-marcar > div { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 .v360-marcar > div > .pl-mono { margin-right: auto; font-size: var(--pl-text-sm); color: #5f676d; }
 .v360-marcar .btn { min-height: 40px; color: #16232e; background: #ffffff; border-color: #cbd0cb; }
@@ -89,15 +84,14 @@
   .v360-marcar .btn { flex: 1 1 auto; }
   .v360-marcar > div > .pl-mono { flex: 1 1 100%; }
 }
-.v360-trazo [data-hueco] polygon { fill: rgb(44 90 133 / 0.25); stroke-dasharray: 6 4; }
-.v360-trazo [data-hueco] circle { fill: #2c5a85; }
-/* Mientras se marca, la barra va arriba: el suelo y la base de las paredes, donde se toca, quedan libres. */
 .v360-marcar p { max-width: 72ch; }
 @media (max-width: 767px) {
-  /* En el teléfono la barra de marcar ocupa lo mínimo: dos líneas de texto y botones bajos, para dejar la foto a la vista. */
+  /* En el teléfono la barra de retoque ocupa lo mínimo: dos líneas de texto y botones bajos, para dejar la foto a la vista. */
   .v360-marcar p { font-size: var(--pl-text-sm); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; }
   .v360-marcar > div { display: flex; flex-wrap: wrap; gap: 6px; }
   .v360-marcar > div > .pl-mono { display: none; }
   .v360-marcar .btn { flex: 0 0 auto; min-height: 38px; padding: 0 10px; font-size: var(--pl-text-sm); }
   .v360-marcar .btn-primary { flex: 1 1 auto; }
 }
+/* Mientras se analiza la foto, un aviso discreto arriba: la foto sigue viéndose. */
+.v360-analizando { inset: auto; top: 12px; left: 50%; transform: translateX(-50%); padding: 8px 14px; border-radius: var(--pl-radius-full); background: rgb(22 35 46 / 0.8); }

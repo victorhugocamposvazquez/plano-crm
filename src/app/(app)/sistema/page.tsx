@@ -34,6 +34,7 @@ export default async function SystemPage() {
       <a href="#capacidades">Estado del producto</a>
       <a href="#cambios">Registro de cambios</a>
       <a href="#supervision">Correcciones supervisadas</a>
+      <Link href="/sistema/visita-360" prefetch={false}>Visita 360: tecnología</Link>
     </nav>
 
     <section className={styles.deployment} aria-label="Versión de este entorno">
