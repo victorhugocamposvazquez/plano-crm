@@ -2,7 +2,7 @@
 const { chromium } = require('@playwright/test'), fs = require('node:fs');
 const axe = fs.readFileSync(require.resolve('axe-core/axe.min.js'), 'utf8');
 const base = process.env.PLAYWRIGHT_BASE_URL || 'http://127.0.0.1:3119', ficha = '/proyectos/00000000-0000-4000-8000-000000000010';
-const rutas = ['/', '/proyectos', ficha, `${ficha}?s=budget`, `${ficha}?s=work`, `${ficha}?s=purchases`, `${ficha}?s=documents`, `${ficha}?s=cobros`, `${ficha}/captura`, `${ficha}/plano`, '/agenda', '/clientes', '/finanzas', '/catalogo', '/ajustes', '/mas'];
+const rutas = ['/', '/proyectos', ficha, `${ficha}?s=budget`, `${ficha}?s=work`, `${ficha}?s=purchases`, `${ficha}?s=documents`, `${ficha}?s=cobros`, `${ficha}/captura`, `${ficha}/plano`, `${ficha}/visita360`, '/agenda', '/clientes', '/finanzas', '/catalogo', '/ajustes', '/mas'];
 (async () => {
   const browser = await chromium.launch({ headless: true, executablePath: process.env.PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH || undefined });
   const fallos = [];

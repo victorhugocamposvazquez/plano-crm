@@ -1,0 +1,139 @@
+import * as THREE from "three";
+
+/**
+ * Visor de fotografía 360 (equirectangular) con three.js: una esfera vista desde dentro.
+ * Arrastrar gira la vista; la rueda o el pellizco acercan; un toque corto devuelve la dirección (yaw, pitch) a la que apunta.
+ * No mide nada: las cantidades las pone la persona. Solo sirve para situar lo que se dice en la estancia.
+ */
+export type Direccion = { yaw: number; pitch: number };
+export type Visor360 = {
+  /** Proyecta una dirección a píxeles del contenedor; `visible` es falso si queda detrás de la cámara. */
+  proyectar(d: Direccion): { x: number; y: number; visible: boolean };
+  centro(): Direccion;
+  mirar(d: Direccion): void;
+  cambiarFoto(url: string): Promise<void>;
+  /** Pone una textura de suelo bajo la cámara, fundida hacia los bordes, para enseñar cómo quedaría. `null` la quita. */
+  probarSuelo(url: string | null): void;
+  dispose(): void;
+};
+
+const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
+
+export function crearVisor360(container: HTMLElement, url: string, opciones: { alTocar?: (d: Direccion) => void; alMover?: () => void; alCargar?: () => void; alFallar?: (e: unknown) => void } = {}): Visor360 {
+  const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "low-power" });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.outputColorSpace = THREE.SRGBColorSpace;
+  const canvas = renderer.domElement;
+  canvas.style.display = "block"; canvas.style.width = "100%"; canvas.style.height = "100%"; canvas.style.touchAction = "none"; canvas.style.cursor = "grab"; canvas.style.zIndex = "0";
+  canvas.setAttribute("aria-label", "Fotografía 360 de la estancia. Arrastra para mirar alrededor; toca un sitio para poner algo ahí.");
+  container.appendChild(canvas);
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(75, 1, 0.1, 100);
+  const geometry = new THREE.SphereGeometry(50, 64, 40);
+  geometry.scale(-1, 1, 1); // se ve desde dentro
+  const material = new THREE.MeshBasicMaterial({ color: 0x222222 });
+  const sphere = new THREE.Mesh(geometry, material);
+  scene.add(sphere);
+
+  let yaw = 0, pitch = -0.12, fov = 75, zoomTocado = false, disposed = false, raf = 0;
+  let velocidadYaw = 0, velocidadPitch = 0;
+  const loader = new THREE.TextureLoader();
+
+  function cargar(src: string) {
+    return new Promise<void>((resolve, reject) => {
+      loader.load(src, texture => {
+        if (disposed) { texture.dispose(); return; }
+        texture.colorSpace = THREE.SRGBColorSpace; texture.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+        const anterior = material.map; material.map = texture; material.color.set(0xffffff); material.needsUpdate = true; anterior?.dispose();
+        render(); opciones.alCargar?.(); resolve();
+      }, undefined, e => { opciones.alFallar?.(e); reject(e); });
+    });
+  }
+
+  function aplicarCamara() {
+    camera.fov = fov; camera.updateProjectionMatrix();
+    const x = Math.cos(pitch) * Math.sin(yaw), y = Math.sin(pitch), z = Math.cos(pitch) * Math.cos(yaw);
+    camera.lookAt(x, y, z);
+  }
+  function render() { if (disposed) return; aplicarCamara(); renderer.render(scene, camera); opciones.alMover?.(); }
+  function redimensionar() {
+    const w = container.clientWidth || 1, h = container.clientHeight || 1;
+    // En vertical (móvil) el campo de visión se abre para que la estancia no se vea como por una rendija.
+    if (!zoomTocado) fov = w / h < 1 ? 100 : 75;
+    renderer.setSize(w, h, false); camera.aspect = w / h; render();
+  }
+
+  // Suelo de prueba: un disco de 3,6 m a 1,5 m bajo la cámara, opaco hasta cerca del borde y fundido al final.
+  const sueloGeo = new THREE.CircleGeometry(3.6, 72); sueloGeo.rotateX(-Math.PI / 2); sueloGeo.translate(0, -1.5, 0);
+  const degradado = document.createElement("canvas"); degradado.width = degradado.height = 256;
+  const g = degradado.getContext("2d")!; const grad = g.createRadialGradient(128, 128, 30, 128, 128, 128); grad.addColorStop(0, "#fff"); grad.addColorStop(0.82, "#fff"); grad.addColorStop(1, "#000"); g.fillStyle = grad; g.fillRect(0, 0, 256, 256);
+  const alpha = new THREE.CanvasTexture(degradado);
+  const sueloMat = new THREE.MeshBasicMaterial({ transparent: true, alphaMap: alpha, opacity: 0.97, depthWrite: false });
+  const suelo = new THREE.Mesh(sueloGeo, sueloMat); suelo.visible = false; scene.add(suelo);
+  let sueloUrl: string | null = null;
+  const observer = new ResizeObserver(redimensionar); observer.observe(container);
+
+  // Arrastre con el dedo o el ratón; un toque corto sin desplazamiento es «poner algo aquí».
+  let arrastrando = false, inicioX = 0, inicioY = 0, ultimoX = 0, ultimoY = 0, movido = false, ultimoT = 0;
+  const porPixel = () => (fov * Math.PI / 180) / (container.clientHeight || 1);
+  canvas.addEventListener("pointerdown", e => { arrastrando = true; movido = false; inicioX = ultimoX = e.clientX; inicioY = ultimoY = e.clientY; ultimoT = performance.now(); velocidadYaw = velocidadPitch = 0; canvas.setPointerCapture(e.pointerId); canvas.style.cursor = "grabbing"; });
+  canvas.addEventListener("pointermove", e => {
+    if (!arrastrando) return;
+    const dx = e.clientX - ultimoX, dy = e.clientY - ultimoY; ultimoX = e.clientX; ultimoY = e.clientY;
+    if (Math.abs(e.clientX - inicioX) + Math.abs(e.clientY - inicioY) > 6) movido = true;
+    const k = porPixel(); yaw -= dx * k; pitch = clamp(pitch + dy * k, -Math.PI / 2 + 0.05, Math.PI / 2 - 0.05);
+    const ahora = performance.now(), dt = Math.max(8, ahora - ultimoT); ultimoT = ahora;
+    velocidadYaw = -dx * k / dt * 16; velocidadPitch = dy * k / dt * 16;
+    render();
+  });
+  const soltar = (e: PointerEvent) => {
+    if (!arrastrando) return; arrastrando = false; canvas.style.cursor = "grab";
+    if (!movido) { opciones.alTocar?.(direccionDesde(e.clientX, e.clientY)); return; }
+    inercia();
+  };
+  canvas.addEventListener("pointerup", soltar); canvas.addEventListener("pointercancel", soltar);
+  function inercia() {
+    cancelAnimationFrame(raf);
+    const paso = () => {
+      if (disposed) return;
+      velocidadYaw *= 0.9; velocidadPitch *= 0.9;
+      if (Math.abs(velocidadYaw) + Math.abs(velocidadPitch) < 0.0004) return;
+      yaw += velocidadYaw; pitch = clamp(pitch + velocidadPitch, -Math.PI / 2 + 0.05, Math.PI / 2 - 0.05); render(); raf = requestAnimationFrame(paso);
+    };
+    raf = requestAnimationFrame(paso);
+  }
+  canvas.addEventListener("wheel", e => { e.preventDefault(); zoomTocado = true; fov = clamp(fov + e.deltaY * 0.05, 40, 110); render(); }, { passive: false });
+  // Pellizco: dos dedos cambian el ángulo de visión.
+  let pellizco = 0;
+  canvas.addEventListener("touchstart", e => { if (e.touches.length === 2) pellizco = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); }, { passive: true });
+  canvas.addEventListener("touchmove", e => { if (e.touches.length === 2 && pellizco) { const d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY); zoomTocado = true; fov = clamp(fov * (pellizco / d), 40, 110); pellizco = d; arrastrando = false; render(); } }, { passive: true });
+
+  function direccionDesde(clientX: number, clientY: number): Direccion {
+    const r = canvas.getBoundingClientRect();
+    const ndc = new THREE.Vector2(((clientX - r.left) / r.width) * 2 - 1, -(((clientY - r.top) / r.height) * 2 - 1));
+    const v = new THREE.Vector3(ndc.x, ndc.y, 0.5).unproject(camera).normalize();
+    return { yaw: Math.atan2(v.x, v.z), pitch: Math.asin(clamp(v.y, -1, 1)) };
+  }
+
+  const visor: Visor360 = {
+    proyectar(d) {
+      const v = new THREE.Vector3(Math.cos(d.pitch) * Math.sin(d.yaw), Math.sin(d.pitch), Math.cos(d.pitch) * Math.cos(d.yaw));
+      const delante = v.dot(camera.getWorldDirection(new THREE.Vector3())) > 0.15;
+      v.project(camera);
+      return { x: (v.x + 1) / 2 * (container.clientWidth || 1), y: (1 - v.y) / 2 * (container.clientHeight || 1), visible: delante && Math.abs(v.x) <= 1.05 && Math.abs(v.y) <= 1.05 };
+    },
+    centro: () => ({ yaw, pitch }),
+    mirar(d) { cancelAnimationFrame(raf); yaw = d.yaw; pitch = clamp(d.pitch, -Math.PI / 2 + 0.05, Math.PI / 2 - 0.05); render(); },
+    cambiarFoto: cargar,
+    probarSuelo(url) {
+      if (url === sueloUrl) return; sueloUrl = url;
+      if (!url) { suelo.visible = false; render(); return; }
+      loader.load(url, t => { if (disposed || sueloUrl !== url) { t.dispose(); return; } t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(5, 5); t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy()); sueloMat.map?.dispose(); sueloMat.map = t; sueloMat.needsUpdate = true; suelo.visible = true; render(); });
+    },
+    dispose() { disposed = true; cancelAnimationFrame(raf); observer.disconnect(); material.map?.dispose(); material.dispose(); geometry.dispose(); sueloMat.map?.dispose(); sueloMat.dispose(); alpha.dispose(); sueloGeo.dispose(); renderer.dispose(); canvas.remove(); }
+  };
+  redimensionar();
+  void cargar(url);
+  return visor;
+}

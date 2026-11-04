@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowRight, BookOpen, Camera, ChevronDown, ChevronLeft, LayoutTemplate, PenLine, Plus } from "lucide-react";
+import { ArrowRight, BookOpen, Camera, ChevronDown, ChevronLeft, LayoutTemplate, PenLine, Plus, Orbit } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Menu } from "@/components/ui/menu";
 import { BudgetActions } from "./budget-actions";
@@ -92,6 +92,7 @@ export function BudgetWorkspace({project,budget,versions,onNavigate,onEdit,canEd
           {id:"catalogo",label:"Del catálogo",hint:"Artículos con precio; tú pones la cantidad.",icon:<BookOpen size={16} strokeWidth={1.7}/>,onSelect:()=>setCatalogo(true)},
           {id:"plano",label:"Midiendo el plano",hint:"Sube el PDF: salen los m² y los ml.",icon:<LayoutTemplate size={16} strokeWidth={1.7}/>,onSelect:()=>router.push(planoHref)},
           {id:"fotos",label:"Desde fotos de la visita",hint:"Fotos, notas y una cifra orientativa.",icon:<Camera size={16} strokeWidth={1.7}/>,onSelect:()=>router.push(fotosHref)},
+          {id:"visita360",label:"En la visita 360",hint:"Recorre la estancia y di qué va en cada sitio.",icon:<Orbit size={16} strokeWidth={1.7}/>,onSelect:()=>router.push(`/proyectos/${project.id}/visita360?p=${budget.id}`)},
           {id:"mano",label:"Escribir una partida a mano",icon:<PenLine size={16} strokeWidth={1.7}/>,onSelect:onEdit}
         ]}/>}
       </div>
