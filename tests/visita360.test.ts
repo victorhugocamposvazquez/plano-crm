@@ -1,50 +1,102 @@
 import { describe, it, expect } from "vitest";
-import { interpretarOrden, partidasDe, buscarArticulo, cantidadPorDefecto, esFoto360, proporcion360 } from "@/lib/visita360";
+import { interpretarOrden, partidasDe, buscarArticulo, cantidadPorDefecto, esFoto360, proporcion360, geometriaSuperficie, muestra, alturaCamara, alturaTecho, type Zona } from "@/lib/visita360";
 import { createDemo, demoId } from "@/lib/demo";
 
 const { articles } = createDemo();
-const nombre = (texto: string) => { const o = interpretarOrden(texto, articles); return o && "article" in o ? o.article.name : o?.tipo ?? null; };
+const zonas: Zona[] = [{ id: "cocina", nombre: "Cocina" }, { id: "salon", nombre: "Salón" }, { id: "bano", nombre: "Baño" }];
+const orden = (texto: string) => interpretarOrden(texto, articles, zonas);
+const nombre = (texto: string) => { const o = orden(texto); return o && "article" in o ? o.article.name : o?.tipo ?? null; };
+/** Dirección desde la cámara (en el origen) hasta un punto (x, y, z). */
+const hacia = (x: number, y: number, z: number) => ({ yaw: Math.atan2(x, z), pitch: Math.atan2(y, Math.hypot(x, z)) });
 
 describe("Órdenes de la visita 360", () => {
   it("entiende cantidad, unidad y artículo dichos como en obra", () => {
-    const o = interpretarOrden("añade 20 metros de tarima", articles);
-    expect(o).toMatchObject({ tipo: "añadir", quantity: 20, aproximada: false });
+    const o = orden("añade 20 metros de tarima");
+    expect(o).toMatchObject({ tipo: "añadir", quantity: 20 });
     expect(o && "article" in o ? o.article.code : "").toBe("PAV-001");
-    expect(interpretarOrden("pon dos puertas aquí", articles)).toMatchObject({ tipo: "añadir", quantity: 2 });
-    expect(interpretarOrden("pintar las paredes, 35 metros cuadrados", articles)).toMatchObject({ tipo: "añadir", quantity: 35 });
-    expect(interpretarOrden("quiero tres puntos de luz", articles)).toMatchObject({ tipo: "añadir", quantity: 3 });
+    expect(orden("pon dos puertas aquí")).toMatchObject({ tipo: "añadir", quantity: 2 });
+    expect(orden("pintar las paredes, 35 metros cuadrados")).toMatchObject({ tipo: "añadir", quantity: 35 });
+    expect(orden("quiero tres puntos de luz")).toMatchObject({ tipo: "añadir", quantity: 3 });
     expect(nombre("tirar este tabique")).toBe("Demolición de tabiquería interior");
     expect(nombre("un armario empotrado")).toBe("Armario a medida con distribución interior");
   });
-  it("sin cantidad pone una por defecto y la marca como aproximada", () => {
-    const o = interpretarOrden("pon tarima en el suelo", articles);
-    expect(o).toMatchObject({ tipo: "añadir", aproximada: true, quantity: cantidadPorDefecto("m²") });
+  it("lleva cada orden a la estancia dicha, aunque se diga «solamente»", () => {
+    expect(orden("pon tarima en la cocina solamente")).toMatchObject({ tipo: "añadir", quantity: null, zona: { id: "cocina" } });
+    expect(orden("pinta las paredes del salón")).toMatchObject({ tipo: "añadir", zona: { id: "salon" } });
+    expect(orden("quita la tarima de la cocina")).toMatchObject({ tipo: "quitar", zona: { id: "cocina" } });
+    expect(orden("pon una puerta aquí")).toMatchObject({ tipo: "añadir", zona: undefined });
+    expect(orden("vamos al baño")).toEqual({ tipo: "cambiar", zona: { id: "bano", nombre: "Baño" } });
   });
-  it("entiende quitar, total, incorporar, deshacer y cambiar de estancia", () => {
-    expect(nombre("quita la pintura")).toBe("Preparación y pintura de paredes");
-    expect(interpretarOrden("¿cuánto va?", articles)).toEqual({ tipo: "total" });
-    expect(interpretarOrden("pásalo al presupuesto", articles)).toEqual({ tipo: "incorporar" });
-    expect(interpretarOrden("deshaz lo último", articles)).toEqual({ tipo: "deshacer" });
-    expect(interpretarOrden("cambia a la casa vacía", articles)).toMatchObject({ tipo: "cambiar" });
+  it("sin cantidad no la inventa: la mide la superficie marcada o se pone una por defecto", () => {
+    expect(orden("pon tarima en el suelo")).toMatchObject({ tipo: "añadir", quantity: null });
+    expect(cantidadPorDefecto("m²")).toBe(10);
+  });
+  it("entiende total, incorporar y deshacer", () => {
+    expect(orden("¿cuánto va?")).toEqual({ tipo: "total" });
+    expect(orden("pásalo al presupuesto")).toEqual({ tipo: "incorporar" });
+    expect(orden("deshaz lo último")).toEqual({ tipo: "deshacer" });
   });
   it("no inventa artículos ni órdenes", () => {
-    expect(interpretarOrden("hola buenos días", articles)).toBeNull();
-    expect(interpretarOrden("añade veinte metros de mármol de carrara", articles)).toBeNull();
+    expect(orden("hola buenos días")).toBeNull();
+    expect(orden("añade veinte metros de mármol de carrara")).toBeNull();
     expect(buscarArticulo("", articles)).toBeNull();
   });
-  it("el ticket suma las cantidades del mismo artículo", () => {
+});
+
+describe("Superficies marcadas en la foto", () => {
+  it("cada material sabe dónde va", () => {
+    const por = (code: string) => muestra(articles.find(a => a.code === code)!).superficie;
+    expect(por("PAV-001")).toBe("suelo");
+    expect(por("PIN-001")).toBe("pared");
+    expect(por("ALB-001")).toBe("pared");
+    expect(por("CAR-001")).toBe("pared");
+    expect(por("ELE-001")).toBeUndefined();
+  });
+  it("un suelo de 4 × 3 m marcado por sus esquinas mide 12 m²", () => {
+    const y = -alturaCamara;
+    const g = geometriaSuperficie("suelo", [hacia(-2, y, 1), hacia(2, y, 1), hacia(2, y, 4), hacia(-2, y, 4)]);
+    expect("error" in g ? g.error : g.area).toBe(12);
+  });
+  it("una pared de 3 m marcada por la base y luego por arriba mide 3 × su altura", () => {
+    const y = -alturaCamara, alto = 2.5;
+    const g = geometriaSuperficie("pared", [hacia(-1.5, y, 3), hacia(1.5, y, 3), hacia(1.5, y + alto, 3), hacia(-1.5, y + alto, 3)]);
+    expect("error" in g ? g.error : g.area).toBe(7.5);
+  });
+  it("una ventana marcada como hueco se descuenta de la pared", () => {
+    const y = -alturaCamara;
+    const pared = [hacia(-1.5, y, 3), hacia(1.5, y, 3), hacia(1.5, y + 2.5, 3), hacia(-1.5, y + 2.5, 3)];
+    const ventana = [hacia(-0.5, y + 1, 3), hacia(0.5, y + 1, 3), hacia(0.5, y + 2, 3), hacia(-0.5, y + 2, 3)];
+    const g = geometriaSuperficie("pared", pared, [ventana]);
+    expect("error" in g ? g.error : [g.area, g.huecos]).toEqual([6.5, [4]]);
+  });
+  it("un techo marcado mide lo mismo que el suelo que tiene debajo", () => {
+    const y = alturaTecho - alturaCamara;
+    const g = geometriaSuperficie("techo", [hacia(-2, y, 1), hacia(2, y, 1), hacia(2, y, 3), hacia(-2, y, 3)]);
+    expect("error" in g ? g.error : g.area).toBe(8);
+  });
+  it("explica por qué no sirven los puntos", () => {
+    expect(geometriaSuperficie("suelo", [hacia(0, 1, 2), hacia(1, -1, 2), hacia(-1, -1, 2)])).toHaveProperty("error");
+    expect(geometriaSuperficie("pared", [hacia(0, 1, 2), hacia(1, 1, 2), hacia(1, 2, 2)])).toHaveProperty("error");
+    expect(geometriaSuperficie("suelo", [hacia(0, -1, 2)])).toHaveProperty("error");
+  });
+});
+
+describe("Ticket de la visita", () => {
+  it("una partida por artículo y estancia, con la estancia en la descripción", () => {
     const items = partidasDe([
-      { id: "a", article_id: demoId(32), quantity: 10, yaw: 0, pitch: 0, origen: "voz", aproximada: false },
-      { id: "b", article_id: demoId(32), quantity: 5.5, yaw: 1, pitch: 0, origen: "toque", aproximada: false },
-      { id: "c", article_id: demoId(33), quantity: 1, yaw: 2, pitch: 0, origen: "toque", aproximada: false }
-    ], articles);
-    expect(items).toHaveLength(2);
-    expect(items[0]).toMatchObject({ quantity: 15.5, unit: "m²", inclusion: "included" });
+      { id: "a", article_id: demoId(32), quantity: 10, yaw: 0, pitch: 0, origen: "voz", aproximada: false, foto: "cocina" },
+      { id: "b", article_id: demoId(32), quantity: 5.5, yaw: 1, pitch: 0, origen: "toque", aproximada: true, foto: "cocina" },
+      { id: "c", article_id: demoId(32), quantity: 20, yaw: 1, pitch: 0, origen: "toque", aproximada: false, foto: "salon" },
+      { id: "d", article_id: demoId(33), quantity: 1, yaw: 2, pitch: 0, origen: "toque", aproximada: false, foto: "cocina" }
+    ], articles, zonas);
+    expect(items).toHaveLength(3);
+    expect(items[0]).toMatchObject({ quantity: 15.5, unit: "m²", zona: "Cocina", aproximada: true });
+    expect(items[0].description).toMatch(/ · Cocina$/);
+    expect(items[1]).toMatchObject({ quantity: 20, zona: "Salón" });
   });
   it("reconoce las fotos 360 del proyecto por nombre y proporción", () => {
-    expect(esFoto360({ name: "360 · salón.jpg", mime_type: "image/jpeg" })).toBe(true);
-    expect(esFoto360({ name: "salón.jpg", mime_type: "image/jpeg" })).toBe(false);
-    expect(esFoto360({ name: "360 · plano.pdf", mime_type: "application/pdf" })).toBe(false);
+    expect(esFoto360({ name: "360 · Cocina.jpg", mime_type: "image/jpeg" })).toBe(true);
+    expect(esFoto360({ name: "Cocina.jpg", mime_type: "image/jpeg" })).toBe(false);
     expect(proporcion360(8192, 4096)).toBe(true);
     expect(proporcion360(4000, 3000)).toBe(false);
   });
