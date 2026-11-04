@@ -20,7 +20,9 @@ export const esFoto360 = (doc: { name: string; mime_type: string }) => doc.name.
 /** Una foto 360 equirectangular es el doble de ancha que de alta (se admite un margen pequeño). */
 export const proporcion360 = (ancho: number, alto: number) => alto > 0 && Math.abs(ancho / alto - 2) <= 0.08;
 
-export type Colocacion = { id: string; article_id: string; quantity: number; yaw: number; pitch: number; origen: "voz" | "toque"; aproximada: boolean; foto: string; superficie?: { tipo: TipoSuperficie; puntos: { yaw: number; pitch: number }[]; huecos?: { yaw: number; pitch: number }[][] } };
+export type Colocacion = { id: string; article_id: string; quantity: number; yaw: number; pitch: number; origen: "voz" | "toque"; aproximada: boolean; foto: string; superficie?: { tipo: TipoSuperficie; puntos: { yaw: number; pitch: number }[]; huecos?: { yaw: number; pitch: number }[][] };
+  /** Superficie detectada en la foto: máscara comprimida del tamaño analizado. */
+  zona?: { tipo: TipoSuperficie; mascara: string; w: number; h: number } };
 /** Contorno del suelo de una estancia: las esquinas tocadas en la foto, siguiendo la base de paredes y muebles. */
 export type Contorno = { yaw: number; pitch: number }[];
 export type Zona = { id: string; nombre: string };
@@ -118,6 +120,8 @@ const madera = { textura: "/visual/materiales/laminate_floor_02_diff_1k.jpg", es
 const baldosa = { textura: "/visual/materiales/marble_tiles_diff_1k.jpg", escala: 0.9, opacidad: 0.96 };
 
 /** Muestra del material (para la marca y el catálogo), dónde se pone y con qué acabado se dibuja. */
+/** Si al pedirlo por voz se aplica a toda la superficie de la estancia (suelo, paredes, techo) o solo a lo que se toque. */
+export const seAplicaATodo = (article: Pick<Article, "chapter" | "name">) => /pavimento|tarima|parquet|suelo|baldosa|porcelanico|gres|pintura|pintar|alicatad|azulejo|revestimiento|techo/.test(normalizar(`${article.chapter} ${article.name}`));
 export function muestra(article: Pick<Article, "chapter" | "name">): { imagen?: string; color: string; superficie?: TipoSuperficie; acabado?: Acabado; suelo?: string } {
   const t = normalizar(`${article.chapter} ${article.name}`);
   if (/pavimento|tarima|parquet|suelo/.test(t)) return { imagen: "/visual/360/muestras/madera.jpg", color: "#a77b4f", superficie: "suelo", acabado: madera, suelo: madera.textura };

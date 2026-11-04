@@ -11,7 +11,7 @@ export type Capability = {
   evidence: Evidence[];
 };
 
-export const documentationDate = "2026-11-02";
+export const documentationDate = "2026-11-05";
 export const workBranch = "codex/planos-borrador-compartido";
 const repository = "https://github.com/victorhugocamposvazquez/plano-crm";
 export const statusLabels: Record<CapabilityStatus, string> = {
@@ -68,11 +68,11 @@ export const capabilities: Capability[] = [
     evidence: [{ label: "Captura persistente y límites", path: "docs/captura/captura-estancias-persistente.md" }, { label: "Contrato y alcance", path: "docs/captura/estancias-catalogo.md" }, { label: "Pruebas de propuestas por estancia", path: "tests/captura/room-survey.test.ts" }],
   },
   {
-    id: "fotos", name: "Análisis automático de fotos y 360", status: "pending",
-    summary: "Objetivo de producto. Todavía no se ha implementado el reconocimiento automático.",
-    available: ["Adjuntos de fotos en el CRM y contrato de fuentes por estancia."],
-    pending: ["Reconocimiento de alcance y elementos, preguntas automáticas y evaluación con casos reales.", "Captura 360 y reconstrucción; una imagen sin referencia métrica no acredita dimensiones."],
-    evidence: [{ label: "Fuentes, medidas y cuestiones pendientes", path: "docs/captura/estancias-catalogo.md" }],
+    id: "fotos", name: "Análisis automático de fotos y 360", status: "partial",
+    summary: "Visita 360: detecta suelo, paredes y techo con SAM 2.1 en el navegador, los mide y los pinta con materiales del catálogo.",
+    available: ["Órdenes por voz o escritas por estancia («tarima en la cocina»), toque para una sola pared y retoque con deshacer.", "SAM 2.1 (Apache 2.0) en el navegador con WebGPU, sin coste por uso; detección propia por color como respaldo.", "Medidas aproximadas (≈) suponiendo la cámara a 1,5 m, pasadas al borrador del presupuesto."],
+    pending: ["Guardar las visitas en el servidor; alojar el modelo propio; medir en móviles.", "Medir lo que tapan los muebles (distribución de la estancia) y reconocer elementos por texto (SAM 3.1); una imagen sin referencia métrica no acredita dimensiones."],
+    evidence: [{ label: "Visita 360: tecnología y evolución", path: "docs/captura/visita-360.md" }, { label: "SAM sobre la foto 360", path: "src/lib/sam360.ts" }, { label: "Fuentes, medidas y cuestiones pendientes", path: "docs/captura/estancias-catalogo.md" }],
   },
   {
     id: "virtual", name: "Entorno virtual y cambio de acabados", status: "partial",

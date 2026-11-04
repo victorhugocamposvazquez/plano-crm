@@ -11,7 +11,7 @@ describe("Documentación verificable del producto", () => {
       expect(item.evidence.length).toBeGreaterThan(0);
       for (const source of item.evidence) expect(existsSync(source.path), source.path).toBe(true);
     }
-    expect(capabilities.find(item => item.id === "fotos")?.status).toBe("pending");
+    expect(capabilities.find(item => item.id === "fotos")?.status).toBe("partial");
     expect(capabilities.find(item => item.id === "virtual")?.status).toBe("partial");
   });
   it("registra revisiones concretas sin inferir su despliegue", () => {
