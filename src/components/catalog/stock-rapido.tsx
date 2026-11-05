@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent, useId } from "react";
 import { useWorkspace } from "@/components/workspace-provider";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
@@ -21,6 +21,7 @@ export function StockRapido({ article, onClose }: { article: Article | null; onC
   const actual = article ? data.articles.find(a => a.id === article.id) ?? article : null;
   const [hay, setHay] = useState(""), [minimo, setMinimo] = useState(""), [donde, setDonde] = useState("");
   const [pendiente, setPendiente] = useState(false), [fallo, setFallo] = useState("");
+  const formId = `stock-rapido-${useId().replace(/:/g, "")}`;
   useEffect(() => { setHay(""); setMinimo(""); setDonde(""); setFallo(""); }, [article?.id]);
 
   async function empezar(e: FormEvent) {
@@ -42,10 +43,10 @@ export function StockRapido({ article, onClose }: { article: Article | null; onC
   return <Modal open={Boolean(actual)} onClose={onClose} title={actual ? actual.name : ""} kicker={actual ? `Stock · ${actual.code}` : undefined}
     footer={actual?.stocked ? <Button variant="primary" onClick={onClose}>Hecho</Button> : <>
       <Button variant="secondary" onClick={onClose} disabled={pendiente}>Cancelar</Button>
-      <Button variant="primary" type="submit" form="stock-rapido" disabled={pendiente || busy || hay.trim() === ""}>{pendiente ? "Guardando…" : "Empezar a llevar stock"}</Button>
+      <Button variant="primary" type="submit" form={formId} disabled={pendiente || busy || hay.trim() === ""}>{pendiente ? "Guardando…" : "Empezar a llevar stock"}</Button>
     </>}>
     {actual?.stocked && e && <AlmacenArticulo article={actual} />}
-    {actual && !actual.stocked && <form id="stock-rapido" className="form" onSubmit={empezar} style={{ maxWidth: "none" }}>
+    {actual && !actual.stocked && <form id={formId} className="form" onSubmit={empezar} style={{ maxWidth: "none" }}>
       <p className="muted text-sm" style={{ margin: 0 }}>Para material que se compra y se guarda en la nave. Desde ahora, recibir un pedido ligado a este artículo suma y llevarlo a obra resta.</p>
       <label className="field"><span>¿Cuánto hay ahora en la nave?</span><span className="unit-input"><input type="text" inputMode="decimal" value={hay} onChange={ev => setHay(ev.target.value)} placeholder="0" autoFocus required /><span>{actual.unit}</span></span></label>
       <div className="line-grid">

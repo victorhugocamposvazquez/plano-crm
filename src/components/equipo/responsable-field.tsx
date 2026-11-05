@@ -56,7 +56,7 @@ export function ResponsableField({ value, onChange, oficio, mensaje }: { value: 
 }
 
 /** Opciones para asignar una subtarea: «Sin asignar», operarios (op:) y personas de la empresa (m:); quien es las dos cosas sale como operario. */
-export function opcionesAsignar(data: Pick<Workspace, "operarios" | "members">) {
+export function opcionesAsignar(data: Pick<Workspace, "operarios" | "members">): { value: string; label: string; hint?: string }[] {
   const operarios = [...(data.operarios ?? [])].sort((a, b) => Number(b.available) - Number(a.available) || a.name.localeCompare(b.name, "es"));
   const esOperario = (userId: string) => operarios.some(o => o.user_id === userId);
   return [

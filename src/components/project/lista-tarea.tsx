@@ -1,8 +1,9 @@
 "use client";
 import { useState, type ClipboardEvent, type KeyboardEvent } from "react";
-import { Plus, UserRound, X } from "lucide-react";
-import { Select } from "@/components/ui/select";
-import { asignacionSubtarea, opcionesAsignar, valorSubtarea } from "@/components/equipo/responsable-field";
+import { Plus, Trash2, UserMinus, UserPlus, UserRound } from "lucide-react";
+import { Menu, type MenuItem } from "@/components/ui/menu";
+import { asignacionSubtarea, valorSubtarea } from "@/components/equipo/responsable-field";
+import { AsignarDialog } from "@/components/equipo/asignar-dialog";
 import { useWorkspace } from "@/components/workspace-provider";
 import { can, type PuntoLista, type Task } from "@/lib/domain";
 import { progresoLista, puntoNuevo } from "@/lib/lista-tarea";
@@ -19,9 +20,20 @@ export function AvanceLista({ lista }: { lista: PuntoLista[] | undefined }) {
   </span>;
 }
 
-/** A quién va una subtarea, en pequeño, para quien no puede cambiarlo. */
-function Asignada({ p }: { p: PuntoLista }) {
-  return p.assignee ? <span className="subtarea-quien"><UserRound size={13} strokeWidth={1.8} aria-hidden="true" />{p.assignee}</span> : null;
+/** A quién va una subtarea, en pequeño; solo aparece si está asignada. Para Administración, tocarlo abre «Asignar a». */
+function Asignada({ p, onCambiar }: { p: PuntoLista; onCambiar?: () => void }) {
+  if (!p.assignee) return null;
+  const contenido = <><UserRound size={13} strokeWidth={1.8} aria-hidden="true" />{p.assignee}</>;
+  return onCambiar ? <button type="button" className="subtarea-quien" onClick={onCambiar} aria-label={`Asignada a ${p.assignee}. Cambiar`}>{contenido}</button> : <span className="subtarea-quien">{contenido}</span>;
+}
+
+/** Las acciones del menú «⋯» de una subtarea: asignar (o cambiar), quitar la asignación y eliminar. */
+function accionesSubtarea(p: PuntoLista, { puedeAsignar, onAsignar, onQuitar, onEliminar }: { puedeAsignar: boolean; onAsignar: () => void; onQuitar: () => void; onEliminar?: () => void }): MenuItem[] {
+  return [
+    ...(puedeAsignar ? [{ id: "asignar", label: p.assignee ? "Cambiar a quién va…" : "Asignar a otra persona…", hint: "Un operario o alguien de la empresa, o uno nuevo", icon: <UserPlus size={15} strokeWidth={1.7} />, onSelect: onAsignar }] : []),
+    ...(puedeAsignar && p.assignee ? [{ id: "quitar", label: "Quitar asignación", icon: <UserMinus size={15} strokeWidth={1.7} />, onSelect: onQuitar }] : []),
+    ...(onEliminar ? [{ id: "eliminar", label: "Eliminar subtarea", icon: <Trash2 size={15} strokeWidth={1.7} />, danger: true, onSelect: onEliminar }] : [])
+  ];
 }
 
 /**
@@ -30,8 +42,9 @@ function Asignada({ p }: { p: PuntoLista }) {
  */
 export function ChecklistEditor({ value, onChange, puedeAsignar = false }: { value: PuntoLista[]; onChange: (l: PuntoLista[]) => void; puedeAsignar?: boolean }) {
   const { data } = useWorkspace();
-  const opciones = puedeAsignar ? opcionesAsignar(data) : [];
   const [nuevo, setNuevo] = useState("");
+  const [asignando, setAsignando] = useState<PuntoLista | null>(null);
+  const cambiarQuien = (id: string, valor: string) => onChange(value.map(x => { if (x.id !== id) return x; const { assignee: _a, assignee_id: _b, operario_id: _c, ...resto } = x; void _a; void _b; void _c; return { ...resto, ...asignacionSubtarea(valor, data) }; }));
   const añadir = (textos: string[]) => {
     const limpios = textos.map(t => t.replace(/^\s*(?:[-*•]|\[\s?[xX ]?\]|\d+[.)])\s*/, "").trim()).filter(Boolean);
     if (!limpios.length) return;
@@ -48,12 +61,11 @@ export function ChecklistEditor({ value, onChange, puedeAsignar = false }: { val
       {value.map((p, i) => <li key={p.id}>
         <input type="checkbox" checked={p.done} onChange={e => onChange(value.map(x => x.id === p.id ? { ...x, done: e.target.checked } : x))} aria-label={`Hecho: ${p.text}`} />
         <input type="text" className="lista-texto" value={p.text} maxLength={300} onChange={e => onChange(value.map(x => x.id === p.id ? { ...x, text: e.target.value } : x))} onBlur={() => { if (!p.text.trim()) onChange(value.filter(x => x.id !== p.id)); }} aria-label={`Subtarea ${i + 1}`} data-hecho={p.done || undefined} />
-        {puedeAsignar
-          ? <span className="subtarea-asignar"><Select size="sm" label={`Asignar ${p.text}`} value={valorSubtarea(p)} onChange={v => onChange(value.map(x => { if (x.id !== p.id) return x; const { assignee: _a, assignee_id: _b, operario_id: _c, ...resto } = x; void _a; void _b; void _c; return { ...resto, ...asignacionSubtarea(v, data) }; }))} options={opciones} placeholder="Sin asignar" /></span>
-          : <Asignada p={p} />}
-        <button type="button" className="lista-quitar" onClick={() => onChange(value.filter(x => x.id !== p.id))} aria-label={`Quitar ${p.text}`}><X size={15} strokeWidth={1.8} aria-hidden="true" /></button>
+        <Asignada p={p} onCambiar={puedeAsignar ? () => setAsignando(p) : undefined} />
+        <Menu size="sm" label={`Opciones de ${p.text || "la subtarea"}`} items={accionesSubtarea(p, { puedeAsignar, onAsignar: () => setAsignando(p), onQuitar: () => cambiarQuien(p.id, ""), onEliminar: () => onChange(value.filter(x => x.id !== p.id)) })} />
       </li>)}
     </ul>}
+    <AsignarDialog open={Boolean(asignando)} titulo={asignando?.text ?? ""} valor={asignando ? valorSubtarea(asignando) : ""} onPick={v => { if (asignando) cambiarQuien(asignando.id, v); setAsignando(null); }} onClose={() => setAsignando(null)} />
     {value.length < MAX && <div className="lista-nuevo">
       <Plus size={16} strokeWidth={1.8} aria-hidden="true" />
       <input type="text" value={nuevo} onChange={e => setNuevo(e.target.value)} onKeyDown={alTeclear} onPaste={alPegar} maxLength={300} placeholder={value.length ? "Otra subtarea… (Intro para añadir)" : "Añade una subtarea: «Proteger el suelo», «Retirar escombro»…"} aria-label="Nueva subtarea" />
@@ -67,10 +79,10 @@ export function ChecklistEditor({ value, onChange, puedeAsignar = false }: { val
 export function ListaTarea({ task }: { task: Task }) {
   const { data, actor, send, notify, busy } = useWorkspace();
   const [marcando, setMarcando] = useState("");
+  const [asignando, setAsignando] = useState<PuntoLista | null>(null);
   const lista = task.checklist ?? [];
   if (!lista.length) return null;
   const puede = can(actor.role, "task.check"), puedeAsignar = can(actor.role, "task.subassign");
-  const opciones = puedeAsignar ? opcionesAsignar(data) : [];
   async function asignar(p: PuntoLista, valor: string) {
     try { const q = asignacionSubtarea(valor, data); await send({ type: "task.subassign", id: task.id, item_id: p.id, ...(q.operario_id ? { operario_id: q.operario_id } : q.assignee_id ? { assignee_id: q.assignee_id } : {}) }); notify(q.assignee ? `Subtarea asignada a ${q.assignee}` : "Subtarea sin asignar"); }
     catch (e) { notify(e instanceof Error ? e.message : "No se ha podido asignar la subtarea."); }
@@ -90,10 +102,10 @@ export function ListaTarea({ task }: { task: Task }) {
           <input type="checkbox" checked={p.done} disabled={!puede || Boolean(marcando)} onChange={e => void marcar(p, e.target.checked)} />
           <span data-hecho={p.done || undefined}>{p.text}</span>
         </label>
-        {puedeAsignar
-          ? <span className="subtarea-asignar"><Select size="sm" label={`Asignar ${p.text}`} value={valorSubtarea(p)} onChange={v => void asignar(p, v)} options={opciones} placeholder="Sin asignar" /></span>
-          : <Asignada p={p} />}
+        <Asignada p={p} onCambiar={puedeAsignar ? () => setAsignando(p) : undefined} />
+        {puedeAsignar && <Menu size="sm" label={`Opciones de ${p.text}`} items={accionesSubtarea(p, { puedeAsignar, onAsignar: () => setAsignando(p), onQuitar: () => void asignar(p, "") })} />}
       </li>)}
     </ul>
+    <AsignarDialog open={Boolean(asignando)} titulo={asignando?.text ?? ""} valor={asignando ? valorSubtarea(asignando) : ""} onPick={v => { if (asignando) void asignar(asignando, v); setAsignando(null); }} onClose={() => setAsignando(null)} />
   </section>;
 }

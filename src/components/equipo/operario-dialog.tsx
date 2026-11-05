@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useId, useMemo, useState, type FormEvent } from "react";
 import { Plus, Trash2, X } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
 import { Modal } from "@/components/ui/modal";
@@ -19,6 +19,8 @@ const desde = (o: Operario): Form => ({ name: o.name, phone: o.phone, email: o.e
  */
 export function OperarioDialog({ open, operario, oficio, onClose }: { open: boolean; operario: Operario | null; oficio?: string; onClose: () => void }) {
   const { data, send, notify, busy } = useWorkspace();
+  // Puede haber varias fichas montadas a la vez (una por selector): cada formulario lleva su propio id.
+  const formId = `ficha-operario-${useId().replace(/:/g, "")}`;
   const [form, setForm] = useState<Form>(vacio);
   const [nuevoOficio, setNuevoOficio] = useState("");
   const [pendiente, setPendiente] = useState(false), [borrar, setBorrar] = useState(false), [fallo, setFallo] = useState("");
@@ -29,7 +31,8 @@ export function OperarioDialog({ open, operario, oficio, onClose }: { open: bool
   const añadirOficio = (t: string) => { const x = t.trim(); if (x && !form.trades.includes(x) && form.trades.length < 20) setForm(f => ({ ...f, trades: [...f.trades, x] })); setNuevoOficio(""); };
 
   async function guardar(e: FormEvent) {
-    e.preventDefault();
+    // Puede abrirse dentro de otro formulario (al asignar una subtarea): su envío no debe enviar también el de debajo.
+    e.preventDefault(); e.stopPropagation();
     if (pendiente || busy) return;
     const coste = form.coste.trim() === "" ? null : Math.round(Number(form.coste.replace(",", ".")) * 100);
     if (coste !== null && !(coste >= 0 && coste <= 100000)) { setFallo("El coste por hora tiene que ser un número entre 0 y 1.000 €."); return; }
@@ -55,9 +58,9 @@ export function OperarioDialog({ open, operario, oficio, onClose }: { open: bool
       ? <span className="catalog-danger"><span className="text-sm">¿Dar de baja?</span><Button variant="ghost" className="danger" onClick={eliminar} disabled={pendiente}>Sí</Button><Button variant="ghost" onClick={() => setBorrar(false)}>No</Button></span>
       : <Button variant="ghost" className="danger catalog-danger" onClick={() => setBorrar(true)} disabled={pendiente}><Trash2 size={15} strokeWidth={1.7} aria-hidden="true" />Dar de baja</Button>)}
     <Button variant="secondary" onClick={onClose} disabled={pendiente}>Cancelar</Button>
-    <Button variant="primary" type="submit" form="ficha-operario" disabled={pendiente || busy || !form.name.trim()}>{pendiente ? "Guardando…" : "Guardar"}</Button>
+    <Button variant="primary" type="submit" form={formId} disabled={pendiente || busy || !form.name.trim()}>{pendiente ? "Guardando…" : "Guardar"}</Button>
   </>}>
-    <form id="ficha-operario" className="form" onSubmit={guardar} style={{ maxWidth: "none" }}>
+    <form id={formId} className="form" onSubmit={guardar} style={{ maxWidth: "none" }}>
       <div className="line-grid">
         <label className="field"><span>Nombre</span><input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Manuel Rey" required maxLength={120} autoFocus /></label>
         <label className="field"><span>Empresa</span><input type="text" value={form.company} onChange={e => setForm({ ...form, company: e.target.value })} placeholder="Propio, autónomo o subcontrata" maxLength={120} /></label>
