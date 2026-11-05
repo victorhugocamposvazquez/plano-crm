@@ -12,7 +12,6 @@
 .budget-list-row { padding-block: var(--pl-space-5); align-items: start; gap: var(--pl-space-5); }
 .budget-list-row .version-identity { margin-top: var(--pl-space-4); }
 .budget-list-row .row-budget-amounts { display: grid; gap: var(--pl-space-4); min-width: 0; }
-.peek-version-choice { height: auto; min-width: 216px; white-space: normal; padding: var(--pl-space-3); }
 @media (max-width: 599px) {
   .budget-list-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; }
   .budget-list-row > .row-budget-amounts { grid-column: 1 / -1; grid-row: 2; text-align: left; }

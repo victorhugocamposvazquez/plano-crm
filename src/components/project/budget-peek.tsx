@@ -1,14 +1,15 @@
 "use client";
 import { money, totals, lineTotal, type Workspace } from "@/lib/domain";
 import { capitulosDocumento, alternativas, unidadLarga } from "@/lib/documento-presupuesto";
-import { budgetHistory } from "@/lib/budget-history";
-import { BudgetVersionIdentity } from "./budget-version-identity";
+import { budgetHistory, versionSentence, versionState, versionTimestamp } from "@/lib/budget-history";
 
 /**
  * Presupuesto consultado desde el chat: estado e importes, diferencia respecto a la revisión aprobada,
- * partidas por capítulo, alternativas y notas. Se cambia de revisión con los chips; ir a la ficha o al PDF
+ * partidas por capítulo, alternativas y notas. Se cambia de revisión con el selector de versiones; ir a la ficha o al PDF
  * lo decide quien lo lee desde el pie del modal, no la consulta.
  */
+/** Un motivo que solo repite la versión («V2 --») no explica nada: no se enseña. */
+const motivoUtil = (motivo?: string | null) => Boolean(motivo && !/^[\s\p{P}vV\d]*$/u.test(motivo));
 export function BudgetPeek({ versionId, data, onVersion }: { versionId: string; data: Workspace; onVersion: (id: string) => void }) {
   const v = data.versions.find(x => x.id === versionId);
   const b = v ? data.budgets.find(x => x.id === v.budget_id) : undefined;
@@ -23,25 +24,32 @@ export function BudgetPeek({ versionId, data, onVersion }: { versionId: string; 
   const history=budgetHistory(b,data.versions);
   return (
     <div className="budget-peek">
-      <header className="peek-head">
-        <span style={{ minWidth: 0 }}>
-          <strong className="h3" style={{ display: "block" }}>V{v.number} · {b.title}</strong>
-          <BudgetVersionIdentity version={v} currentId={history.current?.id} approvedId={b.approved_version_id} showUpdated/>
-          <small className="muted">Creada por {v.created_by_name}{v.approval_reference ? ` · ref. ${v.approval_reference}` : ""}</small>
-        </span>
+      <header className="bp-head">
+        <h3 className="h3">{b.title}</h3>
+        <p className="bp-meta">
+          <strong>V{v.number}</strong>
+          <span className="bp-estado" data-estado={aprobada ? "aceptado" : v.status}>{versionState(v, b.approved_version_id)}</span>
+          {v.id === history.current?.id && <span className="version-identity-current"><span className="pulse-dot" aria-hidden="true" />Actual</span>}
+        </p>
+        <p className="bp-frase">{versionSentence(v, history)}</p>
+        <p className="bp-quien">Creada el <time dateTime={v.created_at}>{versionTimestamp(v.created_at)}</time> por {v.created_by_name}{v.approval_reference ? ` · ref. ${v.approval_reference}` : ""}</p>
       </header>
       {hermanas.length > 1 && (
-        <nav className="peek-versions" aria-label="Revisiones">
-          {hermanas.map(h => <button key={h.id} type="button" className="chip peek-version-choice" aria-pressed={h.id === v.id} onClick={() => onVersion(h.id)}><BudgetVersionIdentity version={h} currentId={history.current?.id} approvedId={b.approved_version_id}/></button>)}
+        <nav className="bp-versiones" aria-label="Versiones del presupuesto">
+          {hermanas.map(h => <button key={h.id} type="button" className="bp-version" aria-pressed={h.id === v.id} onClick={() => onVersion(h.id)}>
+            <span className="bp-version-linea"><strong>V{h.number}</strong>{h.id === history.current?.id && <span className="bp-version-actual">Actual</span>}</span>
+            <span className="bp-version-estado">{versionState(h, b.approved_version_id)}</span>
+            <small><time dateTime={h.created_at}>{versionTimestamp(h.created_at)}</time></small>
+          </button>)}
         </nav>
       )}
-      <dl className="peek-totals">
+      <dl className="bp-importes">
         <div><dt>Sin IVA</dt><dd className="pl-mono">{money(t.base)}</dd></div>
         <div><dt>IVA</dt><dd className="pl-mono">{money(t.tax)}</dd></div>
-        <div><dt>Total con IVA · V{v.number}</dt><dd className="pl-mono"><strong>{money(t.total)}</strong></dd></div>
-        {ref && <div><dt>Diferencia con IVA respecto a V{ref.number} aceptada</dt><dd className="pl-mono">{diff > 0 ? "+" : ""}{money(diff)}</dd></div>}
+        <div className="bp-total"><dt>Total con IVA</dt><dd className="pl-mono">{money(t.total)}</dd></div>
+        {ref && <div className="bp-diferencia"><dt>Diferencia con la V{ref.number} aceptada</dt><dd className="pl-mono">{diff > 0 ? "+" : ""}{money(diff)}</dd></div>}
       </dl>
-      {v.change_reason && <p className="text-sm"><span className="muted">Motivo: </span>{v.change_reason}</p>}
+      {motivoUtil(v.change_reason) && <p className="bp-motivo"><span>Motivo del cambio</span>{v.change_reason}</p>}
       {capitulos.length === 0 && <p className="muted text-sm">Esta versión todavía no tiene partidas.</p>}
       {capitulos.map(c => (
         <section key={c.chapter} className="peek-chapter">
