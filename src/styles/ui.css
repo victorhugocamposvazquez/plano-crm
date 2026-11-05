@@ -3408,6 +3408,39 @@ button.row-item .row-item-go { color: var(--pl-faint); }
 .peek-totals dd { margin: 2px 0 0; font-size: var(--pl-text-sm); }
 .peek-totals dd[data-tone="warning"] { color: var(--pl-warning); }
 .peek-totals dd[data-tone="success"] { color: var(--pl-success); }
+/* Presupuesto consultado desde el chat: una cabecera que se lee de un vistazo, versiones como pestañas y el total destacado. */
+.bp-head { display: grid; gap: var(--pl-space-1); }
+.bp-head .h3 { margin: 0; }
+.bp-head p { margin: 0; }
+.bp-meta { display: flex; flex-wrap: wrap; align-items: center; gap: var(--pl-space-2); font-size: var(--pl-text-ui); }
+.bp-estado { padding: 2px var(--pl-space-2); border-radius: var(--pl-radius-full); background: var(--pl-soft); color: var(--pl-ink); font-size: var(--pl-text-sm); font-weight: var(--pl-weight-medium); }
+.bp-estado[data-estado="aceptado"] { background: var(--pl-success-bg); color: var(--pl-success); }
+.bp-frase { font-size: var(--pl-text-md); color: var(--pl-ink); }
+.bp-quien { font-size: var(--pl-text-sm); color: var(--pl-muted); }
+.bp-versiones { display: flex; gap: var(--pl-space-2); overflow-x: auto; padding-bottom: 2px; scrollbar-width: thin; }
+.bp-version { flex: 0 0 auto; display: grid; gap: 2px; min-width: 150px; min-height: var(--pl-touch); padding: var(--pl-space-2) var(--pl-space-3); border: var(--pl-hairline) solid var(--pl-line); border-radius: var(--pl-radius-control); background: var(--pl-bg); color: var(--pl-ink); font: inherit; text-align: left; cursor: pointer; }
+.bp-version:hover { border-color: var(--pl-strong-line); }
+.bp-version[aria-pressed="true"] { border-color: var(--pl-ink); box-shadow: inset 0 0 0 1px var(--pl-ink); background: var(--pl-soft); }
+.bp-version:focus-visible { outline: var(--pl-hairline-active) solid var(--pl-blue); outline-offset: 2px; }
+.bp-version-linea { display: flex; align-items: center; gap: var(--pl-space-2); font-size: var(--pl-text-ui); }
+.bp-version-actual { padding: 0 var(--pl-space-2); border-radius: var(--pl-radius-full); background: var(--pl-success-bg); color: var(--pl-success); font-size: var(--pl-text-xs); font-weight: var(--pl-weight-semibold); }
+.bp-version-estado { font-size: var(--pl-text-sm); font-weight: var(--pl-weight-medium); }
+.bp-version small { color: var(--pl-muted); font-size: var(--pl-text-xs); }
+.bp-importes { display: grid; grid-template-columns: auto auto 1fr; gap: var(--pl-space-2) var(--pl-space-5); align-items: end; margin: 0; padding: var(--pl-space-3) var(--pl-space-4); border: var(--pl-hairline) solid var(--pl-line); border-radius: var(--pl-radius-control); background: var(--pl-surface); }
+.bp-importes > div { min-width: 0; }
+.bp-importes dt { font-size: var(--pl-text-xs); color: var(--pl-muted); }
+.bp-importes dd { margin: 2px 0 0; font-size: var(--pl-text-md); }
+.bp-total { justify-self: end; text-align: right; }
+.bp-total dd { font-size: var(--pl-text-figure); font-weight: var(--pl-weight-semibold); }
+.bp-diferencia { grid-column: 1 / -1; display: flex; justify-content: space-between; align-items: baseline; gap: var(--pl-space-3); padding-top: var(--pl-space-2); border-top: var(--pl-hairline) solid var(--pl-line); }
+.bp-diferencia dd { margin: 0; }
+.bp-motivo { display: grid; gap: 2px; margin: 0; padding: var(--pl-space-2) var(--pl-space-3); border-left: 3px solid var(--pl-line); font-size: var(--pl-text-md); }
+.bp-motivo span { color: var(--pl-muted); font-size: var(--pl-text-xs); }
+@media (max-width: 480px) {
+  .bp-importes { grid-template-columns: 1fr 1fr; }
+  .bp-total { grid-column: 1 / -1; justify-self: stretch; display: flex; justify-content: space-between; align-items: baseline; text-align: left; padding-top: var(--pl-space-2); border-top: var(--pl-hairline) solid var(--pl-line); }
+  .bp-total dd { margin: 0; }
+}
 .peek-chapter h3 { display: flex; justify-content: space-between; gap: 10px; margin: 0 0 4px; padding-bottom: 4px; border-bottom: var(--pl-hairline) solid var(--pl-strong-line); font-size: var(--pl-text-sm); font-weight: var(--pl-weight-medium); }
 .peek-chapter ul { list-style: none; margin: 0; padding: 0; }
 .peek-chapter li { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px; padding: 6px 0; border-bottom: var(--pl-hairline) solid var(--pl-line); font-size: var(--pl-text-sm); }
