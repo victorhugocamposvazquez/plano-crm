@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent, useId } from "react";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -13,6 +13,7 @@ import { EnviarParte } from "@/components/equipo/enviar-parte";
 import { MessageCircle } from "lucide-react";
 import type { PuntoLista, Task } from "@/lib/domain";
 import { ChecklistEditor } from "@/components/project/lista-tarea";
+import { PlantillasTarea } from "@/components/project/plantillas-tarea";
 
 /** El próximo lunes (si hoy es lunes, el de la semana que viene). */
 const proximoLunes = (hoy: string) => { const d = new Date(`${hoy}T12:00:00`).getDay(); return sumarDias(hoy, ((8 - d) % 7) || 7); };
@@ -25,6 +26,7 @@ const proximoLunes = (hoy: string) => { const d = new Date(`${hoy}T12:00:00`).ge
 export function NewTaskDialog({ projectId, open, initialTitle = "", onClose, origen, enviarAlCrear = false }: { projectId: string; open: boolean; initialTitle?: string; onClose: () => void; origen?: string; enviarAlCrear?: boolean }) {
   const { data, actor, send, notify, busy } = useWorkspace();
   const hoy = localDate();
+  const formId = `tarea-nueva-${useId().replace(/:/g, "")}`;
   const [title, setTitle] = useState(initialTitle);
   const [due, setDue] = useState(hoy);
   const [responsable, setResponsable] = useState<Responsable>(sinResponsable);
@@ -60,12 +62,12 @@ export function NewTaskDialog({ projectId, open, initialTitle = "", onClose, ori
   <EnviarParte open={Boolean(enviarTarea)} projectId={projectId} task={enviarTarea} onClose={() => setEnviarTarea(null)} />
   <Modal open={open} onClose={onClose} title="Nueva tarea" kicker={origen} footer={<>
     <Button variant="secondary" onClick={onClose} disabled={pending}>Cancelar</Button>
-    <Button variant="primary" type="submit" form="tarea-nueva" disabled={pending || busy || !title.trim() || !due || (responsable.valor === "otra" && !responsable.libre.trim())}>{pending ? "Creando…" : "Crear tarea"}</Button>
+    <Button variant="primary" type="submit" form={formId} disabled={pending || busy || !title.trim() || !due || (responsable.valor === "otra" && !responsable.libre.trim())}>{pending ? "Creando…" : "Crear tarea"}</Button>
   </>}>
-    <form id="tarea-nueva" className="form nueva-tarea" onSubmit={crear} style={{ maxWidth: "none" }}>
+    <form id={formId} className="form nueva-tarea" onSubmit={crear} style={{ maxWidth: "none" }}>
       <label className="field"><span>Tarea</span><textarea value={title} onChange={e => setTitle(e.target.value)} rows={2} maxLength={500} required autoFocus placeholder="Replantear tabiquería con el electricista" /></label>
       <label className="field"><span>Descripción</span><textarea rows={2} value={description} onChange={e => setDescription(e.target.value)} maxLength={4000} placeholder="Opcional: cómo hacerlo, qué tener en cuenta" /></label>
-      <div className="field"><span>Subtareas</span><ChecklistEditor value={checklist} onChange={setChecklist} puedeAsignar={can(actor.role, "task.subassign")} /></div>
+      <div className="field"><span>Subtareas</span><PlantillasTarea titulo={title} subtareas={checklist} onAplicar={(l, p) => { setChecklist(l); if (!trade || trade === "Coordinación") setTrade(p.oficio); }} /><ChecklistEditor value={checklist} onChange={setChecklist} puedeAsignar={can(actor.role, "task.subassign")} /></div>
       <div className="field">
         <span>Fecha</span>
         <div className="nueva-tarea-atajos" role="group" aria-label="Fecha rápida">
@@ -73,7 +75,7 @@ export function NewTaskDialog({ projectId, open, initialTitle = "", onClose, ori
         </div>
         <DateField label="Fecha de la tarea" value={due} min={hoy} onChange={setDue} required />
       </div>
-      <div className="field"><span>Oficio</span><Select label="Oficio" value={trade} onChange={setTrade} options={listaOficios.map(o => ({ value: o, label: o }))} placeholder="Coordinación" /></div>
+      <div className="field"><span>Oficio</span><Select label="Oficio" value={trade} onChange={setTrade} options={[...new Set([...listaOficios, trade].filter(Boolean))].map(o => ({ value: o, label: o }))} placeholder="Coordinación" /></div>
       <ResponsableField value={responsable} onChange={r => { if (r.valor.startsWith("op:") && !responsable.valor.startsWith("op:")) setEnviar(true); setResponsable(r); }} oficio={trade} />
       <button type="button" className="chip enviar-al-crear" aria-pressed={enviar} onClick={() => setEnviar(v => !v)}><MessageCircle size={14} strokeWidth={1.8} aria-hidden="true" />{enviar ? "Se enviará al operario por WhatsApp" : "Enviársela por WhatsApp al crearla"}</button>
       <details className="editor-advanced">

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useState, type FormEvent, useId } from "react";
 import Link from "next/link";
 import { ArrowUpRight, Pencil, Trash2, CalendarPlus, MessageCircle } from "lucide-react";
 import { Modal } from "@/components/ui/modal";
@@ -14,6 +14,7 @@ import { ResponsableField, asignacion, responsableDe, sinResponsable, type Respo
 import { OperarioCard } from "@/components/equipo/operario-card";
 import { EnviarParte, PartesEnviados } from "@/components/equipo/enviar-parte";
 import { ChecklistEditor, ListaTarea } from "@/components/project/lista-tarea";
+import { PlantillasTarea } from "@/components/project/plantillas-tarea";
 import type { PuntoLista } from "@/lib/domain";
 import { DateField } from "@/components/ui/date-field";
 
@@ -26,6 +27,7 @@ const fechaLarga = new Intl.DateTimeFormat("es-ES", { weekday: "long", day: "num
 export function TaskDialog({ task, onClose }: { task: Task | null; onClose: () => void }) {
   const { data, actor, busy, send, notify } = useWorkspace();
   const [pending, setPending] = useState(false);
+  const formId = `editar-tarea-${useId().replace(/:/g, "")}`;
   const [modo, setModo] = useState<"ver" | "editar" | "eliminar">("ver");
   const [form, setForm] = useState<{ title: string; trade: string; responsable: Responsable; due_date: string; weight: string; description: string; checklist: PuntoLista[] }>({ title: "", trade: "", responsable: sinResponsable, due_date: "", weight: "10", description: "", checklist: [] });
   const [enviar, setEnviar] = useState(false);
@@ -59,7 +61,7 @@ export function TaskDialog({ task, onClose }: { task: Task | null; onClose: () =
   const label = !task ? "" : task.status === "done" ? "Completada" : vencida ? "Atrasada" : task.due_date === localDate() ? "Para hoy" : "Pendiente";
 
   const footer = !task ? null : modo === "editar" ? (
-    <><Button variant="secondary" onClick={() => setModo("ver")} disabled={pending}>Cancelar</Button><Button variant="primary" type="submit" form="editar-tarea" disabled={pending || busy || !form.title.trim() || !form.trade.trim() || !form.due_date || (form.responsable.valor === "otra" && !form.responsable.libre.trim())}>{pending ? "Guardando…" : "Guardar cambios"}</Button></>
+    <><Button variant="secondary" onClick={() => setModo("ver")} disabled={pending}>Cancelar</Button><Button variant="primary" type="submit" form={formId} disabled={pending || busy || !form.title.trim() || !form.trade.trim() || !form.due_date || (form.responsable.valor === "otra" && !form.responsable.libre.trim())}>{pending ? "Guardando…" : "Guardar cambios"}</Button></>
   ) : modo === "eliminar" ? (
     <><Button variant="secondary" onClick={() => setModo("ver")} disabled={pending}>Conservar</Button><Button variant="primary" onClick={eliminar} disabled={pending || busy} className="btn-danger">{pending ? "Eliminando…" : "Eliminar tarea"}</Button></>
   ) : (
@@ -72,14 +74,14 @@ export function TaskDialog({ task, onClose }: { task: Task | null; onClose: () =
   return (
     <Modal open={Boolean(task)} onClose={onClose} panel="md" title={modo === "editar" ? "Editar tarea" : modo === "eliminar" ? "Eliminar tarea" : "Tarea"} footer={footer}>
       {task && modo === "editar" && (
-        <form id="editar-tarea" className="form" onSubmit={guardar} style={{ maxWidth: "none" }}>
+        <form id={formId} className="form" onSubmit={guardar} style={{ maxWidth: "none" }}>
           <label className="field"><span>Tarea</span><input type="text" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} required maxLength={500} autoFocus /></label>
           <div className="line-grid">
             <div className="field"><span>Oficio</span><Select label="Oficio" value={form.trade} onChange={v => setForm({ ...form, trade: v })} options={[...new Set([...listaOficios, form.trade].filter(Boolean))].map(o => ({ value: o, label: o }))} placeholder="Elegir oficio…" /></div>
             <label className="field"><span>Fecha</span><DateField label="Fecha" value={form.due_date} onChange={v => setForm({ ...form, due_date: v })} required /></label>
           </div>
           <label className="field"><span>Descripción</span><textarea rows={3} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} maxLength={4000} placeholder="Qué hay que hacer, cómo y lo que hay que tener en cuenta" /></label>
-          <div className="field"><span>Subtareas</span><ChecklistEditor value={form.checklist} onChange={l => setForm({ ...form, checklist: l })} puedeAsignar={can(actor.role, "task.subassign")} /></div>
+          <div className="field"><span>Subtareas</span><PlantillasTarea titulo={form.title} subtareas={form.checklist} onAplicar={l => setForm({ ...form, checklist: l })} /><ChecklistEditor value={form.checklist} onChange={l => setForm({ ...form, checklist: l })} puedeAsignar={can(actor.role, "task.subassign")} /></div>
           <ResponsableField value={form.responsable} onChange={r => setForm({ ...form, responsable: r })} oficio={form.trade} />
           <div className="line-grid">
             <label className="field"><span>Cuánto cuenta en el avance</span><span className="unit-input"><input type="number" inputMode="numeric" min={1} max={100} value={form.weight} onChange={e => setForm({ ...form, weight: e.target.value })} /><span>%</span></span></label>

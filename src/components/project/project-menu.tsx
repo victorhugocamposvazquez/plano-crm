@@ -12,6 +12,7 @@ import { oficios, oficiosHabituales } from "@/lib/agenda";
 import { ResponsableField, asignacion, sinResponsable, type Responsable } from "@/components/equipo/responsable-field";
 import { EnviarParte } from "@/components/equipo/enviar-parte";
 import { ChecklistEditor } from "@/components/project/lista-tarea";
+import { PlantillasTarea } from "@/components/project/plantillas-tarea";
 import { eurosACentimos } from "@/lib/catalogo";
 import { localDate } from "@/lib/hoy";
 import { DateField } from "@/components/ui/date-field";
@@ -138,13 +139,13 @@ export function ProjectMenu({ project, approvedVersion, puedeEstimar, onChat, so
             <label className="field"><span>Fecha</span><DateField label="Fecha" value={tarea.due_date} onChange={v => setTarea({ ...tarea, due_date: v })} required /></label>
           </div>
           <label className="field"><span>Descripción</span><textarea rows={2} value={tarea.description} onChange={e => setTarea({ ...tarea, description: e.target.value })} maxLength={4000} placeholder="Opcional: cómo hacerlo, qué tener en cuenta" /></label>
-          <div className="field"><span>Subtareas</span><ChecklistEditor value={tarea.checklist} onChange={l => setTarea({ ...tarea, checklist: l })} puedeAsignar={can(actor.role, "task.subassign")} /></div>
+          <div className="field"><span>Subtareas</span><PlantillasTarea titulo={tarea.title} subtareas={tarea.checklist} onAplicar={(l, p) => setTarea({ ...tarea, checklist: l, trade: tarea.trade || p.oficio })} /><ChecklistEditor value={tarea.checklist} onChange={l => setTarea({ ...tarea, checklist: l })} puedeAsignar={can(actor.role, "task.subassign")} /></div>
           <ResponsableField value={tarea.responsable} onChange={r => { if (r.valor.startsWith("op:") && !tarea.responsable.valor.startsWith("op:")) setEnviarAlCrear(true); setTarea({ ...tarea, responsable: r }); }} oficio={tarea.trade} />
           <button type="button" className="chip enviar-al-crear" aria-pressed={enviarAlCrear} onClick={() => setEnviarAlCrear(v => !v)}><MessageCircle size={14} strokeWidth={1.8} aria-hidden="true" />{enviarAlCrear ? "Se enviará al operario por WhatsApp" : "Enviársela por WhatsApp al crearla"}</button>
           <details className="editor-advanced" open={Boolean(tarea.trade)}>
           <summary>Más detalles · oficio y cuánto cuenta</summary>
           <div className="line-grid" style={{ marginTop: 10 }}>
-            <div className="field"><span>Oficio</span><Select label="Oficio" value={tarea.trade} onChange={v => setTarea({ ...tarea, trade: v })} options={listaOficios.map(o => ({ value: o, label: o }))} placeholder="Coordinación" /></div>
+            <div className="field"><span>Oficio</span><Select label="Oficio" value={tarea.trade} onChange={v => setTarea({ ...tarea, trade: v })} options={[...new Set([...listaOficios, tarea.trade].filter(Boolean))].map(o => ({ value: o, label: o }))} placeholder="Coordinación" /></div>
             <label className="field"><span>Cuánto cuenta en el avance</span><span className="unit-input"><input type="number" inputMode="numeric" min={1} max={100} value={tarea.weight} onChange={e => setTarea({ ...tarea, weight: e.target.value })} /><span>%</span></span></label>
           </div>
           <p className="muted text-xs">Sin oficio queda como «Coordinación»; el avance se reparte entre las tareas y 10 es lo normal. Se ve también en la Agenda.</p>

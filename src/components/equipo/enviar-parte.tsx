@@ -77,7 +77,7 @@ export function EnviarParte({ open, projectId, task, onClose, onNuevaTarea }: { 
     {enlace && <Button variant="secondary" onClick={() => void copiar()}>{copiado ? <Check size={15} strokeWidth={1.8} aria-hidden="true" /> : <Copy size={15} strokeWidth={1.7} aria-hidden="true" />}{copiado ? "Copiado" : "Copiar enlace"}</Button>}
     {enlace && whatsapp && <a className="btn btn-primary" href={whatsapp} target="_blank" rel="noopener noreferrer" onClick={() => { recordarTelefono(); notify(`Tarea enviada${operario ? ` a ${operario.name}` : ""}`); onClose(); }}><MessageCircle size={16} strokeWidth={1.7} aria-hidden="true" />Abrir WhatsApp</a>}
   </>}>
-    <div className="form" style={{ maxWidth: "none" }}>
+    <div className="form" style={{ maxWidth: "none" }} onSubmit={e => e.stopPropagation()}>
       {!task && (pendientes.length
         ? <div className="field"><span>Tarea</span><Select label="Tarea" value={tareaId} onChange={setTareaId} options={pendientes.map(t => ({ value: t.id, label: t.title, hint: `${t.trade} · ${t.due_date.split("-").reverse().join("/")}` }))} placeholder="Elige la tarea" /></div>
         : <p className="muted text-sm" style={{ margin: 0 }}>No hay tareas pendientes en este proyecto.</p>)}
