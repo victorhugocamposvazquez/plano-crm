@@ -53,3 +53,7 @@ Pruebas: `tests/espacio3d.test.ts`.
 ### Almacén en la propuesta 3D
 
 Si el artículo elegido se guarda en la nave (`stocked`), cada alternativa dice cuánto queda libre y el ticket avisa de lo que falta pedir («Por pedir»). Libre = existencias menos lo recibido para otras obras y aún no llevado (`estadoStock` de `src/lib/stock.ts`). Por voz: «¿hay stock?», «¿cuánto queda de porcelánico?». Pasar al presupuesto no reserva ni descuenta existencias: eso sigue pasando con los pedidos de Materiales ligados al artículo.
+
+### Pedir lo que falta
+
+En «Por pedir», cada artículo tiene «Pedir»: apunta un pedido en Materiales del proyecto, ligado al artículo del catálogo (`purchase.create` con `article_id`), con la cantidad que falta y el último proveedor usado para ese artículo. Lo ya pedido para esta obra y aún no recibido se descuenta (`enCamino`). Por voz: «pide lo que falta». Al recibir el pedido entra en el almacén; al llevarlo a obra sale.

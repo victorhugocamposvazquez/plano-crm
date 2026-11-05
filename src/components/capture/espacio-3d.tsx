@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Mic, MicOff, Minus, Plus, Rotate3d, RotateCcw, RotateCw, Ruler, Send, Undo2, ZoomIn, ZoomOut } from "lucide-react";
+import { ArrowLeft, Check, Mic, MicOff, ShoppingCart, Minus, Plus, Rotate3d, RotateCcw, RotateCw, Ruler, Send, Undo2, ZoomIn, ZoomOut } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
 import { useBanda } from "@/components/band";
 import { Button } from "@/components/ui/button";
@@ -11,7 +11,7 @@ import { budgetHistory } from "@/lib/budget-history";
 import { can, lineTotal, money, totals, type Project } from "@/lib/domain";
 import { decir, escuchar, type Recognition } from "@/lib/voz";
 import {
-  aplicar3d, aspectos, cantidades, candidatos, color, coloresDe, conNombre, describirDims, describirDisponibilidad, describirLibre, disponibilidad, elementoDe, elementos, escena3d, espacios, estadoInicial, huecos, stockDePropuesta,
+  aplicar3d, aspectos, cantidades, candidatos, color, coloresDe, conNombre, describirDims, describirDisponibilidad, describirLibre, disponibilidad, elementoDe, elementos, escena3d, espacios, estadoInicial, huecos, porPedir, proveedorHabitual, stockDePropuesta, type PorPedir,
   interpretar3d, nombreElemento, partidas3d, unidadesQueCaben, type Elemento, type Estado3d, type Orden3d, type TipoEspacio, type Vista
 } from "@/lib/espacio3d";
 import type { VisualAsset } from "@/lib/visual/schema";
@@ -23,7 +23,7 @@ type Visor = Awaited<ReturnType<typeof createSpaceViewer>>;
 const clave = (projectId: string) => `plano.espacio3d.${projectId}`;
 const cifra = (n: number) => new Intl.NumberFormat("es-ES", { maximumFractionDigits: 2 }).format(n);
 const rgb = (c: readonly number[]) => `rgb(${c[0]} ${c[1]} ${c[2]})`;
-const ayuda = "Prueba: «pon porcelánico en el suelo», «pinta las paredes de verde salvia», «pon dos estanterías», «mide 6 por 4 y 3 de alto», «entra», «¿hay stock?» o «¿cuánto va?».";
+const ayuda = "Prueba: «pon porcelánico en el suelo», «pinta las paredes de verde salvia», «pon dos estanterías», «mide 6 por 4 y 3 de alto», «entra», «¿hay stock?», «pide lo que falta» o «¿cuánto va?».";
 
 function leer(projectId: string): Estado3d | null {
   try { const raw = localStorage.getItem(clave(projectId)); const e = raw ? JSON.parse(raw) : null; return e && (e.tipo === "local" || e.tipo === "nave") && e.dims ? e : null; } catch { return null; }
@@ -62,7 +62,26 @@ export function Espacio3d({ project, budgetId }: { project: Project; budgetId: s
   const partidas = useMemo(() => partidas3d(estado, data.articles), [estado, data.articles]);
   const total = totals(partidas);
   const stock = useMemo(() => stockDePropuesta(estado, data.articles, data.purchases), [estado, data.articles, data.purchases]);
-  const porPedir = stock.filter(x => x.d.falta > 0);
+  const pendientes = useMemo(() => porPedir(estado, data.articles, data.purchases, project.id), [estado, data.articles, data.purchases, project.id]);
+  const puedePedir = can(actor.role, "purchase.create");
+  const [pedido, setPedido] = useState<{ item: PorPedir; cantidad: string; proveedor: string } | null>(null);
+  const [pidiendo, setPidiendo] = useState(false);
+  const abrirPedido = (item: PorPedir) => setPedido({ item, cantidad: cifra(item.queda), proveedor: proveedorHabitual(item.article.id, data.purchases) });
+  async function confirmarPedido() {
+    if (!pedido || pidiendo) return;
+    const q = Number(pedido.cantidad.trim().replace(/\./g, "").replace(",", "."));
+    if (!Number.isFinite(q) || q <= 0) { notify("Indica una cantidad mayor que cero."); return; }
+    if (!pedido.proveedor.trim()) { notify("Indica a qué proveedor se pide."); return; }
+    setPidiendo(true);
+    try {
+      const a = pedido.item.article;
+      await send({ type: "purchase.create", project_id: project.id, name: a.name, supplier: pedido.proveedor.trim(), quantity: q, unit: a.unit as "m²" | "ml" | "ud" | "h" | "global", article_id: a.id });
+      notify(`Pedido apuntado en Materiales: ${cifra(q)} ${a.unit} de ${a.name}`, { label: "Ver Materiales", run: () => router.push(`/proyectos/${project.id}?s=purchases`) });
+      setRespuesta(`Apuntado en Materiales: ${cifra(q)} ${a.unit} de ${a.name.toLocaleLowerCase()} a ${pedido.proveedor.trim()}. Al recibirlo entra en el almacén.`);
+      setPedido(null);
+    } catch (e) { notify(e instanceof Error ? e.message : "No se ha podido apuntar el pedido."); }
+    finally { setPidiendo(false); }
+  }
 
   // El visor se crea de nuevo solo si cambia la forma (espacio, medidas, qué mueble y cuántos); materiales y colores se actualizan en el sitio.
   const forma = JSON.stringify([estado.tipo, estado.dims, estado.mueble?.article_id ?? null, estado.mueble?.unidades ?? 0, looks.mueble?.dimensions_m ?? null]);
@@ -156,6 +175,12 @@ export function Espacio3d({ project, budgetId }: { project: Project; budgetId: s
       responder(stock.length ? stock.map(x => conNombre(x.article.name, describirDisponibilidad(x.d))).join(" ") : partidas.length ? "Nada de lo elegido se guarda en almacén." : "Todavía no has elegido nada. En la lista, lo que se guarda en la nave dice cuánto queda libre.");
       return;
     }
+    if (o.tipo === "pedir") {
+      const primero = pendientes.find(x => x.queda > 0);
+      if (!primero) { responder(pendientes.length ? "Lo que falta ya está pedido en Materiales." : stock.length ? "Lo del almacén basta: no hay que pedir nada." : "No hay nada que pedir: lo elegido no se guarda en almacén."); return; }
+      if (!puedePedir) { responder("Tu perfil no puede apuntar pedidos."); return; }
+      abrirPedido(primero); responder(`Pedido de ${cifra(primero.queda)} ${primero.article.unit} de ${primero.article.name.toLocaleLowerCase()}: revisa el proveedor y pulsa «Pedir».`); return;
+    }
     if (o.tipo === "incorporar") { if (!partidas.length) responder("No hay nada que pasar todavía."); else { responder("Lo paso al presupuesto."); void incorporar(); } return; }
     if (o.tipo === "deshacer") { const prev = historial.at(-1); if (!prev) { responder("No hay nada que deshacer."); return; } setHistorial(h => h.slice(0, -1)); setEstado(prev); responder("Deshecho."); return; }
     if (o.tipo === "vista") { ver(o.vista, o.elemento); responder(o.vista === "inside" ? "Dentro del espacio." : o.vista === "overview" ? "Vista general." : `Mirando ${nombreElemento[o.elemento!].toLocaleLowerCase()}.`); return; }
@@ -164,7 +189,7 @@ export function Espacio3d({ project, budgetId }: { project: Project; budgetId: s
     if ("elemento" in o) setSel(o.elemento); else if (o.tipo === "unidades") setSel("mueble");
     cambiar(nuevo); responder(explicar(o, nuevo));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data.articles, data.purchases, estado, historial, partidas, stock, total.total, incorporar, seleccionVisor]);
+  }, [data.articles, data.purchases, estado, historial, partidas, stock, pendientes, puedePedir, total.total, incorporar, seleccionVisor]);
   const atenderRef = useRef(atender); atenderRef.current = atender;
 
   // Tocar la escena elige el elemento y abre sus alternativas.
@@ -269,18 +294,40 @@ export function Espacio3d({ project, budgetId }: { project: Project; budgetId: s
     <section className="pl-card v360-ticket" aria-label="Lo que entra en el presupuesto">
       {partidas.length === 0 && <p className="v360-ayuda" style={{ paddingTop: 14 }}><Rotate3d size={16} strokeWidth={1.6} aria-hidden="true" style={{ verticalAlign: "-3px", marginRight: 6 }} />Todavía no has cambiado nada. {ayuda}</p>}
       {partidas.map(i => <div key={i.id} className="v360-linea">
-        <span className="v360-linea-texto"><span><strong>{i.description}</strong><small>{nombreElemento[i.elemento]} · {cifra(i.quantity)} {i.unit} × {money(i.unit_price)}</small>{(() => { const x = stock.find(y => y.elemento === i.elemento); return x && <small className="e3d-stock" data-estado={x.d.estado}>{describirDisponibilidad(x.d)}</small>; })()}</span></span>
+        <span className="v360-linea-texto"><span><strong>{i.description}</strong><small>{nombreElemento[i.elemento]} · {cifra(i.quantity)} {i.unit} × {money(i.unit_price)}</small>{(() => { const x = stock.find(y => y.elemento === i.elemento), ya = pendientes.find(y => y.elemento === i.elemento)?.pedido ?? 0; return x && <small className="e3d-stock" data-estado={x.d.estado}>{describirDisponibilidad(x.d)}{ya > 0 ? ` Ya pedidos ${cifra(ya)} ${x.d.unit}.` : ""}</small>; })()}</span></span>
         <span className="pl-mono">{money(lineTotal(i))}</span>
         <span />
       </div>)}
       {partidas.length > 0 && <div className="v360-total"><span><small>Total con IVA · {partidas.length} {partidas.length === 1 ? "partida" : "partidas"}</small></span><strong>{money(total.total)}</strong></div>}
-      {porPedir.length > 0 && <div className="e3d-pedir" role="note"><strong>Por pedir</strong><span>{porPedir.map(x => `${cifra(x.d.falta)} ${x.d.unit} de ${x.article.name.toLocaleLowerCase()}`).join(" · ")}</span></div>}
+      {pendientes.length > 0 && <div className="e3d-pedir" role="group" aria-label="Por pedir">
+        <strong>Por pedir</strong>
+        {pendientes.map(x => <div key={x.article.id} className="e3d-pedir-linea">
+          <span><b className="pl-mono">{cifra(x.queda > 0 ? x.queda : x.falta)} {x.article.unit}</b> de {x.article.name.toLocaleLowerCase()}{x.pedido > 0 && <small>{x.queda > 0 ? `Ya hay ${cifra(x.pedido)} ${x.article.unit} pedidos en Materiales; faltan estos.` : `Pedido en Materiales: ${cifra(x.pedido)} ${x.article.unit}.`}</small>}</span>
+          {x.queda > 0
+            ? puedePedir && <Button variant="secondary" onClick={() => abrirPedido(x)}><ShoppingCart size={15} strokeWidth={1.7} aria-hidden="true" />Pedir</Button>
+            : <Link prefetch={false} href={`/proyectos/${project.id}?s=purchases`} className="e3d-pedido-ok"><Check size={15} strokeWidth={1.8} aria-hidden="true" />Ver en Materiales</Link>}
+        </div>)}
+      </div>}
       {partidas.length > 0 && <div className="v360-acciones">
         <Button variant="secondary" disabled={!historial.length} onClick={() => { const prev = historial.at(-1); if (prev) { setHistorial(h => h.slice(0, -1)); setEstado(prev); } }}><Undo2 size={15} strokeWidth={1.7} aria-hidden="true" />Deshacer</Button>
         {puede ? <Button variant="primary" data-accent="orange" disabled={guardando || busy} onClick={() => void incorporar()}>{guardando ? "Pasando…" : "Pasar al presupuesto"}</Button> : <span className="muted text-sm">Tu perfil puede mirar, pero no presupuestar.</span>}
       </div>}
       {partidas.length > 0 && <p className="v360-ayuda">Las cantidades salen de las medidas del espacio, no del dibujo. El espacio y los modelos son de ejemplo; los precios y el almacén, los del catálogo. Libre es lo que hay en la nave menos lo recibido para otras obras y aún no llevado.</p>}
     </section>
+
+    <Modal open={Boolean(pedido)} onClose={() => setPedido(null)} kicker="Pedido a Materiales" title={pedido ? pedido.item.article.name : ""} footer={<>
+      <Button variant="secondary" onClick={() => setPedido(null)} disabled={pidiendo}>Cancelar</Button>
+      <Button variant="primary" onClick={() => void confirmarPedido()} disabled={pidiendo || busy || !pedido?.proveedor.trim() || !pedido?.cantidad.trim()}>{pidiendo ? "Apuntando…" : "Pedir"}</Button>
+    </>}>
+      {pedido && <form className="form" onSubmit={e => { e.preventDefault(); void confirmarPedido(); }} style={{ maxWidth: "none" }}>
+        <p className="muted text-sm" style={{ margin: 0 }}>Se apunta en Materiales de {project.name}, ligado a este artículo del catálogo: al recibirlo entra en el almacén y al llevarlo a obra sale. En almacén {pedido.item.falta === pedido.item.queda ? "" : "y ya pedido "}faltan {cifra(pedido.item.queda)} {pedido.item.article.unit}.</p>
+        <div className="line-grid">
+          <label className="field"><span>Cantidad</span><span className="unit-input"><input type="text" inputMode="decimal" value={pedido.cantidad} onChange={e => setPedido(p => p && { ...p, cantidad: e.target.value })} required /><span>{pedido.item.article.unit}</span></span></label>
+          <label className="field"><span>Proveedor</span><input type="text" value={pedido.proveedor} onChange={e => setPedido(p => p && { ...p, proveedor: e.target.value })} placeholder="Almacén o distribuidor" required maxLength={500} autoFocus={!pedido.proveedor} /></label>
+        </div>
+        <button type="submit" hidden aria-hidden="true" tabIndex={-1} />
+      </form>}
+    </Modal>
 
     <Modal open={Boolean(medidasForm)} onClose={() => setMedidasForm(null)} title={`Medidas · ${espacios[estado.tipo].nombre.toLocaleLowerCase()}`} footer={<>
       <Button variant="secondary" onClick={() => setMedidasForm(null)}>Cancelar</Button>

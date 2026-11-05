@@ -43,3 +43,10 @@
 .e3d-stock[data-estado="agotado"] { color: var(--pl-danger); }
 .e3d-pedir { display: flex; flex-wrap: wrap; gap: 4px 10px; margin: 0 16px 14px; padding: 10px 12px; border-radius: var(--pl-radius-control); background: var(--pl-warning-bg); color: var(--pl-ink); font-size: var(--pl-text-md); }
 .e3d-pedir strong { font-weight: var(--pl-weight-semibold); }
+.e3d-pedir { flex-direction: column; flex-wrap: nowrap; gap: 8px; }
+.e3d-pedir-linea { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 6px 12px; }
+.e3d-pedir-linea > span { min-width: 0; }
+.e3d-pedir-linea b { font-weight: var(--pl-weight-medium); }
+.e3d-pedir-linea small { display: block; color: var(--pl-muted); font-size: var(--pl-text-sm); }
+.e3d-pedido-ok { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; color: var(--pl-success); font-size: var(--pl-text-md); font-weight: var(--pl-weight-medium); text-decoration: none; }
+.e3d-pedido-ok:hover { text-decoration: underline; }
