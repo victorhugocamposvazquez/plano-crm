@@ -14,6 +14,7 @@ const pasos = [
   { nombre: "Visor", detalle: "three.js dibuja la foto en una esfera: arrastrar, ampliar y tocar. Las marcas de cada artículo se colocan en el punto tocado. No se pinta nada sobre la foto." },
   { nombre: "Medidas", detalle: "Se toman con un medidor láser y se dicen o escriben: «la cocina mide 4 por 3 y 2,6 de alto», «tiene una puerta y dos ventanas», o en el formulario «Medidas». Se aceptan decimales con coma, palabras («dos sesenta») y centímetros." },
   { nombre: "Cantidades", detalle: "Suelo y techo = largo × ancho. Paredes = perímetro × alto, menos 1,64 m² por puerta (0,80 × 2,05) y 1,44 m² por ventana (1,20 × 1,20). Rodapiés y molduras = perímetro menos 0,80 m por puerta. Si cambian las medidas, se recalcula lo que dependía de ellas. Sin medidas, la cantidad queda provisional (≈)." },
+  { nombre: "Simular la vista", detalle: "Botón «Simular» (o decir «simula», «¿cómo queda?»): captura lo que se ve, con los materiales de suelo, paredes y techo de esa estancia y sus muestras del catálogo como referencia, y Gemini devuelve una foto realista. Se marca como simulación orientativa: puede cambiar detalles y no mide. La clave (GEMINI_API_KEY) vive solo en el servidor; límite de 20 por persona y hora en cada servidor. Se puede descargar o guardar en los documentos del proyecto." },
   { nombre: "Órdenes", detalle: "Dictado del navegador (Web Speech API, es-ES) u orden escrita. Un intérprete propio busca artículo, cantidad y estancia en el catálogo. No hay modelo de lenguaje: nada se inventa." },
   { nombre: "Guardado", detalle: "Marcas y medidas se guardan en el navegador hasta «Pasar al presupuesto», que crea las partidas en el borrador con los comandos de siempre. Aún no hay tabla de visitas en el servidor." }
 ];
@@ -22,7 +23,8 @@ const piezas = [
   { pieza: "three.js 0.186", uso: "Visor 360", licencia: "MIT", coste: "Gratis" },
   { pieza: "Intérprete de órdenes y medidas", uso: "Voz y texto a partidas y medidas", licencia: "Código propio", coste: "Gratis" },
   { pieza: "Web Speech API", uso: "Dictado", licencia: "Del navegador", coste: "Gratis. Chrome envía el audio a sus servidores para transcribirlo." },
-  { pieza: "Medidor láser", uso: "Medidas de cada estancia", licencia: "—", coste: "Un medidor básico; sin app ni suscripción" }
+  { pieza: "Medidor láser", uso: "Medidas de cada estancia", licencia: "—", coste: "Un medidor básico; sin app ni suscripción" },
+  { pieza: "Gemini (Google), edición de imagen", uso: "Simular la vista con los materiales", licencia: "Servicio de pago de Google; en pago no usa los datos para mejorar sus productos", coste: "Unos 0,034 $ por imagen con gemini-nano-banana-2.1 a 1K (página oficial de precios, 5 nov 2026); configurable con GEMINI_MODELO_IMAGEN" }
 ];
 
 const descartado = [
@@ -32,7 +34,6 @@ const descartado = [
 ];
 
 const evolucion = [
-  { nombre: "Simular la vista con IA", detalle: "Botón «Simular esta vista»: un modelo de edición de imagen (Gemini 3.1 Flash Image o Nano Banana 2.1, de pago: unos 3–7 céntimos por imagen) devuelve la foto con el material del catálogo. Es una simulación orientativa, no sirve para medir. La API de imagen de Gemini no tiene nivel gratuito; la de pago no usa los datos para mejorar sus productos. Necesita una ruta de servidor con la clave (área de backend)." },
   { nombre: "Guardar la visita en el servidor", detalle: "Tabla de visitas con fotos, medidas, marcas y procedencia de cada partida. Es trabajo de backend (Codex) con migración." },
   { nombre: "Escaneo LiDAR (opcional)", detalle: "Apple RoomPlan en iPhone o iPad Pro da paredes, puertas y ventanas con medidas. Exige una app nativa y un dispositivo con LiDAR (iPhone 17 Pro desde 1.319 €). Antes, comparar un escaneo con el metro en una obra real: Apple no publica la precisión." },
   { nombre: "Matterport con cámara 360 (opcional)", detalle: "Admite cámaras como Insta360 X5 o Ricoh Theta y da medidas automáticas con su propia app. Tiene plan gratuito; precisión y precios de pago por comprobar." }

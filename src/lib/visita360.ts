@@ -33,7 +33,8 @@ export type Orden =
   | { tipo: "total" }
   | { tipo: "incorporar" }
   | { tipo: "deshacer" }
-  | { tipo: "cambiar"; zona: Zona };
+  | { tipo: "cambiar"; zona: Zona }
+  | { tipo: "simular"; zona?: Zona };
 
 export const claveVisita = (projectId: string) => `plano.visita360.${projectId}`;
 
@@ -137,6 +138,7 @@ export function interpretarOrden(texto: string, articles: Article[], zonas: Zona
   if (/\b(cuanto va|cuanto es|cuanto cuesta|cuanto llevamos|que llevamos|total|dime el total)\b/.test(t)) return { tipo: "total" };
   if (/\b(incorpora|incorporar|al presupuesto|pasalo|pasarlo|guardalo|guardar)\b/.test(t)) return { tipo: "incorporar" };
   if (/\b(deshaz|deshacer|anula|atras|lo ultimo no)\b/.test(t)) return { tipo: "deshacer" };
+  if (/\b(simula|simular|simulacion|como queda|como quedaria|como quedara|ensename como)\b/.test(t)) return { tipo: "simular", zona: zonaDicha(t, zonas).zona };
   const { zona, resto: sinZona } = zonaDicha(t, zonas);
   if (zona && /^(cambia|cambiar|pasa|pasamos|vamos|ve|ver|ensename|abre|llevame|mira)\b/.test(t) && !buscarArticulo(sinZona.replace(/^(cambia|cambiar|pasa|pasamos|vamos|ve|ver|ensename|abre|llevame|mira)\b/, " "), articles)) return { tipo: "cambiar", zona };
   if (esQuitar.test(t)) { const article = buscarArticulo(sinZona, articles); return article ? { tipo: "quitar", article, zona } : null; }
@@ -177,5 +179,6 @@ export function describirOrden(orden: Orden, total?: number, cantidad?: { quanti
     case "incorporar": return "Pasando al presupuesto";
     case "deshacer": return "Deshecho lo último";
     case "cambiar": return `Ahora ves ${orden.zona.nombre.toLocaleLowerCase()}`;
+    case "simular": return "Preparando la simulación de esta vista";
   }
 }

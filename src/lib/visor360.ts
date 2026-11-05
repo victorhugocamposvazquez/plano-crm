@@ -12,6 +12,8 @@ export type Visor360 = {
   centro(): Direccion;
   mirar(d: Direccion): void;
   cambiarFoto(url: string): Promise<void>;
+  /** Lo que se ve ahora mismo, como JPEG de como mucho `maxAncho` px (para simular la vista con IA). */
+  captura(maxAncho?: number): string | null;
   dispose(): void;
 };
 
@@ -116,6 +118,16 @@ export function crearVisor360(container: HTMLElement, url: string, opciones: { a
     centro: () => ({ yaw, pitch }),
     mirar(d) { cancelAnimationFrame(raf); yaw = d.yaw; pitch = clamp(d.pitch, -Math.PI / 2 + 0.05, Math.PI / 2 - 0.05); render(); },
     cambiarFoto: cargar,
+    captura(maxAncho = 1280) {
+      // El lienzo WebGL solo conserva la imagen justo después de dibujar: se dibuja y se copia en el mismo paso.
+      render();
+      try {
+        const escala = Math.min(1, maxAncho / canvas.width), w = Math.round(canvas.width * escala), h = Math.round(canvas.height * escala);
+        const copia = document.createElement("canvas"); copia.width = w; copia.height = h;
+        copia.getContext("2d")!.drawImage(canvas, 0, 0, w, h);
+        return copia.toDataURL("image/jpeg", 0.88);
+      } catch { return null; }
+    },
     dispose() {
       disposed = true; cancelAnimationFrame(raf); observer.disconnect();
       material.map?.dispose(); material.dispose(); geometry.dispose(); renderer.dispose(); canvas.remove();

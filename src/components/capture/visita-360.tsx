@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, ImagePlus, Mic, MicOff, Ruler, Send, Trash2 } from "lucide-react";
+import { ArrowLeft, Download, ImagePlus, Mic, MicOff, Ruler, Send, Sparkles, Trash2 } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
 import { useBanda } from "@/components/band";
 import { Button } from "@/components/ui/button";
@@ -43,6 +43,18 @@ const nombreBonito = (archivo: string) => { const n = archivo.replace(/\.[a-z0-9
 const numero = (t: string) => { const n = parseFloat(t.replace(",", ".")); return Number.isFinite(n) && n > 0 ? n : undefined; };
 const entero = (t: string) => { const n = parseInt(t, 10); return Number.isFinite(n) && n >= 0 ? n : undefined; };
 type FormMedidas = { foto: string; largo: string; ancho: string; alto: string; puertas: string; ventanas: string };
+type Simulacion = { estado: "cargando" | "lista" | "error"; original: string; imagen?: string; error?: string; estancia: string; materiales: string[] };
+
+/** Muestra del catálogo reducida a 512 px, como referencia del material para la IA. */
+async function referenciaDe(url: string): Promise<string | null> {
+  try {
+    const bitmap = await createImageBitmap(await (await fetch(url)).blob());
+    const escala = Math.min(1, 512 / Math.max(bitmap.width, bitmap.height)), lienzo = document.createElement("canvas");
+    lienzo.width = Math.round(bitmap.width * escala); lienzo.height = Math.round(bitmap.height * escala);
+    lienzo.getContext("2d")!.drawImage(bitmap, 0, 0, lienzo.width, lienzo.height); bitmap.close();
+    return lienzo.toDataURL("image/jpeg", 0.85);
+  } catch { return null; }
+}
 
 export function Visita360({ project, budgetId }: { project: Project; budgetId: string | null }) {
   const { data, actor, send, notify, busy, upload, fileUrl } = useWorkspace();
@@ -91,6 +103,8 @@ export function Visita360({ project, budgetId }: { project: Project; budgetId: s
   const [escrita, setEscrita] = useState("");
   const [nombrar, setNombrar] = useState<{ file: File; nombre: string } | null>(null);
   const [subiendo, setSubiendo] = useState(false);
+  const [sim, setSim] = useState<Simulacion | null>(null);
+  const [verAntes, setVerAntes] = useState(false);
 
   const escenario = useRef<HTMLDivElement>(null);
   const entrada = useRef<HTMLInputElement>(null);
@@ -170,6 +184,47 @@ export function Visita360({ project, budgetId }: { project: Project; budgetId: s
     return `${article.name} · ${nombre}: ${cifra(cantidadPorDefecto(article.unit))} ${article.unit}, provisional. Corrígelo si hace falta.`;
   }, [colocar, nombreDe]);
 
+  /**
+   * Simula la vista que se está mirando con los materiales de suelo, paredes y techo puestos en esta estancia (Gemini, de pago por imagen).
+   * Es orientativa: la IA puede cambiar detalles y no mide.
+   */
+  const simular = useCallback(async () => {
+    const f = fotoRef.current;
+    const vistos = new Set<string>(), materiales: { nombre: string; superficie: "suelo" | "pared" | "techo"; imagen?: string }[] = [];
+    for (const c of colocacionesRef.current) {
+      if (c.foto !== f.id || vistos.has(c.article_id)) continue;
+      const art = data.articles.find(a => a.id === c.article_id), m = art && muestra(art);
+      if (!art || !m?.superficie) continue;
+      vistos.add(art.id); materiales.push({ nombre: art.name, superficie: m.superficie, imagen: m.imagen });
+    }
+    if (!materiales.length) { const t = `Para simular, pon antes en ${f.nombre.toLocaleLowerCase()} un material de suelo, paredes o techo.`; setRespuesta(t); decir(t); return; }
+    const original = visor.current?.captura(1280);
+    if (!original) { notify("No se ha podido capturar la vista."); return; }
+    setVerAntes(false);
+    setSim({ estado: "cargando", original, estancia: f.nombre, materiales: materiales.map(m => m.nombre) });
+    const referencias = (await Promise.all(materiales.filter(m => m.imagen).slice(0, 3).map(async m => ({ nombre: m.nombre, imagen: await referenciaDe(m.imagen!) }))))
+      .filter((r): r is { nombre: string; imagen: string } => Boolean(r.imagen));
+    try {
+      const respuesta = await fetch("/api/simulacion", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ imagen: original, estancia: f.nombre.toLocaleLowerCase(), materiales: materiales.slice(0, 6).map(({ nombre, superficie }) => ({ nombre, superficie })), referencias }) });
+      const datos = await respuesta.json().catch(() => ({}));
+      if (!respuesta.ok || !datos.imagen) throw new Error(datos.error || "No se ha podido hacer la simulación.");
+      setSim(s => s && s.original === original ? { ...s, estado: "lista", imagen: datos.imagen } : s);
+    } catch (e) {
+      setSim(s => s && s.original === original ? { ...s, estado: "error", error: e instanceof Error ? e.message : "No se ha podido hacer la simulación." } : s);
+    }
+  }, [data.articles, notify]);
+
+  async function guardarSimulacion() {
+    if (!sim?.imagen || subiendo) return;
+    setSubiendo(true);
+    try {
+      const blob = await (await fetch(sim.imagen)).blob(), fecha = new Date().toLocaleDateString("es-ES").replace(/\//g, "-");
+      await upload(new File([blob], `Simulación IA · ${sim.estancia} · ${fecha}.jpg`, { type: blob.type || "image/jpeg" }), project.id, "other");
+      notify("Simulación guardada en los documentos del proyecto");
+    } catch (e) { notify(e instanceof Error ? e.message : "No se ha podido guardar la simulación."); }
+    finally { setSubiendo(false); }
+  }
+
   const incorporar = useCallback(async () => {
     if (!puede || !colocacionesRef.current.length || guardando) return;
     setGuardando(true);
@@ -216,9 +271,13 @@ export function Visita360({ project, budgetId }: { project: Project; budgetId: s
     }
     else if (orden.tipo === "deshacer") { if (!colocacionesRef.current.length) texto = "No hay nada que deshacer"; else setColocaciones(prev => prev.slice(0, -1)); }
     else if (orden.tipo === "cambiar") setFotoId(orden.zona.id);
+    else if (orden.tipo === "simular") {
+      if (orden.zona && orden.zona.id !== fotoRef.current.id) { setFotoId(orden.zona.id); texto = `Te llevo a ${orden.zona.nombre.toLocaleLowerCase()}. Cuando se vea, di «simula».`; }
+      else { void simular(); return; }
+    }
     else if (orden.tipo === "incorporar") void incorporar();
     setRespuesta(texto); decir(texto);
-  }, [data.articles, zonas, poner, incorporar, aplicarMedidas, nombreDe]);
+  }, [data.articles, zonas, poner, incorporar, aplicarMedidas, nombreDe, simular]);
 
   function alternarVoz() {
     if (escuchando) { rec.current?.stop(); setEscuchando(false); return; }
@@ -320,7 +379,7 @@ export function Visita360({ project, budgetId }: { project: Project; budgetId: s
         </button>
       ))}
       <div className="v360-tools">
-        {escuchando ? <span className="v360-escuchando" aria-live="polite"><i />{oido || "Escuchando…"}</span> : <span />}
+        {escuchando ? <span className="v360-escuchando" aria-live="polite"><i />{oido || "Escuchando…"}</span> : <button type="button" className="v360-simular" onClick={() => void simular()} disabled={cargando || Boolean(fallo) || sim?.estado === "cargando"}><Sparkles size={16} strokeWidth={1.7} aria-hidden="true" />Simular</button>}
         <button type="button" className="v360-mic" aria-pressed={escuchando} onClick={alternarVoz} aria-label={escuchando ? "Parar de escuchar" : "Hablar"}>{escuchando ? <MicOff size={20} strokeWidth={1.8} aria-hidden="true" /> : <Mic size={20} strokeWidth={1.8} aria-hidden="true" />}<span>{escuchando ? "Parar" : "Hablar"}</span></button>
       </div>
     </div>
@@ -391,6 +450,24 @@ export function Visita360({ project, budgetId }: { project: Project; budgetId: s
           {([["puertas", "Puertas"], ["ventanas", "Ventanas"]] as const).map(([k, etiqueta]) => <label key={k} className="field"><span>{etiqueta}</span><input type="number" inputMode="numeric" min={0} step={1} value={hojaMedidas[k]} onChange={e => setHojaMedidas(f => f && { ...f, [k]: e.target.value })} placeholder="0" /></label>)}
         </div>
         <p className="v360-resultado" aria-live="polite">{medidasForm && describirSuperficies(medidasForm) ? describirSuperficies(medidasForm) : "Con el largo y el ancho sale el suelo; con el alto, las paredes."}</p>
+      </div>}
+    </Modal>
+
+    <Modal open={Boolean(sim)} onClose={() => setSim(null)} size="wide" kicker="Simulación orientativa con IA" title={sim ? `Así podría quedar · ${sim.estancia}` : ""} footer={sim && <>
+      {sim.estado === "lista" && <a className="btn btn-secondary" href={sim.imagen} download={`Simulación · ${sim.estancia}.jpg`}><Download size={15} strokeWidth={1.7} aria-hidden="true" />Descargar</a>}
+      {sim.estado === "lista" && puedeSubir && <Button variant="secondary" disabled={subiendo} onClick={() => void guardarSimulacion()}>{subiendo ? "Guardando…" : "Guardar en el proyecto"}</Button>}
+      {sim.estado === "error" && <Button variant="secondary" onClick={() => { setSim(null); void simular(); }}>Reintentar</Button>}
+      <Button variant="primary" onClick={() => setSim(null)}>Cerrar</Button>
+    </>}>
+      {sim && <div className="v360-sim">
+        {sim.estado === "lista" && <div className="pl-seg" role="group" aria-label="Qué ver"><button type="button" aria-pressed={!verAntes} onClick={() => setVerAntes(false)}>Después</button><button type="button" aria-pressed={verAntes} onClick={() => setVerAntes(true)}>Antes</button></div>}
+        <div className="v360-sim-imagen" data-cargando={sim.estado === "cargando" || undefined}>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={sim.estado === "lista" && !verAntes ? sim.imagen : sim.original} alt={sim.estado === "lista" && !verAntes ? `Simulación de ${sim.estancia} con ${sim.materiales.join(", ")}` : `Vista actual de ${sim.estancia}`} />
+          {sim.estado === "cargando" && <span role="status"><Sparkles size={18} strokeWidth={1.7} aria-hidden="true" />Simulando… suele tardar entre 10 y 20 segundos</span>}
+        </div>
+        {sim.estado === "error" && <p className="v360-sim-error" role="alert">{sim.error}</p>}
+        <p className="muted text-sm" style={{ margin: 0 }}>Con {sim.materiales.join(", ")}. Es una imagen hecha con IA (Gemini) para hacerse una idea: puede cambiar detalles y no sirve para medir. El presupuesto sale del catálogo y de las medidas.</p>
       </div>}
     </Modal>
 
