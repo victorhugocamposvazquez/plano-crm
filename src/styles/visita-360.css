@@ -88,3 +88,12 @@
   .v360-medidas .btn { flex: 1 1 100%; }
   .v360-campos { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
+/* Simular la vista con IA: botón sobre la foto y resultado con antes y después. */
+.v360-simular { display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border: 0; border-radius: var(--pl-radius-full); background: rgb(255 255 255 / 0.94); color: #16232e; font: inherit; font-size: var(--pl-text-sm); font-weight: var(--pl-weight-medium); cursor: pointer; box-shadow: var(--pl-shadow-float); }
+.v360-simular:disabled { opacity: 0.6; cursor: default; }
+.v360-sim { display: grid; gap: 12px; }
+.v360-sim-imagen { position: relative; overflow: hidden; border-radius: var(--pl-radius-card); background: var(--pl-soft); }
+.v360-sim-imagen img { display: block; width: 100%; height: auto; }
+.v360-sim-imagen[data-cargando] img { filter: saturate(0.4) brightness(0.7); }
+.v360-sim-imagen span { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); display: inline-flex; align-items: center; gap: 8px; padding: 10px 16px; border-radius: var(--pl-radius-full); background: rgb(22 35 46 / 0.85); color: #ffffff; font-size: var(--pl-text-md); white-space: nowrap; }
+.v360-sim-error { margin: 0; padding: 10px 12px; border-radius: var(--pl-radius-control); background: var(--pl-danger-bg); color: var(--pl-danger); font-size: var(--pl-text-md); }

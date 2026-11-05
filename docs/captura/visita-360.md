@@ -17,6 +17,7 @@ La foto sirve para situarse y marcar dónde va cada cosa. **No se mide ni se pin
 | Medidas | Dichas, escritas o en el formulario «Medidas». Decimales con coma, palabras («dos sesenta») y centímetros | `src/lib/medidas.ts` |
 | Cantidades | Suelo y techo = largo × ancho. Paredes = perímetro × alto − 1,64 m² por puerta − 1,44 m² por ventana. Rodapiés = perímetro − 0,80 m por puerta | `src/lib/medidas.ts` |
 | Órdenes | Web Speech API (es-ES) u orden escrita. Intérprete propio contra el catálogo | `src/lib/visita360.ts` |
+| Simular la vista | Gemini (API Interactions, `gemini-nano-banana-2.1` por defecto): vista capturada + materiales de la estancia + muestras como referencia. Clave `GEMINI_API_KEY` solo en servidor, 20 por persona y hora | `src/lib/simulacion.ts`, `src/app/api/simulacion/route.ts` |
 | Pantalla | Marcas, medidas por estancia, ticket por estancia y paso al presupuesto | `src/components/capture/visita-360.tsx` |
 
 Una cantidad dicha manda sobre la calculada. Sin medidas, la cantidad queda provisional (≈) y se recalcula al medir. Si cambian las medidas, se recalcula lo que salía de ellas.
@@ -29,6 +30,7 @@ Una cantidad dicha manda sobre la calculada. Sin medidas, la cantidad queda prov
 | Fotos de ejemplo | CC0 | Gratis |
 | Intérprete de órdenes y medidas | Propio | Gratis |
 | Medidor láser | — | Un medidor básico |
+| Gemini, edición de imagen | De pago (Google) | ~0,034 $ por imagen a 1K |
 
 ## Qué se probó y se descartó
 
@@ -38,7 +40,7 @@ Una cantidad dicha manda sobre la calculada. Sin medidas, la cantidad queda prov
 
 ## Evolución propuesta
 
-1. **Simular la vista con IA.** Un botón que edita la vista actual con el material del catálogo, marcado como simulación orientativa. La API de imagen de Gemini no tiene nivel gratuito: unos 3–7 céntimos por imagen (Nano Banana 2.1, 3.1 Flash Image). En pago, Google declara que no usa los datos para mejorar sus productos. Necesita una ruta de servidor con la clave.
+1. **Simular la vista con IA: hecho (5 nov 2026).** Sin nivel gratuito: unos 3–7 céntimos por imagen. Falta medir la calidad con fotos reales de GARAL y decidir el modelo.
 2. **Guardar la visita en el servidor**: fotos, medidas, marcas y procedencia de cada partida. Backend (Codex), con migración.
 3. **Escaneo LiDAR (opcional).** Apple RoomPlan en iPhone o iPad Pro. Exige app nativa y dispositivo con LiDAR. Probar antes contra el metro.
 4. **Matterport con cámara 360 (opcional).** Medidas automáticas con su app; precisión y precios por comprobar.

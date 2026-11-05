@@ -71,7 +71,7 @@ export const capabilities: Capability[] = [
     id: "fotos", name: "Análisis automático de fotos y 360", status: "partial",
     summary: "Visita 360 para situarse y marcar; las cantidades salen de las medidas con láser, no de la foto.",
     available: ["Órdenes por voz o escritas por estancia («tarima en la cocina») y medidas dichas («mide 4 por 3 y 2,6 de alto»).", "Suelo, paredes y techo calculados con las medidas, descontando puertas y ventanas, y pasados al borrador."],
-    pending: ["Simulación de la vista con IA (de pago por imagen) y guardar las visitas en el servidor.", "Reconocer elementos y medir desde imágenes sin referencia: probado y descartado por ahora (ver la documentación)."],
+    pending: ["Activar la simulación con IA en producción (GEMINI_API_KEY) y medir su calidad con fotos reales; guardar las visitas en el servidor.", "Reconocer elementos y medir desde imágenes sin referencia: probado y descartado por ahora (ver la documentación)."],
     evidence: [{ label: "Visita 360: tecnología y evolución", path: "docs/captura/visita-360.md" }, { label: "Medidas y superficies", path: "src/lib/medidas.ts" }, { label: "Fuentes, medidas y cuestiones pendientes", path: "docs/captura/estancias-catalogo.md" }],
   },
   {
