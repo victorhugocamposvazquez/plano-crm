@@ -4,7 +4,7 @@ import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { useWorkspace } from "@/components/workspace-provider";
-import { dateLabel } from "@/lib/domain";
+import { can, dateLabel } from "@/lib/domain";
 import { localDate } from "@/lib/hoy";
 import { oficios, oficiosHabituales, sumarDias } from "@/lib/agenda";
 import { ResponsableField, asignacion, nombreResponsable, sinResponsable, type Responsable } from "@/components/equipo/responsable-field";
@@ -23,7 +23,7 @@ const proximoLunes = (hoy: string) => { const d = new Date(`${hoy}T12:00:00`).ge
  * Con «Enviársela por WhatsApp», al crearla se abre el envío al operario con su enlace (sin cuenta).
  */
 export function NewTaskDialog({ projectId, open, initialTitle = "", onClose, origen, enviarAlCrear = false }: { projectId: string; open: boolean; initialTitle?: string; onClose: () => void; origen?: string; enviarAlCrear?: boolean }) {
-  const { data, send, notify, busy } = useWorkspace();
+  const { data, actor, send, notify, busy } = useWorkspace();
   const hoy = localDate();
   const [title, setTitle] = useState(initialTitle);
   const [due, setDue] = useState(hoy);
@@ -65,7 +65,7 @@ export function NewTaskDialog({ projectId, open, initialTitle = "", onClose, ori
     <form id="tarea-nueva" className="form nueva-tarea" onSubmit={crear} style={{ maxWidth: "none" }}>
       <label className="field"><span>Tarea</span><textarea value={title} onChange={e => setTitle(e.target.value)} rows={2} maxLength={500} required autoFocus placeholder="Replantear tabiquería con el electricista" /></label>
       <label className="field"><span>Descripción</span><textarea rows={2} value={description} onChange={e => setDescription(e.target.value)} maxLength={4000} placeholder="Opcional: cómo hacerlo, qué tener en cuenta" /></label>
-      <div className="field"><span>Lista de comprobación</span><ChecklistEditor value={checklist} onChange={setChecklist} /></div>
+      <div className="field"><span>Subtareas</span><ChecklistEditor value={checklist} onChange={setChecklist} puedeAsignar={can(actor.role, "task.subassign")} /></div>
       <div className="field">
         <span>Fecha</span>
         <div className="nueva-tarea-atajos" role="group" aria-label="Fecha rápida">

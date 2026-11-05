@@ -26,9 +26,9 @@ describe("Tareas con descripción y lista de comprobación", () => {
     const obra = { ...demoActor, role: "site" } as Actor;
     ws = run(ws, { type: "task.check", id: t.id, item_id: "rep-2", done: true }, obra);
     expect(progresoLista(ws.tasks.find(x => x.id === t.id)!.checklist)).toEqual({ hechos: 2, total: 4 });
-    expect(ws.activities[0].text).toBe("Punto hecho en «Replantear tabiquería con el electricista»: Marcar tabiques nuevos en el suelo");
+    expect(ws.activities[0].text).toBe("Subtarea hecha en «Replantear tabiquería con el electricista»: Marcar tabiques nuevos en el suelo");
     expect(() => run(ws, { type: "task.update", id: t.id, description: "x" }, obra)).toThrow();
-    expect(() => run(ws, { type: "task.check", id: t.id, item_id: "no-existe", done: true })).toThrow("Ese punto ya no está");
+    expect(() => run(ws, { type: "task.check", id: t.id, item_id: "no-existe", done: true })).toThrow("Esa subtarea ya no existe");
   });
   it("editar la lista conserva lo marcado y rechaza puntos vacíos o demasiados", () => {
     let ws = createDemo();
@@ -50,6 +50,27 @@ describe("Tareas con descripción y lista de comprobación", () => {
     expect(v.lista).toHaveLength(4);
     ws = parteCheck(ws, token, "rep-3", true, ahora);
     expect(ws.tasks.find(x => x.id === demoId(202))!.checklist!.find(p => p.id === "rep-3")!.done).toBe(true);
-    expect(() => parteCheck(ws, token, "otro", true, ahora)).toThrow("Ese punto ya no está");
+    expect(() => parteCheck(ws, token, "otro", true, ahora)).toThrow("Esa subtarea ya no existe");
+  });
+
+  it("solo Administración asigna subtareas; los demás las editan sin cambiar a quién van", () => {
+    let ws = createDemo();
+    const jefe = { ...demoActor, role: "manager" } as Actor, obra = { ...demoActor, role: "site" } as Actor;
+    ws = run(ws, { type: "task.create", project_id: demoId(10), title: "Reforma cocina", trade: "Coordinación", due_date: "2026-11-10", weight: 10, checklist: [{ id: "s1", text: "Demoler alicatado", operario_id: demoId(900) }, { id: "s2", text: "Revisar enchufes", assignee_id: demoId(705) }, { id: "s3", text: "Limpiar" }] });
+    let t = ws.tasks.find(x => x.title === "Reforma cocina")!;
+    expect(t.checklist!.map(p => p.assignee ?? "")).toEqual(["Manuel Rey", "Dani · Demo", ""]);
+    ws = run(ws, { type: "task.update", id: t.id, checklist: [{ id: "s1", text: "Demoler alicatado y rodapié" }, { id: "s2", text: "Revisar enchufes", assignee_id: demoId(706) }, { id: "s3", text: "Limpiar", operario_id: demoId(900) }] }, jefe);
+    t = ws.tasks.find(x => x.id === t.id)!;
+    expect(t.checklist!.map(p => [p.text, p.assignee ?? ""])).toEqual([["Demoler alicatado y rodapié", "Manuel Rey"], ["Revisar enchufes", "Dani · Demo"], ["Limpiar", ""]]);
+    expect(() => run(ws, { type: "task.subassign", id: t.id, item_id: "s3", operario_id: demoId(900) }, jefe)).toThrow();
+    expect(() => run(ws, { type: "task.subassign", id: t.id, item_id: "s3", assignee_id: demoId(706) }, obra)).toThrow();
+    ws = run(ws, { type: "task.check", id: t.id, item_id: "s1", done: true }, obra);
+    ws = run(ws, { type: "task.subassign", id: t.id, item_id: "s3", assignee_id: demoId(706) });
+    ws = run(ws, { type: "task.subassign", id: t.id, item_id: "s1" });
+    t = ws.tasks.find(x => x.id === t.id)!;
+    expect(t.checklist![2]).toMatchObject({ assignee: "Ana · Demo", assignee_id: demoId(706) });
+    expect(t.checklist![0]).toEqual({ id: "s1", text: "Demoler alicatado y rodapié", done: true });
+    expect(ws.activities[1].text).toBe("Subtarea de «Reforma cocina» asignada a Ana · Demo: Limpiar");
+    expect(() => run(ws, { type: "task.subassign", id: t.id, item_id: "zz" })).toThrow("Esa subtarea ya no existe");
   });
 });

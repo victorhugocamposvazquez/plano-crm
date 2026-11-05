@@ -54,3 +54,22 @@ export function ResponsableField({ value, onChange, oficio, mensaje }: { value: 
     {operario && <OperarioCard operario={operario} compacta mensaje={mensaje} sinWhatsapp />}
   </>;
 }
+
+/** Opciones para asignar una subtarea: «Sin asignar», operarios (op:) y personas de la empresa (m:); quien es las dos cosas sale como operario. */
+export function opcionesAsignar(data: Pick<Workspace, "operarios" | "members">) {
+  const operarios = [...(data.operarios ?? [])].sort((a, b) => Number(b.available) - Number(a.available) || a.name.localeCompare(b.name, "es"));
+  const esOperario = (userId: string) => operarios.some(o => o.user_id === userId);
+  return [
+    { value: "", label: "Sin asignar" },
+    ...operarios.map(o => ({ value: `op:${o.id}`, label: o.name, hint: o.trades.join(", ") || "Operario" })),
+    ...[...data.members].filter(m => !esOperario(m.user_id)).sort((a, b) => a.display_name.localeCompare(b.display_name, "es")).map(m => ({ value: `m:${m.user_id}`, label: m.display_name, hint: puestoNombres[m.position] }))
+  ];
+}
+/** El valor del selector para una subtarea ya asignada. */
+export const valorSubtarea = (p: { operario_id?: string | null; assignee_id?: string | null }) => p.operario_id ? `op:${p.operario_id}` : p.assignee_id ? `m:${p.assignee_id}` : "";
+/** Los campos de la subtarea para ese valor, con el nombre para enseñarlo antes de guardar. */
+export function asignacionSubtarea(valor: string, data: Pick<Workspace, "operarios" | "members">): { operario_id?: string; assignee_id?: string; assignee?: string } {
+  if (valor.startsWith("op:")) { const o = (data.operarios ?? []).find(x => x.id === valor.slice(3)); return o ? { operario_id: o.id, assignee: o.name } : {}; }
+  if (valor.startsWith("m:")) { const m = data.members.find(x => x.user_id === valor.slice(2)); return m ? { assignee_id: m.user_id, assignee: m.display_name } : {}; }
+  return {};
+}

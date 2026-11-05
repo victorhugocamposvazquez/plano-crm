@@ -1,12 +1,12 @@
 import type { BudgetItem, Workspace, Actor } from "./domain";
 export const demoActor: Actor = { id: "00000000-0000-4000-8000-000000000001", name: "Alex · Demo", role: "admin", position: "direccion" };
 export const demoId = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
-/** Lista de ejemplo para enseñar las tareas con puntos que marcar. */
+/** Subtareas de ejemplo: dos asignadas a otras personas (una es operaria con cuenta). */
 export const listaReplanteo = [
   { id: "rep-1", text: "Comprobar medidas del plano en la vivienda", done: true },
   { id: "rep-2", text: "Marcar tabiques nuevos en el suelo", done: false },
-  { id: "rep-3", text: "Marcar cajas, enchufes y puntos de luz", done: false },
-  { id: "rep-4", text: "Fotos del replanteo al chat", done: false }
+  { id: "rep-3", text: "Marcar cajas, enchufes y puntos de luz", done: false, assignee: "Dani · Demo", assignee_id: "00000000-0000-4000-8000-000000000705" },
+  { id: "rep-4", text: "Fotos del replanteo al chat", done: false, assignee: "Ana · Demo", assignee_id: "00000000-0000-4000-8000-000000000706", operario_id: "00000000-0000-4000-8000-000000000903" }
 ];
 export function createDemo(): Workspace {
   const org = demoId(2), now = new Date();
