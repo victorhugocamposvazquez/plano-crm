@@ -2,6 +2,9 @@
 .header,.identity,.intro,.views,.navigation,.sectionHeading { display:flex; align-items:center; gap:var(--pl-space-3); }
 .header { justify-content:space-between; padding-bottom:var(--pl-space-5); border-bottom:var(--pl-hairline) solid var(--pl-line); }
 .identity { flex-wrap:wrap; }
+.back { display:inline-flex; align-items:center; gap:var(--pl-space-1); min-height:var(--pl-touch); padding:0 var(--pl-space-2); margin-left:calc(var(--pl-space-2) * -1); border:none; background:none; color:var(--pl-ink); font:inherit; font-size:var(--pl-text-ui); cursor:pointer; border-radius:var(--pl-radius-control); }
+.back:hover { background:var(--pl-soft); }
+.back:focus-visible { outline:2px solid var(--pl-blue); outline-offset:2px; }
 .identity>span:last-child,.eyebrow { font-size:var(--pl-text-sm); color:var(--pl-muted); }
 .intro { justify-content:space-between; gap:var(--pl-space-6); margin:var(--pl-space-8) 0 var(--pl-space-5); }
 .intro h1 { font-size:var(--pl-text-h1); font-weight:var(--pl-weight-medium); letter-spacing:var(--pl-tracking-h1); margin:var(--pl-space-2) 0; }

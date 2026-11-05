@@ -1,5 +1,7 @@
 "use client";
 import { useMemo,useState } from "react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft } from "lucide-react";
 import { Brand } from "@/components/ui/brand";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
@@ -13,6 +15,7 @@ import { SpaceView,type SpaceViewer } from "./space-view";
 import styles from "./espacio.module.css";
 const quantity=(value:number)=>new Intl.NumberFormat("es-ES",{maximumFractionDigits:3}).format(value);
 export default function SpaceLab() {
+  const router=useRouter();
   const [sceneId,setSceneId]=useState(demoScenes[0].id),[selections,setSelections]=useState<Record<string,SceneSelection>>({});
   const [selectedByScene,setSelectedByScene]=useState<Record<string,string>>({}),[viewer,setViewer]=useState<SpaceViewer|null>(null);
   const [view,setView]=useState("overview"),[resetOpen,setResetOpen]=useState(false),[notice,setNotice]=useState("");
@@ -38,7 +41,7 @@ export default function SpaceLab() {
     setNotice("Propuesta de ejemplo descargada. No se ha guardado en un proyecto ni aprobado para obra.");
   }
   return <main className={styles.lab}>
-    <header className={styles.header}><div className={styles.identity}><Brand/><span>Propuesta visual</span></div><ThemeToggle withLabel/></header>
+    <header className={styles.header}><div className={styles.identity}><button type="button" className={styles.back} onClick={()=>window.history.length>1?router.back():router.push("/")}><ArrowLeft size={19} strokeWidth={1.55} aria-hidden="true"/>Volver</button><Brand/><span>Propuesta visual</span></div><ThemeToggle withLabel/></header>
     <section className={styles.intro}><div><p className={styles.eyebrow}>Explora el espacio y compara alternativas</p><h1>Ver la propuesta</h1><p>Selecciona un elemento del espacio o de la lista. Cambia su acabado y consulta la diferencia en el presupuesto.</p></div><div className={styles.sceneSelect}><Select label="Espacio de ejemplo" value={sceneId} options={demoScenes.map(s=>({value:s.id,label:s.label}))} onChange={id=>{setSceneId(id);setView("overview");setNotice("");}}/></div></section>
     <div className={styles.demoNotice}>Demostración · espacios, modelos y precios ficticios. La reconstrucción automática desde fotos o planos sigue pendiente.</div>
     <div className={styles.workspace}>

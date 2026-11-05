@@ -15,8 +15,8 @@ describe("Catálogo de precios", () => {
   });
 
   it("sugiere un código correlativo por capítulo", () => {
-    expect(codigoSugerido("Pintura", articles)).toBe("PIN-002");
-    expect(codigoSugerido("Carpintería", articles)).toBe("CAR-003");
+    expect(codigoSugerido("Pintura", articles)).toBe("PIN-003");
+    expect(codigoSugerido("Carpintería", articles)).toBe("CAR-004");
     expect(codigoSugerido("Climatización", articles)).toBe("CLI-001");
   });
 
@@ -29,6 +29,6 @@ describe("Catálogo de precios", () => {
   it("agrupa por capítulo en orden alfabético", () => {
     const grupos = agruparPorCapitulo(articles);
     expect([...grupos.keys()]).toEqual(capitulos(articles));
-    expect(grupos.get("Carpintería")!.map(a => a.code)).toEqual(["CAR-001", "CAR-002"]);
+    expect(grupos.get("Carpintería")!.map(a => a.code)).toEqual(["CAR-001", "CAR-002", "CAR-003"]);
   });
 });

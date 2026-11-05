@@ -22,7 +22,13 @@ export function createDemo(): Workspace {
     { id: demoId(37), organization_id: org, code: "FON-001", name: "Instalación de fontanería de baño", chapter: "Fontanería", unit: "global", unit_price: 168000, vat_rate: 21 },
     // Material que se guarda en la nave: lleva existencias.
     { id: demoId(38), organization_id: org, code: "MAT-001", name: "Placa de yeso laminado 13 mm", chapter: "Materiales", unit: "m²", unit_price: 690, vat_rate: 21, stocked: true, stock_qty: 120, stock_min: 40, stock_location: "Nave · pasillo 2" },
-    { id: demoId(39), organization_id: org, code: "MAT-002", name: "Cemento cola flexible (saco 25 kg)", chapter: "Materiales", unit: "ud", unit_price: 1450, vat_rate: 21, stocked: true, stock_qty: 6, stock_min: 10, stock_location: "Nave · estantería B" }
+    { id: demoId(39), organization_id: org, code: "MAT-002", name: "Cemento cola flexible (saco 25 kg)", chapter: "Materiales", unit: "ud", unit_price: 1450, vat_rate: 21, stocked: true, stock_qty: 6, stock_min: 10, stock_location: "Nave · estantería B" },
+    // Alternativas para la propuesta en 3D: otro suelo, otro acabado de pared y mobiliario.
+    { id: demoId(40), organization_id: org, code: "PAV-002", name: "Porcelánico imitación piedra con colocación", chapter: "Pavimentos", unit: "m²", unit_price: 5600, vat_rate: 21 },
+    { id: demoId(41), organization_id: org, code: "PAV-003", name: "Pavimento de resina continuo con imprimación", chapter: "Pavimentos", unit: "m²", unit_price: 4200, vat_rate: 21 },
+    { id: demoId(42), organization_id: org, code: "PIN-002", name: "Revestimiento mineral decorativo", chapter: "Pintura", unit: "m²", unit_price: 3100, vat_rate: 21 },
+    { id: demoId(43), organization_id: org, code: "CAR-003", name: "Mueble auxiliar de 120 cm montado", chapter: "Carpintería", unit: "ud", unit_price: 88000, vat_rate: 21 },
+    { id: demoId(44), organization_id: org, code: "EQU-001", name: "Estantería metálica modular montada", chapter: "Equipamiento", unit: "ud", unit_price: 74000, vat_rate: 21 }
   ];
   const items: BudgetItem[] = articles.slice(0,6).map((a, i) => ({ id: demoId(100 + i), chapter: a.chapter, description: a.name, quantity: [42, 38, 86, 7, 235, 24][i], unit: a.unit as BudgetItem["unit"], unit_price: a.unit_price, adjustment_percent: 0, vat_rate: a.vat_rate, inclusion: "included" }));
   const revised = structuredClone(items); revised[0].adjustment_percent = 15; revised[2].description = "Tarima laminada roble natural, gama premium"; revised[2].unit_price = 5480; revised[3].quantity = 8;
