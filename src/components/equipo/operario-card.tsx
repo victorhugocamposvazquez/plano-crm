@@ -5,8 +5,8 @@ import { costeHora, enlaceLlamar, enlaceWhatsapp, resumenOperario } from "@/lib/
 import { iniciales } from "@/lib/pasos";
 
 /** Tarjeta de un operario: quién es, qué hace, si está disponible y cómo localizarle con un toque. */
-export function OperarioCard({ operario: o, cuenta, onEditar, compacta = false, mensaje }: { operario: Operario; cuenta?: OrganizationMember; onEditar?: () => void; compacta?: boolean; mensaje?: string }) {
-  const llamar = enlaceLlamar(o.phone), whatsapp = o.phone ? enlaceWhatsapp(o.phone, mensaje) : "";
+export function OperarioCard({ operario: o, cuenta, onEditar, compacta = false, mensaje, sinWhatsapp = false }: { operario: Operario; cuenta?: OrganizationMember; onEditar?: () => void; compacta?: boolean; mensaje?: string; sinWhatsapp?: boolean }) {
+  const llamar = enlaceLlamar(o.phone), whatsapp = o.phone && !sinWhatsapp ? enlaceWhatsapp(o.phone, mensaje) : "";
   return <article className="operario-card" data-compacta={compacta || undefined} data-no-disponible={!o.available || undefined}>
     <div className="operario-cabeza">
       <span className="msg-avatar" aria-hidden="true">{iniciales(o.name)}</span>

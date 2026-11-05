@@ -21,7 +21,7 @@ export default function PartePage() {
     a.href = url; a.download = "trabajo.ics"; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  if (parte === undefined) return <p className="muted parte-vacio">Abriendo el parte…</p>;
+  if (parte === undefined) return <p className="muted parte-vacio">Abriendo la tarea…</p>;
   if (parte === null) return <div className="parte-vacio"><Brand /><h1>Este enlace no se puede abrir</h1><p className="muted">Puede que esté incompleto. Pide que te lo vuelvan a enviar.</p></div>;
 
   const llamar = enlaceLlamar(parte.telefono), whatsapp = parte.telefono ? enlaceWhatsapp(parte.telefono) : "";
@@ -31,7 +31,7 @@ export default function PartePage() {
       {parte.empresa && <span className="muted">{parte.empresa}</span>}
     </header>
     <section className="parte-principal">
-      <p className="parte-kicker">Parte de trabajo{parte.oficio ? ` · ${parte.oficio}` : ""}</p>
+      <p className="parte-kicker">Tarea{parte.oficio ? ` · ${parte.oficio}` : ""}</p>
       <h1>{parte.tarea}</h1>
       <p className="parte-fecha">{fechaLarga(parte.fecha)}</p>
       {parte.para && <p className="muted">Para {parte.para}</p>}

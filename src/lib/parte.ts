@@ -38,13 +38,13 @@ const fechaTexto = (iso: string) => new Intl.DateTimeFormat("es-ES", { weekday: 
 /** El mensaje de WhatsApp: corto, legible sin abrir el enlace, y el enlace al final. */
 export function mensajeParte(p: Parte, enlace: string): string {
   return [
-    `Hola${p.para ? ` ${p.para.split(" ")[0]}` : ""}, te paso el trabajo${p.empresa ? ` de ${p.empresa}` : ""}:`,
+    `Hola${p.para ? ` ${p.para.split(" ")[0]}` : ""}, te envío una tarea${p.empresa ? ` de ${p.empresa}` : ""}:`,
     `• ${p.tarea}`,
     `• ${fechaTexto(p.fecha).replace(/^./, c => c.toUpperCase())}${p.obra ? ` · ${p.obra}` : ""}`,
     p.direccion ? `• ${p.direccion}` : "",
     p.contacto ? `• Contacto: ${p.contacto}${p.telefono ? ` (${p.telefono})` : ""}` : "",
     "",
-    `Todo el detalle, cómo llegar y el material: ${enlace}`
+    `Ábrela aquí (cómo llegar, material, y para marcarla hecha o mandar fotos): ${enlace}`
   ].filter((l, i, a) => l !== "" || (i > 0 && a[i - 1] !== "")).join("\n");
 }
 export const whatsappParte = (telefono: string, p: Parte, enlace: string) => enlaceWhatsapp(telefono, mensajeParte(p, enlace));
@@ -55,7 +55,7 @@ export function calendarioParte(p: Parte): string {
   const d = p.fecha.replace(/-/g, ""), siguiente = new Date(`${p.fecha}T12:00:00`); siguiente.setDate(siguiente.getDate() + 1);
   const fin = `${siguiente.getFullYear()}${String(siguiente.getMonth() + 1).padStart(2, "0")}${String(siguiente.getDate()).padStart(2, "0")}`;
   const esc = (t: string) => t.replace(/[\\;,]/g, m => `\\${m}`).replace(/\n/g, "\\n");
-  return ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Plano//Parte//ES", "BEGIN:VEVENT", `UID:${d}-${Math.abs([...p.tarea].reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 7))}@plano`,
+  return ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Plano//Tarea//ES", "BEGIN:VEVENT", `UID:${d}-${Math.abs([...p.tarea].reduce((h, c) => (h * 31 + c.charCodeAt(0)) | 0, 7))}@plano`,
     `DTSTART;VALUE=DATE:${d}`, `DTEND;VALUE=DATE:${fin}`, `SUMMARY:${esc(p.tarea)}`, `LOCATION:${esc(p.direccion)}`,
     `DESCRIPTION:${esc([p.obra, p.notas, p.contacto && `Contacto: ${p.contacto} ${p.telefono}`].filter(Boolean).join("\n"))}`, "END:VEVENT", "END:VCALENDAR"].join("\r\n");
 }

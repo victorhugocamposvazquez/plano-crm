@@ -1,15 +1,16 @@
 "use client";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Footprints, ListPlus, Receipt, ArrowLeftRight, MessageSquare, Ellipsis, Pencil, LayoutTemplate, Camera, ChevronRight, Orbit, Box } from "lucide-react";
+import { MessageCircle, Footprints, ListPlus, Receipt, ArrowLeftRight, MessageSquare, Ellipsis, Pencil, LayoutTemplate, Camera, ChevronRight, Orbit, Box } from "lucide-react";
 import { Menu } from "@/components/ui/menu";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { useWorkspace } from "@/components/workspace-provider";
-import { can, money, totals, projectStatus, type Project, type BudgetVersion } from "@/lib/domain";
+import { can, money, totals, projectStatus, type Project, type BudgetVersion, type Task } from "@/lib/domain";
 import { oficios, oficiosHabituales } from "@/lib/agenda";
 import { ResponsableField, asignacion, sinResponsable, type Responsable } from "@/components/equipo/responsable-field";
+import { EnviarParte } from "@/components/equipo/enviar-parte";
 import { eurosACentimos } from "@/lib/catalogo";
 import { localDate } from "@/lib/hoy";
 import { DateField } from "@/components/ui/date-field";
@@ -49,15 +50,19 @@ export function ProjectMenu({ project, approvedVersion, puedeEstimar, onChat, so
     finally { setPending(false); }
   }
 
+  const [enviarAlCrear, setEnviarAlCrear] = useState(false);
+  const [enviarTarea, setEnviarTarea] = useState<Task | null>(null);
   async function crearTarea(event: FormEvent) {
     event.preventDefault();
     if (pending || busy) return;
     setPending(true);
     try {
-      await send({ type: "task.create", project_id: project.id, title: tarea.title.trim(), trade: tarea.trade.trim() || "Coordinación", ...asignacion(tarea.responsable), due_date: tarea.due_date, weight: Math.min(100, Math.max(1, Number(tarea.weight) || 10)) });
+      const antes = new Set(data.tasks.map(t => t.id));
+      const ws = await send({ type: "task.create", project_id: project.id, title: tarea.title.trim(), trade: tarea.trade.trim() || "Coordinación", ...asignacion(tarea.responsable), due_date: tarea.due_date, weight: Math.min(100, Math.max(1, Number(tarea.weight) || 10)) });
       notify(`Tarea planificada: ${tarea.title.trim()}`);
       setTarea({ title: "", trade: tarea.trade, responsable: tarea.responsable, due_date: tarea.due_date, weight: "10" });
       setDialogo("");
+      if (enviarAlCrear) { setEnviarTarea(ws.tasks.find(t => !antes.has(t.id) && t.project_id === project.id) ?? null); setEnviarAlCrear(false); }
     } catch (e) { notify(e instanceof Error ? e.message : "No se ha podido crear la tarea."); }
     finally { setPending(false); }
   }
@@ -131,17 +136,20 @@ export function ProjectMenu({ project, approvedVersion, puedeEstimar, onChat, so
             <label className="field" style={{ gridColumn: "1 / -1" }}><span>Tarea</span><input type="text" value={tarea.title} onChange={e => setTarea({ ...tarea, title: e.target.value })} placeholder="Replantear tabiquería con el electricista" required maxLength={500} autoFocus /></label>
             <label className="field"><span>Fecha</span><DateField label="Fecha" value={tarea.due_date} onChange={v => setTarea({ ...tarea, due_date: v })} required /></label>
           </div>
-          <details className="editor-advanced" open={Boolean(tarea.trade || tarea.responsable.valor)}>
-          <summary>Más detalles · oficio, responsable y cuánto cuenta</summary>
+          <ResponsableField value={tarea.responsable} onChange={r => { if (r.valor.startsWith("op:") && !tarea.responsable.valor.startsWith("op:")) setEnviarAlCrear(true); setTarea({ ...tarea, responsable: r }); }} oficio={tarea.trade} />
+          <button type="button" className="chip enviar-al-crear" aria-pressed={enviarAlCrear} onClick={() => setEnviarAlCrear(v => !v)}><MessageCircle size={14} strokeWidth={1.8} aria-hidden="true" />{enviarAlCrear ? "Se enviará al operario por WhatsApp" : "Enviársela por WhatsApp al crearla"}</button>
+          <details className="editor-advanced" open={Boolean(tarea.trade)}>
+          <summary>Más detalles · oficio y cuánto cuenta</summary>
           <div className="line-grid" style={{ marginTop: 10 }}>
             <div className="field"><span>Oficio</span><Select label="Oficio" value={tarea.trade} onChange={v => setTarea({ ...tarea, trade: v })} options={listaOficios.map(o => ({ value: o, label: o }))} placeholder="Coordinación" /></div>
             <label className="field"><span>Cuánto cuenta en el avance</span><span className="unit-input"><input type="number" inputMode="numeric" min={1} max={100} value={tarea.weight} onChange={e => setTarea({ ...tarea, weight: e.target.value })} /><span>%</span></span></label>
           </div>
-          <ResponsableField value={tarea.responsable} onChange={r => setTarea({ ...tarea, responsable: r })} oficio={tarea.trade} />
           <p className="muted text-xs">Sin oficio queda como «Coordinación»; el avance se reparte entre las tareas y 10 es lo normal. Se ve también en la Agenda.</p>
           </details>
         </form>
       </Modal>
+
+      <EnviarParte open={Boolean(enviarTarea)} projectId={project.id} task={enviarTarea} onClose={() => setEnviarTarea(null)} />
 
       <Modal open={dialogo === "certificacion"} onClose={cerrar} title="Preparar cobro" footer={<><Button variant="secondary" onClick={cerrar} disabled={pending}>Cancelar</Button><Button variant="primary" type="submit" form="nueva-cert" disabled={pending || busy || !cert.title.trim() || importe === null || importe <= 0 || importe > saldo}>{pending ? "Guardando…" : "Crear borrador"}</Button></>}>
         <form id="nueva-cert" className="form" onSubmit={crearCertificacion} style={{ maxWidth: "none" }}>

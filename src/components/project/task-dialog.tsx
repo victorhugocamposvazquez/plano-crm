@@ -101,7 +101,7 @@ export function TaskDialog({ task, onClose }: { task: Task | null; onClose: () =
             <div><dt>Cuánto cuenta en el avance</dt><dd className="pl-mono">{task.weight} %</dd></div>
           </dl>
           {(() => { const o = task.operario_id ? (data.operarios ?? []).find(x => x.id === task.operario_id) : undefined; return o && <OperarioCard operario={o} compacta />; })()}
-          {task.status === "pending" && <Button variant="secondary" onClick={() => setEnviar(true)} style={{ alignSelf: "flex-start" }}><MessageCircle size={15} strokeWidth={1.7} aria-hidden="true" />Enviar parte por WhatsApp</Button>}
+          {task.status === "pending" && <button type="button" className="chip" onClick={() => setEnviar(true)} style={{ alignSelf: "flex-start" }}><MessageCircle size={14} strokeWidth={1.8} aria-hidden="true" />Enviar al operario por WhatsApp</button>}
           <PartesEnviados taskId={task.id} />
           {(canEdit || canDelete) && (
             <div className="task-tools">

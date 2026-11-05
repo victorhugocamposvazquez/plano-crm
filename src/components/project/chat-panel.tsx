@@ -63,7 +63,7 @@ export function ChatPanel({ projectId, messages, title, subtitle, onClose }: { p
   const chipsRef = useRef<HTMLElement>(null);
   const [openTask, setOpenTask] = useState<Task | null>(null);
   // Tarea nueva desde un mensaje: se abre el editor con el texto del mensaje para revisar título, fecha y responsable.
-  const [tareaDesde, setTareaDesde] = useState<{ titulo: string; autor: string } | null>(null);
+  const [tareaDesde, setTareaDesde] = useState<{ titulo: string; autor: string; enviar?: boolean } | null>(null);
   const lightbox = useRef<HTMLDialogElement>(null);
   const attachInput = useRef<HTMLInputElement>(null);
   const end = useRef<HTMLDivElement>(null);
@@ -381,6 +381,7 @@ export function ChatPanel({ projectId, messages, title, subtitle, onClose }: { p
       {vista === "chat" && (
         <div className="chat-quick-wrap">
           <nav ref={chipsRef} className="chat-quick" aria-label="Consultar sin salir del chat">
+            <button type="button" className="chip" data-acceso="operario" title="Enviar una tarea a un operario por WhatsApp, con su enlace" onClick={() => setEnviarParte(true)}><MessageCircle size={14} strokeWidth={1.8} aria-hidden="true" />Enviar tarea a un operario</button>
             {accesosRapidos.map(c => { const Icon = iconoAcceso[c.id] ?? Sparkles; return <button key={c.id} type="button" className="chip" data-acceso={c.id} title={c.descripcion} onClick={() => consultar(c)}><Icon size={14} strokeWidth={1.8} aria-hidden="true" />{c.acceso}</button>; })}
           </nav>
           <button type="button" className="chat-quick-more" aria-label="Ver más" title="Ver más" onClick={() => chipsRef.current?.scrollBy({ left: 160, behavior: "smooth" })}><ChevronRight size={15} strokeWidth={1.9} aria-hidden="true" /></button>
@@ -440,11 +441,10 @@ export function ChatPanel({ projectId, messages, title, subtitle, onClose }: { p
               <button type="button" className="composer-pop-item" disabled={!conteoCat.v} onClick={() => compartir("v")}><Receipt size={16} strokeWidth={1.7} aria-hidden="true" />Presupuesto</button>
               <button type="button" className="composer-pop-item" disabled={!conteoCat.t} onClick={() => compartir("t")}><ListChecks size={16} strokeWidth={1.7} aria-hidden="true" />Tarea</button>
               <button type="button" className="composer-pop-item" onClick={compartirUbicacion}><MapPin size={16} strokeWidth={1.7} aria-hidden="true" />Ubicación de la obra</button>
-              <button type="button" className="composer-pop-item" onClick={() => { setAdjuntarAbierto(false); setEnviarParte(true); }}><MessageCircle size={16} strokeWidth={1.7} aria-hidden="true" />Enviar tarea por WhatsApp</button>
+              <button type="button" className="composer-pop-item" onClick={() => { setAdjuntarAbierto(false); setEnviarParte(true); }}><MessageCircle size={16} strokeWidth={1.7} aria-hidden="true" />Enviar tarea a un operario</button>
             </Popover>
             <input ref={attachInput} type="file" accept={adjuntables.join(",")} onChange={e => { void adjuntar(e.target.files?.[0]); e.target.value = ""; }} style={{ display: "none" }} aria-hidden="true" tabIndex={-1} />
             <input ref={fotoInput} type="file" accept="image/*" capture="environment" onChange={e => { void adjuntar(e.target.files?.[0]); e.target.value = ""; }} style={{ display: "none" }} aria-hidden="true" tabIndex={-1} />
-            <button type="button" className="composer-tool composer-wa" aria-label="Enviar una tarea por WhatsApp a un operario" title="Enviar tarea por WhatsApp" onClick={() => setEnviarParte(true)}><MessageCircle size={18} strokeWidth={1.7} aria-hidden="true" /><span className="composer-wa-texto" aria-hidden="true">WhatsApp</span></button>
             <Popover open={mencionAbierta} onClose={() => setMencionAbierta(false)} side="top" panelClassName="composer-pop" trigger={
               <button type="button" className="composer-tool composer-at" aria-label="Mencionar a alguien" title="Mencionar a alguien" aria-expanded={mencionAbierta} onClick={() => setMencionAbierta(v => !v)}><AtSign size={18} strokeWidth={1.7} aria-hidden="true" /></button>
             }>
@@ -458,9 +458,9 @@ export function ChatPanel({ projectId, messages, title, subtitle, onClose }: { p
         </form>
       ) : !allowed ? <p className="muted text-xs">Tu perfil puede leer la conversación pero no escribir.</p> : null}
 
-      <EnviarParte open={enviarParte} projectId={projectId} onClose={() => setEnviarParte(false)} />
+      <EnviarParte open={enviarParte} projectId={projectId} onClose={() => setEnviarParte(false)} onNuevaTarea={() => { setEnviarParte(false); setTareaDesde({ titulo: "", autor: "", enviar: true }); }} />
       <TaskDialog task={openTask ? data.tasks.find(t => t.id === openTask.id) ?? null : null} onClose={() => setOpenTask(null)} />
-      <NewTaskDialog projectId={projectId} open={Boolean(tareaDesde)} initialTitle={tareaDesde?.titulo ?? ""} origen={tareaDesde ? `Desde un mensaje de ${tareaDesde.autor}` : undefined} onClose={() => setTareaDesde(null)} />
+      <NewTaskDialog projectId={projectId} open={Boolean(tareaDesde)} initialTitle={tareaDesde?.titulo ?? ""} origen={tareaDesde?.autor ? `Desde un mensaje de ${tareaDesde.autor}` : undefined} enviarAlCrear={tareaDesde?.enviar} onClose={() => setTareaDesde(null)} />
       <ChatPeek vista={peek} projectId={projectId} onChange={setPeek} onClose={() => setPeek(null)} />
 
       <Modal open={ayuda} onClose={() => setAyuda(false)} title="Cómo se usa el chat" footer={<button type="button" className="btn btn-primary" onClick={() => setAyuda(false)}>Entendido</button>}>

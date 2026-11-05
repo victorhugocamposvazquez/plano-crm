@@ -74,7 +74,7 @@ describe("Parte de trabajo por WhatsApp", () => {
   });
   it("escribe un mensaje que se entiende sin abrir el enlace y un evento de calendario", () => {
     const m = mensajeParte(parte, "https://x/parte#abc");
-    expect(m).toContain("Hola Manuel, te paso el trabajo de GARAL:");
+    expect(m).toContain("Hola Manuel, te envío una tarea de GARAL:");
     expect(m).toContain("• Demoler tabique de la cocina");
     expect(m).toContain("• Martes, 10 de noviembre · Apartamento en el centro");
     expect(m.endsWith("https://x/parte#abc")).toBe(true);

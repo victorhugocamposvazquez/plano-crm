@@ -100,14 +100,14 @@ export default function ParteVivoPage() {
     const url = URL.createObjectURL(new Blob([ics], { type: "text/calendar" })), a = document.createElement("a"); a.href = url; a.download = "trabajo.ics"; a.click(); setTimeout(() => URL.revokeObjectURL(url), 1000);
   }
 
-  if (!vista) return <p className="muted parte-vacio">Abriendo el parte…</p>;
+  if (!vista) return <p className="muted parte-vacio">Abriendo la tarea…</p>;
   if (vista.estado !== "ok") return <div className="parte-vacio"><Brand /><h1>Este enlace ya no es válido</h1><p className="muted">Puede que se haya anulado, caducado o esté incompleto. Pide que te lo vuelvan a enviar.</p></div>;
   const v = vista, llamar = enlaceLlamar(v.telefono), whatsapp = v.telefono ? enlaceWhatsapp(v.telefono) : "";
 
   return <article className="parte">
     <header className="parte-cabeza"><Brand />{v.empresa && <span className="muted">{v.empresa}</span>}</header>
     <section className="parte-principal">
-      <p className="parte-kicker">Parte de trabajo{v.oficio ? ` · ${v.oficio}` : ""}</p>
+      <p className="parte-kicker">Tarea{v.oficio ? ` · ${v.oficio}` : ""}</p>
       <h1>{v.tarea}</h1>
       <p className="parte-fecha">{fechaLarga(v.fecha)}</p>
       {v.para && <p className="muted">Para {v.para}</p>}
