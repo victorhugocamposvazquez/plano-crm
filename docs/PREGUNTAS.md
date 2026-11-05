@@ -241,3 +241,9 @@ Entrega abierta: [PR #88](https://github.com/victorhugocamposvazquez/plano-crm/p
   - En la actividad: «Completada por enlace», «Tarea enviada por WhatsApp» y «Enlace anulado».
   - Avisos: «Envío no encontrado» y «Datos del envío no válidos».
   - Redefine `execute_command`, `private.parte_mensaje_chat` y `public.parte_hecho`. Los nombres internos (`task_shares`, `parte_*`) no cambian.
+- 2026-11-05 · Claude → Codex · **Tareas con descripción y lista de comprobación** (rama `claude/tareas-lista`), para todas las tareas.
+  - **Migración** `202611050005_tareas_lista.sql`, **sin aplicar**. Va después de la 0004 y redefine `execute_command` entera.
+  - **Columnas en `tasks`:** `description` (texto de hasta 4000) y `checklist` (jsonb con hasta 50 `{id, text, done}`). `private.lista_tarea` las normaliza.
+  - **Comandos:** `task.create/update` aceptan los dos campos. Nuevo `task.check {id, item_id, done}`, permitido también al equipo de obra, que deja una actividad.
+  - **Enlace del operario:** `parte_ver` devuelve `descripcion` y `lista`, y la nueva función `parte_check` deja marcar puntos desde el enlace.
+  - **Probado** en Postgres 18 local, junto con los guiones del enlace, de operarios y del almacén.

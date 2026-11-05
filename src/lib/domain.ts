@@ -25,7 +25,9 @@ export type BudgetVersion = { id: string; organization_id: string; budget_id: st
 /** Cada guardado conserva cambios y fecha de servidor; las copias de versión no son ediciones. */
 export type BudgetItemEdit = { item_id: string; version_id: string; draft_revision: number; kind: ItemChange["kind"]; fields: string[]; occurred_at: string; actor_name: string };
 export type BudgetItemEvent = BudgetItemEdit & { id: string; organization_id: string; budget_id: string; actor_id: string; before_item?: BudgetItem; after_item?: BudgetItem };
-export type Task = { id: string; organization_id: string; project_id: string; title: string; trade: string; assignee: string; assignee_id: string | null; operario_id?: string | null; due_date: string; status: "pending" | "done"; weight: number };
+/** Un punto de la lista de comprobación de una tarea (tipo Trello). */
+export type PuntoLista = { id: string; text: string; done: boolean };
+export type Task = { id: string; organization_id: string; project_id: string; title: string; trade: string; assignee: string; assignee_id: string | null; operario_id?: string | null; due_date: string; status: "pending" | "done"; weight: number; description?: string; checklist?: PuntoLista[] };
 /** Persona que trabaja en las obras, tenga o no cuenta en Plano: propia, autónoma o de una subcontrata. `trades` son categorías del catálogo que hace. */
 /** Parte vivo de una tarea: el enlace con token que recibe un operario por WhatsApp y que funciona sin cuenta. */
 export type ParteSnapshot = { direccion: string; notas: string; contacto: string; telefono: string; para: string; material: string[] };
@@ -44,6 +46,8 @@ export type Workspace = { organization_id: string; organization_name: string; me
 
 const text = z.string().trim().min(1).max(500);
 /** Campos de la ficha de un operario. El teléfono admite espacios, «+» y guiones; el coste por hora va en céntimos. */
+/** Lista de comprobación tal como llega en un comando: el id es opcional (los puntos nuevos lo reciben al guardar). */
+const listaSchema = z.array(z.object({ id: z.string().max(40).optional(), text: z.string().trim().min(1).max(300), done: z.boolean().optional() })).max(50);
 const operarioCampos = {
   name: z.string().trim().min(1).max(120),
   phone: z.string().trim().max(40).regex(/^[0-9+()\s.-]*$/, "El teléfono solo admite números, espacios, «+» y guiones."),
@@ -70,9 +74,10 @@ export const commandSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("article.update"), id: z.uuid(), code: text.optional(), name: text.optional(), chapter: z.string().trim().min(1).max(120).optional(), unit: z.enum(["m²", "ml", "ud", "h", "global"]).optional(), unit_price: z.number().int().min(0).max(100000000).optional(), vat_rate: z.number().min(0).max(30).multipleOf(0.01).optional(), stocked: z.boolean().optional(), stock_min: z.number().min(0).max(1000000).nullable().optional(), stock_location: z.string().trim().max(120).optional() }),
   z.object({ type: z.literal("article.delete"), id: z.uuid() }),
   z.object({ type: z.literal("stock.move"), article_id: z.uuid(), kind: z.enum(["entrada", "salida", "recuento"]), quantity: z.number().min(0).max(1000000), note: z.string().trim().max(300).optional(), project_id: z.uuid().optional() }),
-  z.object({ type: z.literal("task.create"), project_id: z.uuid(), title: text, trade: text, assignee: z.string().max(120).optional(), assignee_id: z.uuid().nullable().optional(), operario_id: z.uuid().nullable().optional(), due_date: z.iso.date(), weight: z.number().int().min(1).max(100) }),
+  z.object({ type: z.literal("task.create"), project_id: z.uuid(), title: text, trade: text, assignee: z.string().max(120).optional(), assignee_id: z.uuid().nullable().optional(), operario_id: z.uuid().nullable().optional(), due_date: z.iso.date(), weight: z.number().int().min(1).max(100), description: z.string().max(4000).optional(), checklist: listaSchema.optional() }),
   z.object({ type: z.literal("task.toggle"), id: z.uuid(), status: z.enum(["pending", "done"]) }),
-  z.object({ type: z.literal("task.update"), id: z.uuid(), title: text.optional(), trade: text.optional(), assignee: z.string().max(120).optional(), assignee_id: z.uuid().nullable().optional(), operario_id: z.uuid().nullable().optional(), due_date: z.iso.date().optional(), weight: z.number().int().min(1).max(100).optional() }),
+  z.object({ type: z.literal("task.update"), id: z.uuid(), title: text.optional(), trade: text.optional(), assignee: z.string().max(120).optional(), assignee_id: z.uuid().nullable().optional(), operario_id: z.uuid().nullable().optional(), due_date: z.iso.date().optional(), weight: z.number().int().min(1).max(100).optional(), description: z.string().max(4000).optional(), checklist: listaSchema.optional() }),
+  z.object({ type: z.literal("task.check"), id: z.uuid(), item_id: z.string().min(1).max(40), done: z.boolean() }),
   z.object({ type: z.literal("operario.create"), ...operarioCampos }),
   z.object({ type: z.literal("operario.update"), id: z.uuid(), ...Object.fromEntries(Object.entries(operarioCampos).map(([k, v]) => [k, v.optional()])) as { [K in keyof typeof operarioCampos]: z.ZodOptional<(typeof operarioCampos)[K]> } }),
   z.object({ type: z.literal("operario.delete"), id: z.uuid() }),
@@ -137,7 +142,7 @@ export const impuestoFactura = (base: number, vatRate: number) => roundRatio(Big
 export function can(role: Role, action: Command["type"]) {
   if (action.startsWith("member.")) return role === "admin";
   if (role === "viewer") return false;
-  if (role === "site") return ["task.toggle", "message.send", "message.edit", "message.delete", "message.react", "document.add", "purchase.update"].includes(action);
+  if (role === "site") return ["task.toggle", "task.check", "message.send", "message.edit", "message.delete", "message.react", "document.add", "purchase.update"].includes(action);
   if (action === "budget.approve" || action === "certification.create" || action.startsWith("invoice.")) return role === "admin" || role === "office";
   return true;
 }
@@ -151,6 +156,7 @@ export function applyCommand(previous: Workspace, input: Command, actor: Actor, 
   if (projectId && !state.projects.some(p => p.id === projectId)) throw new Error("Proyecto no encontrado.");
   const version = (id: string) => { const v = state.versions.find(v => v.id === id); if (!v) throw new Error("Revisión no encontrada."); const b = state.budgets.find(b => b.id === v.budget_id)!; projectId = b.project_id; return { v, b }; };
   const newVersion = (budgetId: string, number: number, items: BudgetItem[], reason: string): BudgetVersion => ({ id: uuid(), organization_id: org, budget_id: budgetId, number, status: "draft", draft_revision: 0, items, notes: "", change_reason: reason, created_by_name: actor.name, created_at: now, updated_at: now, approved_at: null, approval_reference: null });
+  const normalizarLista = (l: z.infer<typeof listaSchema> | undefined): PuntoLista[] => (l ?? []).map(p => ({ id: p.id?.trim() || uuid(), text: p.text.trim(), done: p.done ?? false }));
   // Responsable de una tarea: una persona con cuenta (assignee_id), un operario de la ficha (operario_id) o un nombre libre.
   const assignment = (input: { assignee_id?: string | null; assignee?: string; operario_id?: string | null }, current: { assignee_id: string | null; assignee: string; operario_id?: string | null } = { assignee_id: null, assignee: "", operario_id: null }) => {
     if (input.operario_id) { const o = (state.operarios ?? []).find(x => x.id === input.operario_id); if (!o) throw new Error("Ese operario no está en el equipo."); return { assignee_id: o.user_id && state.members.some(m => m.user_id === o.user_id) ? o.user_id : null, assignee: o.name, operario_id: o.id }; }
@@ -284,7 +290,12 @@ export function applyCommand(previous: Workspace, input: Command, actor: Actor, 
     }
     case "task.create": {
       const { type: _, ...fields } = command; void _;
-      state.tasks.push({ id: uuid(), organization_id: org, ...fields, ...assignment(command), status: "pending" }); activity = `Tarea planificada: ${command.title}`; break;
+      state.tasks.push({ id: uuid(), organization_id: org, ...fields, ...assignment(command), description: (command.description ?? "").trim(), checklist: normalizarLista(command.checklist), status: "pending" }); activity = `Tarea planificada: ${command.title}`; break;
+    }
+    case "task.check": {
+      const t = state.tasks.find(x => x.id === command.id); if (!t) throw new Error("Tarea no encontrada.");
+      const punto = (t.checklist ?? []).find(p => p.id === command.item_id); if (!punto) throw new Error("Ese punto ya no está en la lista.");
+      punto.done = command.done; projectId = t.project_id; activity = `${command.done ? "Punto hecho" : "Punto reabierto"} en «${t.title}»: ${punto.text}`; break;
     }
     case "task.toggle": {
       const t = state.tasks.find(t => t.id === command.id); if (!t) throw new Error("Tarea no encontrada."); t.status = command.status; projectId = t.project_id; activity = `${t.status === "done" ? "Completada" : "Reabierta"}: ${t.title}`; break;
@@ -295,6 +306,8 @@ export function applyCommand(previous: Workspace, input: Command, actor: Actor, 
       const { type: _, id: __, ...cambios } = command; void _; void __;
       Object.assign(t, Object.fromEntries(Object.entries(cambios).filter(([, v]) => v !== undefined)));
       Object.assign(t, assigned);
+      if (command.description !== undefined) t.description = command.description.trim();
+      if (command.checklist !== undefined) t.checklist = normalizarLista(command.checklist);
       projectId = t.project_id; activity = `Tarea actualizada: ${t.title}`; break;
     }
     case "task.delete": {

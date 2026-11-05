@@ -3,11 +3,11 @@
  * Con Supabase lo resuelven las funciones `parte_*` de la base de datos (migración 202611050003); en la demostración,
  * estas mismas reglas sobre el espacio guardado en este navegador. Aquí solo lo puro, para probarlo.
  */
-import type { Document, Message, TaskShare, Workspace } from "./domain";
+import type { Document, Message, PuntoLista, TaskShare, Workspace } from "./domain";
 
 export type VistaParte =
   | { estado: "no_valido" }
-  | { estado: "ok"; empresa: string; obra: string; direccion: string; tarea: string; oficio: string; fecha: string; hecha: boolean; hecha_el: string | null; para: string; contacto: string; telefono: string; notas: string; material: string[]; fotos: number; mensajes: number; caduca: string };
+  | { estado: "ok"; empresa: string; obra: string; direccion: string; tarea: string; oficio: string; fecha: string; hecha: boolean; hecha_el: string | null; para: string; contacto: string; telefono: string; notas: string; material: string[]; fotos: number; mensajes: number; caduca: string; descripcion: string; lista: PuntoLista[] };
 
 export const MAX_MENSAJES = 30, MAX_FOTOS = 20, MAX_FOTO_BYTES = 15 * 1024 * 1024;
 export const tokenValido = (t: string) => /^[0-9a-f]{64}$/.test(t);
@@ -26,7 +26,7 @@ export function vistaParte(ws: Workspace, token: string, ahora: string): VistaPa
   const t = ws.tasks.find(x => x.id === s.task_id)!, p = ws.projects.find(x => x.id === t.project_id);
   return { estado: "ok", empresa: ws.organization_name, obra: p?.name ?? "", direccion: s.snapshot.direccion || p?.location || "", tarea: t.title, oficio: t.trade, fecha: t.due_date,
     hecha: t.status === "done", hecha_el: s.done_at, para: s.snapshot.para || t.assignee, contacto: s.snapshot.contacto, telefono: s.snapshot.telefono, notas: s.snapshot.notas,
-    material: s.snapshot.material, fotos: s.photos_count, mensajes: s.messages_count, caduca: s.expires_at };
+    material: s.snapshot.material, fotos: s.photos_count, mensajes: s.messages_count, caduca: s.expires_at, descripcion: t.description ?? "", lista: t.checklist ?? [] };
 }
 
 function alChat(ws: Workspace, s: TaskShare, body: string, ahora: string, uuid: () => string) {
@@ -46,6 +46,16 @@ export function parteHecho(previo: Workspace, token: string, nota: string, ahora
     alChat(ws, s, `Hecho: ${t.title}${n ? `\n${n}` : ""}`, ahora, uuid);
     ws.activities.unshift({ id: uuid(), organization_id: ws.organization_id, project_id: t.project_id, text: `Completada por enlace: ${t.title}`, actor_name: s.snapshot.para || "Operario", created_at: ahora });
   }
+  return ws;
+}
+
+/** El operario marca o desmarca un punto de la lista desde su enlace. */
+export function parteCheck(previo: Workspace, token: string, item: string, done: boolean, ahora: string): Workspace {
+  const ws = structuredClone(previo), s = parte(ws, token, ahora);
+  if (!s) throw new Error("Este enlace ya no es válido.");
+  const punto = ws.tasks.find(x => x.id === s.task_id)!.checklist?.find(p => p.id === item);
+  if (!punto) throw new Error("Ese punto ya no está en la lista.");
+  punto.done = done;
   return ws;
 }
 

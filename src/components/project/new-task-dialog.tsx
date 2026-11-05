@@ -11,7 +11,8 @@ import { ResponsableField, asignacion, nombreResponsable, sinResponsable, type R
 import { DateField } from "@/components/ui/date-field";
 import { EnviarParte } from "@/components/equipo/enviar-parte";
 import { MessageCircle } from "lucide-react";
-import type { Task } from "@/lib/domain";
+import type { PuntoLista, Task } from "@/lib/domain";
+import { ChecklistEditor } from "@/components/project/lista-tarea";
 
 /** El próximo lunes (si hoy es lunes, el de la semana que viene). */
 const proximoLunes = (hoy: string) => { const d = new Date(`${hoy}T12:00:00`).getDay(); return sumarDias(hoy, ((8 - d) % 7) || 7); };
@@ -29,10 +30,12 @@ export function NewTaskDialog({ projectId, open, initialTitle = "", onClose, ori
   const [responsable, setResponsable] = useState<Responsable>(sinResponsable);
   const [trade, setTrade] = useState("Coordinación");
   const [weight, setWeight] = useState("10");
+  const [description, setDescription] = useState("");
+  const [checklist, setChecklist] = useState<PuntoLista[]>([]);
   const [pending, setPending] = useState(false);
   const [enviar, setEnviar] = useState(enviarAlCrear);
   const [enviarTarea, setEnviarTarea] = useState<Task | null>(null);
-  useEffect(() => { if (open) { setTitle(initialTitle); setDue(hoy); setResponsable(sinResponsable); setTrade("Coordinación"); setWeight("10"); setEnviar(enviarAlCrear); } }, [open, initialTitle, hoy, enviarAlCrear]);
+  useEffect(() => { if (open) { setTitle(initialTitle); setDue(hoy); setResponsable(sinResponsable); setTrade("Coordinación"); setWeight("10"); setEnviar(enviarAlCrear); setDescription(""); setChecklist([]); } }, [open, initialTitle, hoy, enviarAlCrear]);
 
   const listaOficios = useMemo(() => { const o = oficios(data.tasks); return [...new Set(["Coordinación", ...(o.length ? o : oficiosHabituales), ...(data.operarios ?? []).flatMap(x => x.trades)])]; }, [data.tasks, data.operarios]);
   const atajos = [{ label: "Hoy", fecha: hoy }, { label: "Mañana", fecha: sumarDias(hoy, 1) }, { label: "Lunes", fecha: proximoLunes(hoy) }, { label: "En una semana", fecha: sumarDias(hoy, 7) }];
@@ -45,7 +48,7 @@ export function NewTaskDialog({ projectId, open, initialTitle = "", onClose, ori
     setPending(true);
     try {
       const antes = new Set(data.tasks.map(t => t.id));
-      const ws = await send({ type: "task.create", project_id: projectId, title: titulo, trade: trade.trim() || "Coordinación", due_date: due, weight: Math.min(100, Math.max(1, Number(weight) || 10)), ...asignacion(responsable) });
+      const ws = await send({ type: "task.create", project_id: projectId, title: titulo, trade: trade.trim() || "Coordinación", due_date: due, weight: Math.min(100, Math.max(1, Number(weight) || 10)), ...asignacion(responsable), description: description.trim(), checklist: checklist.filter(p => p.text.trim()) });
       notify(`Tarea creada para el ${dateLabel(due)}${quien ? ` · ${quien}` : ""}: ${titulo}`);
       onClose();
       if (enviar) setEnviarTarea(ws.tasks.find(t => !antes.has(t.id) && t.project_id === projectId) ?? null);
@@ -61,6 +64,8 @@ export function NewTaskDialog({ projectId, open, initialTitle = "", onClose, ori
   </>}>
     <form id="tarea-nueva" className="form nueva-tarea" onSubmit={crear} style={{ maxWidth: "none" }}>
       <label className="field"><span>Tarea</span><textarea value={title} onChange={e => setTitle(e.target.value)} rows={2} maxLength={500} required autoFocus placeholder="Replantear tabiquería con el electricista" /></label>
+      <label className="field"><span>Descripción</span><textarea rows={2} value={description} onChange={e => setDescription(e.target.value)} maxLength={4000} placeholder="Opcional: cómo hacerlo, qué tener en cuenta" /></label>
+      <div className="field"><span>Lista de comprobación</span><ChecklistEditor value={checklist} onChange={setChecklist} /></div>
       <div className="field">
         <span>Fecha</span>
         <div className="nueva-tarea-atajos" role="group" aria-label="Fecha rápida">

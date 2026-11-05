@@ -7,10 +7,11 @@ import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { useWorkspace } from "@/components/workspace-provider";
-import { can, money, totals, projectStatus, type Project, type BudgetVersion, type Task } from "@/lib/domain";
+import { can, money, totals, projectStatus, type Project, type BudgetVersion, type Task, type PuntoLista } from "@/lib/domain";
 import { oficios, oficiosHabituales } from "@/lib/agenda";
 import { ResponsableField, asignacion, sinResponsable, type Responsable } from "@/components/equipo/responsable-field";
 import { EnviarParte } from "@/components/equipo/enviar-parte";
+import { ChecklistEditor } from "@/components/project/lista-tarea";
 import { eurosACentimos } from "@/lib/catalogo";
 import { localDate } from "@/lib/hoy";
 import { DateField } from "@/components/ui/date-field";
@@ -30,7 +31,7 @@ export function ProjectMenu({ project, approvedVersion, puedeEstimar, onChat, so
   const [dialogo, setDialogo] = useState<Dialogo>("");
   const [pending, setPending] = useState(false);
   const [estado, setEstado] = useState<Project["status"]>(project.status);
-  const [tarea, setTarea] = useState<{ title: string; trade: string; responsable: Responsable; due_date: string; weight: string }>({ title: "", trade: "", responsable: sinResponsable, due_date: localDate(), weight: "10" });
+  const [tarea, setTarea] = useState<{ title: string; trade: string; responsable: Responsable; due_date: string; weight: string; description: string; checklist: PuntoLista[] }>({ title: "", trade: "", responsable: sinResponsable, due_date: localDate(), weight: "10", description: "", checklist: [] });
   const [cert, setCert] = useState({ title: "", amount: "" });
   const listaOficios = useMemo(() => { const o = oficios(data.tasks); return [...new Set([...(o.length ? o : oficiosHabituales), ...(data.operarios ?? []).flatMap(x => x.trades)])]; }, [data.tasks, data.operarios]);
   const reservado = data.certifications.filter(c => approvedVersion && c.budget_version_id === approvedVersion.id).reduce((s, c) => s + c.amount, 0);
@@ -58,9 +59,9 @@ export function ProjectMenu({ project, approvedVersion, puedeEstimar, onChat, so
     setPending(true);
     try {
       const antes = new Set(data.tasks.map(t => t.id));
-      const ws = await send({ type: "task.create", project_id: project.id, title: tarea.title.trim(), trade: tarea.trade.trim() || "Coordinación", ...asignacion(tarea.responsable), due_date: tarea.due_date, weight: Math.min(100, Math.max(1, Number(tarea.weight) || 10)) });
+      const ws = await send({ type: "task.create", project_id: project.id, title: tarea.title.trim(), trade: tarea.trade.trim() || "Coordinación", ...asignacion(tarea.responsable), description: tarea.description.trim(), checklist: tarea.checklist.filter(p => p.text.trim()), due_date: tarea.due_date, weight: Math.min(100, Math.max(1, Number(tarea.weight) || 10)) });
       notify(`Tarea planificada: ${tarea.title.trim()}`);
-      setTarea({ title: "", trade: tarea.trade, responsable: tarea.responsable, due_date: tarea.due_date, weight: "10" });
+      setTarea({ title: "", trade: tarea.trade, responsable: tarea.responsable, due_date: tarea.due_date, weight: "10", description: "", checklist: [] });
       setDialogo("");
       if (enviarAlCrear) { setEnviarTarea(ws.tasks.find(t => !antes.has(t.id) && t.project_id === project.id) ?? null); setEnviarAlCrear(false); }
     } catch (e) { notify(e instanceof Error ? e.message : "No se ha podido crear la tarea."); }
@@ -136,6 +137,8 @@ export function ProjectMenu({ project, approvedVersion, puedeEstimar, onChat, so
             <label className="field" style={{ gridColumn: "1 / -1" }}><span>Tarea</span><input type="text" value={tarea.title} onChange={e => setTarea({ ...tarea, title: e.target.value })} placeholder="Replantear tabiquería con el electricista" required maxLength={500} autoFocus /></label>
             <label className="field"><span>Fecha</span><DateField label="Fecha" value={tarea.due_date} onChange={v => setTarea({ ...tarea, due_date: v })} required /></label>
           </div>
+          <label className="field"><span>Descripción</span><textarea rows={2} value={tarea.description} onChange={e => setTarea({ ...tarea, description: e.target.value })} maxLength={4000} placeholder="Opcional: cómo hacerlo, qué tener en cuenta" /></label>
+          <div className="field"><span>Lista de comprobación</span><ChecklistEditor value={tarea.checklist} onChange={l => setTarea({ ...tarea, checklist: l })} /></div>
           <ResponsableField value={tarea.responsable} onChange={r => { if (r.valor.startsWith("op:") && !tarea.responsable.valor.startsWith("op:")) setEnviarAlCrear(true); setTarea({ ...tarea, responsable: r }); }} oficio={tarea.trade} />
           <button type="button" className="chip enviar-al-crear" aria-pressed={enviarAlCrear} onClick={() => setEnviarAlCrear(v => !v)}><MessageCircle size={14} strokeWidth={1.8} aria-hidden="true" />{enviarAlCrear ? "Se enviará al operario por WhatsApp" : "Enviársela por WhatsApp al crearla"}</button>
           <details className="editor-advanced" open={Boolean(tarea.trade)}>

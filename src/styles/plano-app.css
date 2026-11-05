@@ -1874,3 +1874,40 @@ button.article-open:focus-visible { outline: 2px solid var(--pl-blue); outline-o
 /* Chips para enviar una tarea a un operario (al crearla y en el diálogo de envío) */
 .enviar-al-crear, .enviar-nueva { align-self: flex-start; }
 .enviar-al-crear[aria-pressed="true"] { border-color: var(--pl-success); background: var(--pl-success-bg); color: var(--pl-success); font-weight: var(--pl-weight-medium); }
+
+/* Tareas: descripción y lista de comprobación (tipo Trello) */
+.lista-avance { display: inline-flex; align-items: center; gap: 8px; color: var(--pl-muted); font-size: var(--pl-text-sm); font-variant-numeric: tabular-nums; }
+.lista-avance-barra { position: relative; width: 64px; height: 4px; overflow: hidden; border-radius: var(--pl-radius-full); background: var(--pl-line); }
+.lista-avance-barra i { position: absolute; inset: 0 auto 0 0; border-radius: inherit; background: var(--pl-blue); }
+.lista-avance[data-completa] { color: var(--pl-success); }
+.lista-avance[data-completa] .lista-avance-barra i { background: var(--pl-success); }
+.lista-editor { display: flex; flex-direction: column; gap: 6px; }
+.lista-puntos { display: flex; flex-direction: column; gap: 2px; margin: 0; padding: 0; list-style: none; }
+.lista-puntos li { display: flex; align-items: center; gap: 10px; min-height: 40px; padding: 0 4px 0 10px; border-radius: var(--pl-radius-control); }
+.lista-puntos li:hover { background: var(--pl-soft); }
+.lista-puntos input[type="checkbox"] { flex: 0 0 auto; width: 18px; height: 18px; accent-color: var(--pl-ink); }
+.lista-texto { flex: 1; min-width: 0; height: 36px; padding: 0 6px; border: var(--pl-hairline) solid transparent; border-radius: var(--pl-radius-tab); background: none; color: var(--pl-ink); font: inherit; font-size: var(--pl-text-md); }
+.lista-texto:hover, .lista-texto:focus { border-color: var(--pl-line); background: var(--pl-bg); }
+.lista-texto[data-hecho], .lista-puntos-ver span[data-hecho] { color: var(--pl-muted); text-decoration: line-through; }
+.lista-quitar { display: inline-flex; align-items: center; justify-content: center; width: 32px; height: 32px; border: 0; border-radius: var(--pl-radius-full); background: none; color: var(--pl-muted); cursor: pointer; }
+.lista-quitar:hover { background: var(--pl-raised); color: var(--pl-ink); }
+.lista-nuevo { display: flex; align-items: center; gap: 8px; padding: 0 4px 0 10px; border: var(--pl-hairline) dashed var(--pl-strong-line); border-radius: var(--pl-radius-control); color: var(--pl-muted); }
+.lista-nuevo input { flex: 1; min-width: 0; height: 42px; border: 0; background: none; color: var(--pl-ink); font: inherit; font-size: var(--pl-text-md); }
+.lista-nuevo input:focus { outline: none; }
+.lista-nuevo:focus-within { border-style: solid; border-color: var(--pl-ink); }
+.lista-tarea { display: flex; flex-direction: column; gap: 6px; }
+.lista-tarea-cabeza { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.lista-tarea-cabeza h4 { margin: 0; font-size: var(--pl-text-md); font-weight: var(--pl-weight-semibold); }
+.lista-puntos-ver label { display: flex; flex: 1; align-items: center; gap: 10px; min-height: 40px; cursor: pointer; font-size: var(--pl-text-md); }
+.tarea-descripcion { margin: 0; color: var(--pl-ink); font-size: var(--pl-text-md); line-height: var(--pl-leading-base); white-space: pre-wrap; overflow-wrap: anywhere; }
+.lista-chip { display: inline-flex; align-items: center; gap: 4px; padding: 1px 6px; border-radius: var(--pl-radius-full); background: var(--pl-raised); color: var(--pl-muted); font-size: var(--pl-text-xs); font-weight: var(--pl-weight-medium); font-variant-numeric: tabular-nums; vertical-align: 1px; }
+.lista-chip[data-completa] { background: var(--pl-success-bg); color: var(--pl-success); }
+.parte-lista li { padding-left: 0; }
+.parte-lista label { min-height: 48px; font-size: var(--pl-text-ui); }
+.parte-lista input[type="checkbox"] { width: 22px; height: 22px; }
+/* Dentro de un campo de formulario, los puntos de la lista no llevan la caja de los campos: solo al pasar o editar. */
+.field .lista-texto { height: 36px; padding: 0 6px; border: var(--pl-hairline) solid transparent; border-radius: var(--pl-radius-tab); background: none; font-size: var(--pl-text-md); box-shadow: none; }
+.field .lista-texto:hover, .field .lista-texto:focus-visible { border-color: var(--pl-line); background: var(--pl-bg); outline: none; }
+.field .lista-nuevo input { height: 42px; padding: 0; border: 0; background: none; box-shadow: none; font-size: var(--pl-text-md); }
+.field .lista-nuevo input:focus-visible { outline: none; border: 0; }
+.field .lista-puntos input[type="checkbox"] { width: 18px; height: 18px; padding: 0; }

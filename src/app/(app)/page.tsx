@@ -15,6 +15,7 @@ import { puestoNombres } from "@/lib/puestos";
 import { veSeccion } from "@/lib/navegacion";
 import { can, dateLabel, money, totals, type Task, type Workspace } from "@/lib/domain";
 import { buildAgenda, greeting, localDate, longDate } from "@/lib/hoy";
+import { progresoLista } from "@/lib/lista-tarea";
 
 const textoMensaje = (body: string) => body.replace(/\[\[[^\]]*\]\]/g, "").trim();
 
@@ -131,7 +132,7 @@ export default function HoyPage() {
               <div key={task.id} className="work-row" data-late={tarde || undefined}>
                 <input type="checkbox" checked={false} disabled={!canToggle || pendingId === task.id} onChange={() => toggle(task)} aria-label={`Completar ${task.title}`} />
                 <button type="button" className="work-row-text" onClick={() => setAbierta(task)} aria-haspopup="dialog">
-                  <strong>{task.title}</strong>
+                  <strong>{task.title}{(t => { const p = progresoLista(t.checklist); return p && <> <span className="lista-chip" data-completa={p.hechos === p.total || undefined} aria-label={`Lista: ${p.hechos} de ${p.total}`}>{p.hechos}/{p.total}</span></>; })(task)}</strong>
                   <small>{tarde ? `Venció el ${dateLabel(task.due_date)} · ` : ""}{task.project.name} · {task.trade}{task.assignee ? ` · ${task.assignee}` : ""}</small>
                 </button>
                 {tarde && can(actor.role, "task.update") && <Button onClick={() => setAbierta(task)}>Mover fecha</Button>}

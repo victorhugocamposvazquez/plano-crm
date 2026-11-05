@@ -10,6 +10,7 @@ import { can, type Task } from "@/lib/domain";
 import { localDate } from "@/lib/hoy";
 import { useQueryState } from "@/lib/use-query-state";
 import { lunesDe, sumarDias, diasDeSemana, etiquetaDia, tareasConProyecto, filtrar, personas, primerDiaMes, sumarMeses, rejillaMes, type TareaAgenda } from "@/lib/agenda";
+import { progresoLista } from "@/lib/lista-tarea";
 
 type Vista = "dia" | "tres" | "semana" | "mes" | "lista";
 const SIN_ASIGNAR = "Sin asignar";
@@ -55,7 +56,7 @@ export default function AgendaPage() {
   const tono = (t: TareaAgenda) => (t.status === "done" ? "success" : t.due_date < hoy ? "danger" : t.due_date === hoy ? "warning" : "info");
   const Bloque = ({ t, conFecha = false }: { t: TareaAgenda; conFecha?: boolean }) => (
     <button type="button" className="cal-task" data-tone={tono(t)} data-done={t.status === "done" || undefined} onClick={() => setAbierta(t)} aria-haspopup="dialog">
-      <strong>{t.title}</strong><small>{t.project.name}{t.assignee ? ` · ${t.assignee}` : ""}{conFecha ? ` · ${diaMes.format(fecha(t.due_date))}` : ""}</small>
+      <strong>{t.title}{(t => { const p = progresoLista(t.checklist); return p && <> <span className="lista-chip" data-completa={p.hechos === p.total || undefined} aria-label={`Lista: ${p.hechos} de ${p.total}`}>{p.hechos}/{p.total}</span></>; })(t)}</strong><small>{t.project.name}{t.assignee ? ` · ${t.assignee}` : ""}{conFecha ? ` · ${diaMes.format(fecha(t.due_date))}` : ""}</small>
     </button>
   );
   const Columna = ({ d }: { d: string }) => (

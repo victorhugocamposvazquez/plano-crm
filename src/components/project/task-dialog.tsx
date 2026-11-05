@@ -13,6 +13,8 @@ import { oficios, oficiosHabituales, sumarDias } from "@/lib/agenda";
 import { ResponsableField, asignacion, responsableDe, sinResponsable, type Responsable } from "@/components/equipo/responsable-field";
 import { OperarioCard } from "@/components/equipo/operario-card";
 import { EnviarParte, PartesEnviados } from "@/components/equipo/enviar-parte";
+import { ChecklistEditor, ListaTarea } from "@/components/project/lista-tarea";
+import type { PuntoLista } from "@/lib/domain";
 import { DateField } from "@/components/ui/date-field";
 
 const fechaLarga = new Intl.DateTimeFormat("es-ES", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
@@ -25,7 +27,7 @@ export function TaskDialog({ task, onClose }: { task: Task | null; onClose: () =
   const { data, actor, busy, send, notify } = useWorkspace();
   const [pending, setPending] = useState(false);
   const [modo, setModo] = useState<"ver" | "editar" | "eliminar">("ver");
-  const [form, setForm] = useState<{ title: string; trade: string; responsable: Responsable; due_date: string; weight: string }>({ title: "", trade: "", responsable: sinResponsable, due_date: "", weight: "10" });
+  const [form, setForm] = useState<{ title: string; trade: string; responsable: Responsable; due_date: string; weight: string; description: string; checklist: PuntoLista[] }>({ title: "", trade: "", responsable: sinResponsable, due_date: "", weight: "10", description: "", checklist: [] });
   const [enviar, setEnviar] = useState(false);
   const project = task ? data.projects.find(p => p.id === task.project_id) : undefined;
   const canToggle = can(actor.role, "task.toggle");
@@ -33,7 +35,7 @@ export function TaskDialog({ task, onClose }: { task: Task | null; onClose: () =
   const canDelete = can(actor.role, "task.delete");
   const listaOficios = useMemo(() => { const o = oficios(data.tasks); return [...new Set([...(o.length ? o : oficiosHabituales), ...(data.operarios ?? []).flatMap(x => x.trades)])]; }, [data.tasks, data.operarios]);
 
-  useEffect(() => { setModo("ver"); if (task) setForm({ title: task.title, trade: task.trade, responsable: responsableDe(task, data), due_date: task.due_date, weight: String(task.weight) }); }, [task?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { setModo("ver"); if (task) setForm({ title: task.title, trade: task.trade, responsable: responsableDe(task, data), due_date: task.due_date, weight: String(task.weight), description: task.description ?? "", checklist: task.checklist ?? [] }); }, [task?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function ejecutar(fn: () => Promise<unknown>, error: string, despues?: () => void) {
     if (busy || pending) return;
@@ -49,7 +51,7 @@ export function TaskDialog({ task, onClose }: { task: Task | null; onClose: () =
     event.preventDefault();
     if (!task || !canEdit) return;
     const weight = Math.min(100, Math.max(1, Number(form.weight) || task.weight));
-    void ejecutar(() => send({ type: "task.update", id: task.id, title: form.title.trim(), trade: form.trade.trim(), ...asignacion(form.responsable), due_date: form.due_date, weight }), "No se ha podido guardar la tarea.", () => { notify("Tarea actualizada"); setModo("ver"); });
+    void ejecutar(() => send({ type: "task.update", id: task.id, title: form.title.trim(), trade: form.trade.trim(), ...asignacion(form.responsable), due_date: form.due_date, weight, description: form.description.trim(), checklist: form.checklist.filter(p => p.text.trim()) }), "No se ha podido guardar la tarea.", () => { notify("Tarea actualizada"); setModo("ver"); });
   }
 
   const vencida = task ? task.status === "pending" && task.due_date < localDate() : false;
@@ -76,6 +78,8 @@ export function TaskDialog({ task, onClose }: { task: Task | null; onClose: () =
             <div className="field"><span>Oficio</span><Select label="Oficio" value={form.trade} onChange={v => setForm({ ...form, trade: v })} options={[...new Set([...listaOficios, form.trade].filter(Boolean))].map(o => ({ value: o, label: o }))} placeholder="Elegir oficio…" /></div>
             <label className="field"><span>Fecha</span><DateField label="Fecha" value={form.due_date} onChange={v => setForm({ ...form, due_date: v })} required /></label>
           </div>
+          <label className="field"><span>Descripción</span><textarea rows={3} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} maxLength={4000} placeholder="Qué hay que hacer, cómo y lo que hay que tener en cuenta" /></label>
+          <div className="field"><span>Lista de comprobación</span><ChecklistEditor value={form.checklist} onChange={l => setForm({ ...form, checklist: l })} /></div>
           <ResponsableField value={form.responsable} onChange={r => setForm({ ...form, responsable: r })} oficio={form.trade} />
           <div className="line-grid">
             <label className="field"><span>Cuánto cuenta en el avance</span><span className="unit-input"><input type="number" inputMode="numeric" min={1} max={100} value={form.weight} onChange={e => setForm({ ...form, weight: e.target.value })} /><span>%</span></span></label>
@@ -93,6 +97,8 @@ export function TaskDialog({ task, onClose }: { task: Task | null; onClose: () =
             <Status label={label} tone={tone} />
             <h3 className="h2" style={{ marginTop: 8, textDecoration: task.status === "done" ? "line-through" : undefined, color: task.status === "done" ? "var(--pl-muted)" : undefined }}>{task.title}</h3>
           </div>
+          {task.description && <p className="tarea-descripcion">{task.description}</p>}
+          <ListaTarea task={task} />
           <dl className="facts">
             <div><dt>Proyecto</dt><dd>{project ? `${project.name} · ${project.client_name}` : "—"}</dd></div>
             <div><dt>Oficio</dt><dd>{task.trade}</dd></div>
@@ -106,7 +112,7 @@ export function TaskDialog({ task, onClose }: { task: Task | null; onClose: () =
           {(canEdit || canDelete) && (
             <div className="task-tools">
               {canEdit && task.status === "pending" && <><Button variant="secondary" onClick={() => posponer(1)} disabled={pending || busy}><CalendarPlus size={15} strokeWidth={1.7} aria-hidden="true" />Mañana</Button><Button variant="secondary" onClick={() => posponer(7)} disabled={pending || busy}><CalendarPlus size={15} strokeWidth={1.7} aria-hidden="true" />+1 semana</Button></>}
-              {canEdit && <Button variant="secondary" onClick={() => { setForm({ title: task.title, trade: task.trade, responsable: responsableDe(task, data), due_date: task.due_date, weight: String(task.weight) }); setModo("editar"); }} disabled={pending || busy}><Pencil size={15} strokeWidth={1.7} aria-hidden="true" />Editar</Button>}
+              {canEdit && <Button variant="secondary" onClick={() => { setForm({ title: task.title, trade: task.trade, responsable: responsableDe(task, data), due_date: task.due_date, weight: String(task.weight), description: task.description ?? "", checklist: task.checklist ?? [] }); setModo("editar"); }} disabled={pending || busy}><Pencil size={15} strokeWidth={1.7} aria-hidden="true" />Editar</Button>}
               {canDelete && <Button variant="ghost" onClick={() => setModo("eliminar")} disabled={pending || busy} className="danger"><Trash2 size={15} strokeWidth={1.7} aria-hidden="true" />Eliminar</Button>}
             </div>
           )}

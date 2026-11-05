@@ -8,6 +8,7 @@ import { useWorkspace } from "@/components/workspace-provider";
 import { localDate } from "@/lib/hoy";
 import { partidasPorCapitulo, totalCapitulo } from "@/lib/presupuesto";
 import { can, dateLabel, type BudgetVersion, type Task } from "@/lib/domain";
+import { progresoLista } from "@/lib/lista-tarea";
 
 /** Pestaña Obra: las tareas por cuándo tocan, cuánto cuenta cada una y propuesta desde las partidas aceptadas. */
 export function WorkPanel({ projectId, tasks, progress, meterTone, approved, onNueva, onAbrir, onToggle, pendiente }: { projectId: string; tasks: Task[]; progress: number; meterTone: "success" | "warning"; approved?: BudgetVersion; onNueva: () => void; onAbrir: (task: Task) => void; onToggle: (task: Task) => void; pendiente: string | null }) {
@@ -64,7 +65,7 @@ export function WorkPanel({ projectId, tasks, progress, meterTone, approved, onN
             <div key={t.id} className="task-line" data-late={g.id === "atrasadas" || undefined} data-done={t.status === "done" || undefined}>
               <input type="checkbox" checked={t.status === "done"} disabled={!puedeMarcar || pendiente === t.id} onChange={() => onToggle(t)} aria-label={`${t.status === "done" ? "Reabrir" : "Completar"} ${t.title}`} />
               <button type="button" className="task-line-main" onClick={() => onAbrir(t)} aria-haspopup="dialog">
-                <strong>{t.title}</strong>
+                <strong>{t.title}{(t => { const p = progresoLista(t.checklist); return p && <> <span className="lista-chip" data-completa={p.hechos === p.total || undefined} aria-label={`Lista: ${p.hechos} de ${p.total}`}>{p.hechos}/{p.total}</span></>; })(t)}</strong>
                 <small><span className="solo-escritorio-inline">{t.trade} · </span>{t.assignee || "Sin asignar"}<span className="solo-movil-inline"> · {t.status === "done" ? `Hecha, era el ${dateLabel(t.due_date)}` : g.id === "atrasadas" ? `Venció el ${dateLabel(t.due_date)}` : g.id === "hoy" ? "Hoy" : dateLabel(t.due_date)}</span></small>
               </button>
               <span className="task-line-who">{t.trade}{t.assignee ? ` · ${t.assignee}` : ""}</span>
