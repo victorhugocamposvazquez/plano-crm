@@ -1852,3 +1852,22 @@ button.article-open:focus-visible { outline: 2px solid var(--pl-blue); outline-o
 .otras-fila strong { font-size: var(--pl-text-ui); font-weight: var(--pl-weight-medium); overflow-wrap: anywhere; }
 .otras-fila small { color: var(--pl-muted); font-size: var(--pl-text-sm); overflow-wrap: anywhere; }
 .otras-fila > svg { flex: 0 0 auto; color: var(--pl-muted); }
+.parte-hecha { display: inline-flex; align-items: center; gap: 8px; margin-top: 8px !important; padding: 10px 14px; border-radius: var(--pl-radius-control); background: var(--pl-success-bg); color: var(--pl-success); font-size: var(--pl-text-ui); font-weight: var(--pl-weight-semibold); }
+.parte-accion { align-items: stretch; }
+.parte-accion .muted { margin: 0; }
+.parte-grande { width: 100%; min-height: 52px !important; font-size: var(--pl-text-ui); }
+.parte-escribir { display: flex; gap: 8px; align-items: flex-end; }
+.parte-escribir textarea { flex: 1; min-width: 0; min-height: 52px; padding: 10px 12px; border: var(--pl-hairline) solid var(--pl-line); border-radius: var(--pl-radius-control); background: var(--pl-bg); color: var(--pl-ink); font: inherit; font-size: var(--pl-text-base); resize: vertical; }
+.parte-escribir .btn { width: 52px; height: 52px; padding: 0; justify-content: center; }
+.parte-aviso, .parte-fallo { margin: 0; padding: 12px 14px; border-radius: var(--pl-radius-control); font-size: var(--pl-text-md); font-weight: var(--pl-weight-medium); }
+.parte-aviso { background: var(--pl-success-bg); color: var(--pl-success); }
+.parte-fallo { background: var(--pl-danger-bg); color: var(--pl-danger); }
+.partes-enviados { display: flex; flex-direction: column; gap: 6px; }
+.partes-enviados h4 { margin: 0; color: var(--pl-muted); font-size: var(--pl-text-sm); font-weight: var(--pl-weight-semibold); }
+.parte-enviado { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; padding: 8px 12px; border: var(--pl-hairline) solid var(--pl-line); border-radius: var(--pl-radius-control); }
+.parte-enviado > span:first-child { display: flex; flex: 1; flex-direction: column; min-width: 140px; }
+.parte-enviado strong { font-size: var(--pl-text-md); font-weight: var(--pl-weight-medium); }
+.parte-enviado small { color: var(--pl-muted); font-size: var(--pl-text-xs); }
+.parte-enviado .operario-estado:not([data-tone]) { background: var(--pl-raised); color: var(--pl-muted); }
+.parte-enviado-acciones { display: inline-flex; gap: 4px; }
+.parte-enviado-acciones .btn { min-height: 34px; padding: 0 10px; font-size: var(--pl-text-sm); }

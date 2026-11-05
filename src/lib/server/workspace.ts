@@ -22,7 +22,7 @@ export type AuthContext=Awaited<ReturnType<typeof authenticated>>;
 export async function loadWorkspace({ supabase,organizationId }: AuthContext): Promise<Workspace> {
   const { data: org,error }=await supabase.from("organizations").select("id,name").eq("id",organizationId).single();
   if(error) databaseError(error);
-  const tables={ members:"organization_members",projects:"projects",articles:"articles",budgets:"budgets",versions:"budget_versions",tasks:"tasks",purchases:"purchases",documents:"documents",messages:"messages",activities:"activities",certifications:"certifications",invoices:"invoices",stock_movements:"stock_movements",operarios:"operarios" } as const;
+  const tables={ members:"organization_members",projects:"projects",articles:"articles",budgets:"budgets",versions:"budget_versions",tasks:"tasks",purchases:"purchases",documents:"documents",messages:"messages",activities:"activities",certifications:"certifications",invoices:"invoices",stock_movements:"stock_movements",operarios:"operarios",task_shares:"task_shares" } as const;
   const entries=await Promise.all(Object.entries(tables).map(async ([key,table])=>{
     const rows: unknown[]=[];
     for(let offset=0;offset<20000;offset+=500) {
@@ -30,7 +30,7 @@ export async function loadWorkspace({ supabase,organizationId }: AuthContext): P
       query=table==="activities" ? query.order("created_at",{ascending:false}).order("id") : query.order(table==="organization_members"?"user_id":table==="operarios"?"name":"id");
       const { data,error }=await query.range(offset,offset+(table==="activities"?199:499));
       // Tolera el hueco entre desplegar y aplicar las migraciones de facturas, almacén y operarios: el espacio carga igual.
-      if(error && (table==="invoices" || table==="stock_movements" || table==="operarios") && (error.code==="42P01" || error.code==="PGRST205")) return [key,[]];
+      if(error && (table==="invoices" || table==="stock_movements" || table==="operarios" || table==="task_shares") && (error.code==="42P01" || error.code==="PGRST205")) return [key,[]];
       if(error) databaseError(error);
       rows.push(...(data || []));
       if(table==="activities" || (data?.length || 0)<500) return [key,rows];
