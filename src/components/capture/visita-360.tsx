@@ -16,7 +16,7 @@ import {
 } from "@/lib/visita360";
 import { cantidadDesdeMedidas, describirMedidas, describirSuperficies, faltaPara, huecoPuerta, huecoVentana, interpretarMedidas, type Medidas } from "@/lib/medidas";
 import type { Direccion, Visor360 } from "@/lib/visor360";
-import { decir, escuchar, type Recognition } from "@/lib/voz";
+import { decir, escuchar, type Escucha } from "@/lib/voz";
 import "@/styles/visita-360.css";
 
 /** Dictado del navegador: cada frase final pasa por `interpretarMedidas` y, si no es de medidas, por `interpretarOrden`. */
@@ -101,7 +101,7 @@ export function Visita360({ project, budgetId }: { project: Project; budgetId: s
   const escenario = useRef<HTMLDivElement>(null);
   const entrada = useRef<HTMLInputElement>(null);
   const visor = useRef<Visor360 | null>(null);
-  const rec = useRef<Recognition | null>(null);
+  const rec = useRef<Escucha | null>(null);
   const colocacionesRef = useRef(colocaciones); colocacionesRef.current = colocaciones;
   const medidasRef = useRef(medidas); medidasRef.current = medidas;
   const fotoRef = useRef(foto); fotoRef.current = foto;
@@ -271,13 +271,15 @@ export function Visita360({ project, budgetId }: { project: Project; budgetId: s
     setRespuesta(texto); decir(texto);
   }, [data.articles, zonas, poner, incorporar, aplicarMedidas, nombreDe, simular]);
 
+  // La escucha dura lo que el micrófono esté abierto: siempre con la versión al día de `atender`.
+  const atenderRef = useRef(atender); atenderRef.current = atender;
   function alternarVoz() {
-    if (escuchando) { rec.current?.stop(); setEscuchando(false); return; }
-    const r = escuchar({ alOir: atender, alParcial: setOido, alTerminar: () => { setEscuchando(false); rec.current = null; }, alError: notify });
+    if (escuchando) { rec.current?.parar(); rec.current = null; setEscuchando(false); return; }
+    const r = escuchar({ alOir: t => atenderRef.current(t), alParcial: setOido, alTerminar: () => { setEscuchando(false); rec.current = null; }, alError: notify });
     if (!r) { notify("Este navegador no tiene dictado. Usa Chrome, Edge o Safari, o escribe la orden."); return; }
     rec.current = r; setEscuchando(true); setRespuesta("Te escucho. Di las medidas o qué va: «la cocina mide 4 por 3 y 2,6 de alto», «pon tarima en la cocina».");
   }
-  useEffect(() => () => rec.current?.stop(), []);
+  useEffect(() => () => rec.current?.parar(), []);
 
   // Hoja: qué va aquí.
   function abrirHoja(d: Direccion, editar?: Colocacion) { setHoja({ direccion: d, editar }); setBuscar(""); setArticuloId(editar?.article_id ?? ""); setCantidad(editar ? String(editar.quantity) : ""); }
