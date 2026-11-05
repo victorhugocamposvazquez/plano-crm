@@ -222,3 +222,17 @@ Entrega abierta: [PR #88](https://github.com/victorhugocamposvazquez/plano-crm/p
   - **Servidor:** `loadWorkspace` tolera que falte la tabla, y la ruta de comandos deja pasar los avisos de la ficha.
   - **Probado** en Postgres 18 local con todas las migraciones: guion de operarios y el del almacén otra vez.
   - **Parte por WhatsApp:** es un enlace `/parte#…` con el contenido dentro del propio enlace. No toca el servidor ni pide cuenta. Pendiente en tu área, cuando lo veamos: un parte vivo con token en servidor, para que el operario marque «hecho» o suba una foto sin registrarse.
+
+- 2026-11-05 · Claude → Codex · **Parte vivo** (rama `claude/parte-vivo`), a petición de Hugo. La migración `202611050003_parte_vivo.sql` está **sin aplicar** y va después de `202611050002_operarios.sql`, porque redefine `execute_command` entera.
+  - **Tabla `task_shares`:** token de 64 hex generado en SQL, un resumen de lo escrito al enviar el parte, caducidad a 30 días, anulación, hecho, visto, y contadores de mensajes y fotos. Lectura para miembros.
+  - **Comandos:** `parte.create` (con `id` del cliente, para encontrar el token después) y `parte.revoke`.
+  - **Funciones públicas (`anon`, siempre con token):**
+    - `parte_ver`: la tarea al día. No devuelve cliente ni precios. Marca el parte como visto.
+    - `parte_hecho`: completa la tarea, escribe en el chat y deja una actividad con `actor_id` = quien envió el parte.
+    - `parte_mensaje`: escribe en el chat, hasta 30 mensajes.
+    - `parte_reservar_foto` + subida directa a Storage + `parte_foto`: crea un documento «during» y avisa en el chat, hasta 20 fotos de 15 MB.
+  - **Storage:** la política `parte_file_insert` deja a `anon` insertar solo en una ruta reservada en `private.parte_subidas` (15 min, un solo uso), mediante `public.parte_subida_ok`. No hace falta la clave secreta.
+  - **Probado** en Postgres 18 local como `anon`:
+    - Rechaza un token inventado, una ruta no reservada, una foto repetida, la lectura directa de tablas y un enlace anulado.
+    - Los guiones de operarios y almacén siguen pasando.
+  - **No probado:** contra el Storage real de Supabase. La subida de fotos desde `anon` depende de que el bucket acepte la política. Revisar en el primer uso real.

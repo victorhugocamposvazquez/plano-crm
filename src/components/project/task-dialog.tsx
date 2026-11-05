@@ -12,7 +12,7 @@ import { localDate } from "@/lib/hoy";
 import { oficios, oficiosHabituales, sumarDias } from "@/lib/agenda";
 import { ResponsableField, asignacion, responsableDe, sinResponsable, type Responsable } from "@/components/equipo/responsable-field";
 import { OperarioCard } from "@/components/equipo/operario-card";
-import { EnviarParte } from "@/components/equipo/enviar-parte";
+import { EnviarParte, PartesEnviados } from "@/components/equipo/enviar-parte";
 import { DateField } from "@/components/ui/date-field";
 
 const fechaLarga = new Intl.DateTimeFormat("es-ES", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
@@ -102,6 +102,7 @@ export function TaskDialog({ task, onClose }: { task: Task | null; onClose: () =
           </dl>
           {(() => { const o = task.operario_id ? (data.operarios ?? []).find(x => x.id === task.operario_id) : undefined; return o && <OperarioCard operario={o} compacta />; })()}
           {task.status === "pending" && <Button variant="secondary" onClick={() => setEnviar(true)} style={{ alignSelf: "flex-start" }}><MessageCircle size={15} strokeWidth={1.7} aria-hidden="true" />Enviar parte por WhatsApp</Button>}
+          <PartesEnviados taskId={task.id} />
           {(canEdit || canDelete) && (
             <div className="task-tools">
               {canEdit && task.status === "pending" && <><Button variant="secondary" onClick={() => posponer(1)} disabled={pending || busy}><CalendarPlus size={15} strokeWidth={1.7} aria-hidden="true" />Mañana</Button><Button variant="secondary" onClick={() => posponer(7)} disabled={pending || busy}><CalendarPlus size={15} strokeWidth={1.7} aria-hidden="true" />+1 semana</Button></>}

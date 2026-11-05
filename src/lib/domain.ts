@@ -27,6 +27,9 @@ export type BudgetItemEdit = { item_id: string; version_id: string; draft_revisi
 export type BudgetItemEvent = BudgetItemEdit & { id: string; organization_id: string; budget_id: string; actor_id: string; before_item?: BudgetItem; after_item?: BudgetItem };
 export type Task = { id: string; organization_id: string; project_id: string; title: string; trade: string; assignee: string; assignee_id: string | null; operario_id?: string | null; due_date: string; status: "pending" | "done"; weight: number };
 /** Persona que trabaja en las obras, tenga o no cuenta en Plano: propia, autónoma o de una subcontrata. `trades` son categorías del catálogo que hace. */
+/** Parte vivo de una tarea: el enlace con token que recibe un operario por WhatsApp y que funciona sin cuenta. */
+export type ParteSnapshot = { direccion: string; notas: string; contacto: string; telefono: string; para: string; material: string[] };
+export type TaskShare = { id: string; organization_id: string; task_id: string; operario_id: string | null; token: string; snapshot: ParteSnapshot; created_by_name: string; created_at: string; expires_at: string; revoked_at: string | null; done_at: string | null; seen_at: string | null; messages_count: number; photos_count: number };
 export type Operario = { id: string; organization_id: string; name: string; phone: string; email: string; company: string; trades: string[]; hourly_cost: number | null; available: boolean; user_id: string | null; notes: string; created_at: string };
 export type Purchase = { id: string; organization_id: string; project_id: string; name: string; supplier: string; assignee: string; assignee_id: string | null; quantity: number; received_quantity: number; delivered_quantity: number; unit: string; status: "planned" | "ordered" | "received" | "delivered"; article_id?: string | null };
 /** Un cambio en las existencias de un artículo: `quantity` con signo y existencias después del cambio. */
@@ -37,7 +40,7 @@ export type Activity = { id: string; organization_id: string; project_id: string
 export type Certification = { id: string; organization_id: string; project_id: string; budget_version_id: string; title: string; amount: number; status: "draft"; created_at: string };
 /** Registro de factura: el número se asigna al enviarla, en serie anual sin huecos. No sustituye a la factura oficial. */
 export type Invoice = { id: string; organization_id: string; project_id: string; certification_id: string | null; client_name: string; concept: string; base: number; vat_rate: number; tax: number; total: number; status: "draft" | "sent" | "paid"; number: string | null; number_year: number | null; number_seq: number | null; issue_date: string | null; due_date: string | null; paid_on: string | null; created_by_name: string; created_at: string; updated_at: string };
-export type Workspace = { organization_id: string; organization_name: string; members: OrganizationMember[]; projects: Project[]; articles: Article[]; budgets: Budget[]; versions: BudgetVersion[]; tasks: Task[]; purchases: Purchase[]; documents: Document[]; messages: Message[]; activities: Activity[]; certifications: Certification[]; plan_captures?: PlanDraft[]; room_captures?: RoomDraft[]; room_imports?: RoomImport[]; budget_item_events?: BudgetItemEvent[]; invoices?: Invoice[]; stock_movements?: StockMovement[]; operarios?: Operario[] };
+export type Workspace = { organization_id: string; organization_name: string; members: OrganizationMember[]; projects: Project[]; articles: Article[]; budgets: Budget[]; versions: BudgetVersion[]; tasks: Task[]; purchases: Purchase[]; documents: Document[]; messages: Message[]; activities: Activity[]; certifications: Certification[]; plan_captures?: PlanDraft[]; room_captures?: RoomDraft[]; room_imports?: RoomImport[]; budget_item_events?: BudgetItemEvent[]; invoices?: Invoice[]; stock_movements?: StockMovement[]; operarios?: Operario[]; task_shares?: TaskShare[] };
 
 const text = z.string().trim().min(1).max(500);
 /** Campos de la ficha de un operario. El teléfono admite espacios, «+» y guiones; el coste por hora va en céntimos. */
@@ -73,6 +76,8 @@ export const commandSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("operario.create"), ...operarioCampos }),
   z.object({ type: z.literal("operario.update"), id: z.uuid(), ...Object.fromEntries(Object.entries(operarioCampos).map(([k, v]) => [k, v.optional()])) as { [K in keyof typeof operarioCampos]: z.ZodOptional<(typeof operarioCampos)[K]> } }),
   z.object({ type: z.literal("operario.delete"), id: z.uuid() }),
+  z.object({ type: z.literal("parte.create"), id: z.uuid(), task_id: z.uuid(), operario_id: z.uuid().nullable().optional(), snapshot: z.object({ direccion: z.string().max(300), notas: z.string().max(800), contacto: z.string().max(120), telefono: z.string().max(40), para: z.string().max(120), material: z.array(z.string().max(160)).max(8) }) }),
+  z.object({ type: z.literal("parte.revoke"), id: z.uuid() }),
   z.object({ type: z.literal("task.delete"), id: z.uuid() }),
   z.object({ type: z.literal("purchase.create"), project_id: z.uuid(), name: text, supplier: text, quantity: z.number().positive().max(1000000), unit: z.enum(["m²", "ml", "ud", "h", "global"]), article_id: z.uuid().nullable().optional() }),
   z.object({ type: z.literal("purchase.update"), id: z.uuid(), assignee_id: z.uuid().nullable().optional(), assignee: z.string().max(120).optional(), status: z.enum(["planned", "ordered", "received", "delivered"]).optional(), received_quantity: z.number().min(0).optional(), delivered_quantity: z.number().min(0).optional() }),
@@ -264,6 +269,18 @@ export function applyCommand(previous: Workspace, input: Command, actor: Actor, 
       // Sus tareas se quedan con el nombre escrito, sin vínculo.
       for (const t of state.tasks) if (t.operario_id === o.id) t.operario_id = null;
       activity = `Operario dado de baja: ${o.name}`; break;
+    }
+    case "parte.create": {
+      const t = state.tasks.find(x => x.id === command.task_id); if (!t) throw new Error("Tarea no encontrada.");
+      if (command.operario_id && !(state.operarios ?? []).some(o => o.id === command.operario_id)) throw new Error("Ese operario no está en el equipo.");
+      const token = (uuid() + uuid()).replace(/-/g, "").toLowerCase();
+      const caduca = new Date(now); caduca.setDate(caduca.getDate() + 30);
+      (state.task_shares ??= []).push({ id: command.id, organization_id: org, task_id: t.id, operario_id: command.operario_id ?? null, token, snapshot: command.snapshot, created_by_name: actor.name, created_at: now, expires_at: caduca.toISOString(), revoked_at: null, done_at: null, seen_at: null, messages_count: 0, photos_count: 0 });
+      projectId = t.project_id; activity = `Parte enviado: ${t.title}`; break;
+    }
+    case "parte.revoke": {
+      const sh = (state.task_shares ?? []).find(x => x.id === command.id && !x.revoked_at); if (!sh) throw new Error("Parte no encontrado.");
+      sh.revoked_at = now; const t = state.tasks.find(x => x.id === sh.task_id); projectId = t?.project_id ?? null; activity = `Parte anulado: ${t?.title ?? ""}`; break;
     }
     case "task.create": {
       const { type: _, ...fields } = command; void _;
