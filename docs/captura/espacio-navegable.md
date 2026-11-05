@@ -38,3 +38,14 @@ Comprueba el visor, puntos de vista, cambio de suelo/mueble con diferencias, des
 El espacio existente se obtendrá de fuentes identificadas (planos, fotos y captura con medidas), y la propuesta incorporará las actuaciones solicitadas por GARAL. Faltan importación/reconstrucción, verificación espacial, modelos reales del catálogo, persistencia por revisión, permisos del proyecto y publicación seleccionada en el portal del cliente. El objetivo final es preparar automáticamente la propuesta y presentar las dudas al profesional, no trasladar a Hugo tareas de medición o modelado.
 
 Referencias de implementación: [Three.js](https://threejs.org/docs/) y [OrbitControls](https://threejs.org/docs/pages/OrbitControls.html).
+
+## Propuesta en 3D dentro del proyecto (5 nov 2026)
+
+Ruta: `/proyectos/[id]/espacio3d`, desde el menú del proyecto («Propuesta en 3D») y desde «Añadir al presupuesto». Usa el mismo visor (`src/lib/visual/viewer.ts`) con el local o la nave de ejemplo, pero con los **artículos del catálogo** de la empresa en lugar de los ficticios:
+
+- Suelo: artículos en m² de pavimento, tarima, porcelánico, resina…; paredes: pintura, revestimiento, alicatado; mobiliario: armarios, muebles y estanterías en ud. La textura se elige por el nombre (`aspecto` en `src/lib/espacio3d.ts`); el color, por voz o con las muestras.
+- Órdenes por voz (`src/lib/voz.ts`, la misma que la visita 360), escritas o tocando la escena: «pon porcelánico en el suelo», «pinta las paredes de verde salvia», «pon dos estanterías», «el mueble en nogal», «mide 6 por 4 y 3 de alto», «vamos a la nave», «entra», «gira a la izquierda», «¿cuánto va?», «deshaz», «pásalo al presupuesto».
+- Cantidades: suelo = largo × ancho; paredes = perímetro × alto, menos la ventana de 3 m² que dibuja el local; mobiliario = unidades dichas (se dibujan las que caben en la pared del fondo). Nunca se cuentan mallas.
+- «Pasar al presupuesto» añade las partidas al borrador con `budget.create` / `budget.revise` / `budget.save`, como la visita 360. Sin comandos nuevos ni migraciones; lo elegido se recuerda en el navegador (`plano.espacio3d.<proyecto>`).
+
+Pruebas: `tests/espacio3d.test.ts`.

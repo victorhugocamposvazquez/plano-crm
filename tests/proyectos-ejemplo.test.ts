@@ -12,7 +12,7 @@ describe("Proyectos de ejemplo", () => {
     expect(vista).toHaveLength(5);
     expect(vista[0]).toMatchObject({ name: "Vivienda en Monte Alto", status: "active", versiones: 2, tareas: 4, compras: 1, existe: false });
     expect(previsualizar(createDemo()).every(p => p.existe)).toBe(true);
-    expect(articulosQueFaltan(vacio())).toHaveLength(10);
+    expect(articulosQueFaltan(vacio())).toHaveLength(15);
     expect(articulosQueFaltan(createDemo())).toHaveLength(0);
   });
 
@@ -20,9 +20,9 @@ describe("Proyectos de ejemplo", () => {
     let ws = vacio();
     const send = async (command: Command) => (ws = applyCommand(ws, command, demoActor));
     const r = await cargarEjemplos({ data: ws, send });
-    expect(r).toMatchObject({ proyectos: 5, presupuestos: 4, tareas: 8, compras: 2, articulos: 10, errores: [] });
+    expect(r).toMatchObject({ proyectos: 5, presupuestos: 4, tareas: 8, compras: 2, articulos: 15, errores: [] });
     expect(ws.projects).toHaveLength(5);
-    expect(ws.articles).toHaveLength(10);
+    expect(ws.articles).toHaveLength(15);
 
     const monte = ws.projects.find(p => p.name === "Vivienda en Monte Alto");
     expect(monte?.status).toBe("active");

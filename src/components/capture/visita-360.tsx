@@ -16,18 +16,10 @@ import {
 } from "@/lib/visita360";
 import { cantidadDesdeMedidas, describirMedidas, describirSuperficies, faltaPara, huecoPuerta, huecoVentana, interpretarMedidas, type Medidas } from "@/lib/medidas";
 import type { Direccion, Visor360 } from "@/lib/visor360";
+import { decir, escuchar, type Recognition } from "@/lib/voz";
 import "@/styles/visita-360.css";
 
-/** Dictado del navegador (Web Speech API), en español. Cada frase final pasa por `interpretarMedidas` y, si no es de medidas, por `interpretarOrden`. */
-type Recognition = { lang: string; continuous: boolean; interimResults: boolean; onresult: ((e: { resultIndex: number; results: ArrayLike<ArrayLike<{ transcript: string }> & { isFinal: boolean }> }) => void) | null; onend: (() => void) | null; onerror: ((e: { error: string }) => void) | null; start(): void; stop(): void };
-function reconocimiento(): (new () => Recognition) | null {
-  if (typeof window === "undefined") return null;
-  const w = window as unknown as { SpeechRecognition?: new () => Recognition; webkitSpeechRecognition?: new () => Recognition };
-  return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
-}
-function decir(texto: string) {
-  try { if (!("speechSynthesis" in window)) return; const u = new SpeechSynthesisUtterance(texto); u.lang = "es-ES"; u.rate = 1.05; window.speechSynthesis.cancel(); window.speechSynthesis.speak(u); } catch { /* sin voz */ }
-}
+/** Dictado del navegador: cada frase final pasa por `interpretarMedidas` y, si no es de medidas, por `interpretarOrden`. */
 const claveMedidas = (projectId: string) => `${claveVisita(projectId)}.medidas`;
 function leerGuardadas(projectId: string): { colocaciones: Colocacion[]; medidas: Record<string, Medidas> } {
   try {
@@ -281,17 +273,9 @@ export function Visita360({ project, budgetId }: { project: Project; budgetId: s
 
   function alternarVoz() {
     if (escuchando) { rec.current?.stop(); setEscuchando(false); return; }
-    const Rec = reconocimiento();
-    if (!Rec) { notify("Este navegador no tiene dictado. Usa Chrome, Edge o Safari, o escribe la orden."); return; }
-    const r = new Rec(); r.lang = "es-ES"; r.continuous = true; r.interimResults = true;
-    r.onresult = e => {
-      let parcial = "";
-      for (let i = e.resultIndex; i < e.results.length; i++) { const res = e.results[i]; const t = res[0]?.transcript ?? ""; if (res.isFinal) atender(t.trim()); else parcial += t; }
-      if (parcial) setOido(parcial.trim());
-    };
-    r.onerror = e => { if (e.error === "not-allowed") notify("Permite el micrófono para dar órdenes por voz."); };
-    r.onend = () => { setEscuchando(false); rec.current = null; };
-    rec.current = r; r.start(); setEscuchando(true); setRespuesta("Te escucho. Di las medidas o qué va: «la cocina mide 4 por 3 y 2,6 de alto», «pon tarima en la cocina».");
+    const r = escuchar({ alOir: atender, alParcial: setOido, alTerminar: () => { setEscuchando(false); rec.current = null; }, alError: notify });
+    if (!r) { notify("Este navegador no tiene dictado. Usa Chrome, Edge o Safari, o escribe la orden."); return; }
+    rec.current = r; setEscuchando(true); setRespuesta("Te escucho. Di las medidas o qué va: «la cocina mide 4 por 3 y 2,6 de alto», «pon tarima en la cocina».");
   }
   useEffect(() => () => rec.current?.stop(), []);
 

@@ -1,0 +1,38 @@
+/* Propuesta en 3D: el espacio ocupa el ancho; debajo, la orden escrita, las medidas, qué cambia y el ticket (clases de la visita 360). */
+.e3d-stage { position: relative; width: 100%; aspect-ratio: 16 / 10; max-height: 62vh; overflow: hidden; border-radius: var(--pl-radius-card); background: var(--pl-document-bg); border: var(--pl-hairline) solid var(--pl-line); }
+.e3d-lienzo { position: absolute; inset: 0; }
+.e3d-lienzo canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+.e3d-lienzo canvas:focus-visible { outline: 2px solid var(--pl-blue); outline-offset: -2px; }
+.e3d-stage > :not(.e3d-lienzo) { z-index: 1; }
+.e3d-vistas { position: absolute; left: 12px; top: 12px; right: 12px; display: flex; flex-wrap: wrap; gap: 6px; pointer-events: none; }
+.e3d-vistas button, .e3d-mover button { pointer-events: auto; min-height: 36px; padding: 0 12px; border: var(--pl-hairline) solid var(--pl-line); border-radius: var(--pl-radius-full); background: var(--pl-bg); color: var(--pl-ink); font: inherit; font-size: var(--pl-text-sm); cursor: pointer; box-shadow: var(--pl-shadow-float); }
+.e3d-vistas button[aria-pressed="true"] { border-color: var(--pl-ink); font-weight: var(--pl-weight-semibold); }
+.e3d-vistas button:disabled, .e3d-mover button:disabled { opacity: 0.55; cursor: default; }
+.e3d-mover { display: inline-flex; gap: 6px; }
+.e3d-mover button { width: 44px; min-height: 44px; padding: 0; display: inline-flex; align-items: center; justify-content: center; }
+.e3d-elementos { display: flex; flex-direction: column; overflow: hidden; }
+.e3d-pestanas { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); border-bottom: var(--pl-hairline) solid var(--pl-line); }
+.e3d-pestanas button { display: flex; align-items: center; gap: 10px; min-width: 0; min-height: 60px; padding: 10px 14px; border: 0; border-right: var(--pl-hairline) solid var(--pl-line); background: var(--pl-bg); color: var(--pl-ink); font: inherit; text-align: left; cursor: pointer; }
+.e3d-pestanas button:last-child { border-right: 0; }
+.e3d-pestanas button[aria-selected="true"] { background: var(--pl-raised); box-shadow: inset 0 -2px 0 var(--pl-ink); }
+.e3d-pestanas span { display: flex; flex-direction: column; min-width: 0; }
+.e3d-pestanas strong { font-size: var(--pl-text-ui); font-weight: var(--pl-weight-medium); }
+.e3d-pestanas small { color: var(--pl-muted); font-size: var(--pl-text-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.e3d-muestra { flex-shrink: 0; width: 22px; height: 22px; border-radius: var(--pl-radius-tab); border: var(--pl-hairline) solid var(--pl-line); }
+.e3d-muestra[data-vacia] { background: repeating-linear-gradient(45deg, var(--pl-soft) 0 4px, var(--pl-bg) 4px 8px); }
+.e3d-opciones { display: flex; flex-direction: column; gap: 14px; padding: 14px 16px 16px; }
+.e3d-lista { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 8px; }
+.e3d-lista button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; min-height: 56px; padding: 10px 12px; border: var(--pl-hairline) solid var(--pl-line); border-radius: var(--pl-radius-control); background: var(--pl-bg); color: var(--pl-ink); font: inherit; font-size: var(--pl-text-md); text-align: left; cursor: pointer; }
+.e3d-lista button small { color: var(--pl-muted); font-size: var(--pl-text-sm); }
+.e3d-lista button[aria-pressed="true"] { border-color: var(--pl-ink); box-shadow: inset 0 0 0 1px var(--pl-ink); font-weight: var(--pl-weight-medium); }
+.e3d-colores { display: flex; flex-wrap: wrap; gap: 8px; }
+.e3d-colores button { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 12px 0 6px; border: var(--pl-hairline) solid var(--pl-line); border-radius: var(--pl-radius-full); background: var(--pl-bg); color: var(--pl-ink); font: inherit; font-size: var(--pl-text-sm); cursor: pointer; }
+.e3d-colores button i { width: 26px; height: 26px; border-radius: var(--pl-radius-full); border: var(--pl-hairline) solid var(--pl-line); }
+.e3d-colores button[aria-pressed="true"] { border-color: var(--pl-ink); box-shadow: inset 0 0 0 1px var(--pl-ink); font-weight: var(--pl-weight-medium); }
+.e3d-unidades { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: var(--pl-text-md); }
+.e3d-unidades strong { min-width: 24px; text-align: center; font-size: var(--pl-text-ui); }
+@media (max-width: 767px) {
+  .e3d-stage { aspect-ratio: 4 / 3.4; }
+  .e3d-pestanas button { flex-direction: column; align-items: flex-start; gap: 6px; padding: 10px; }
+  .e3d-lista { grid-template-columns: 1fr; }
+}

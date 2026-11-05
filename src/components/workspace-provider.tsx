@@ -30,6 +30,11 @@ function savedDemo(): Workspace {
     const ligado = demo.purchases.find(x => x.article_id), pedido = ligado && parsed.purchases.find((x: Workspace["purchases"][number]) => x.id === ligado.id);
     if (pedido && pedido.article_id === undefined && nuevos.some(x => x.id === ligado.article_id)) pedido.article_id = ligado.article_id;
   }
+  // Propuesta en 3D (nov 2026): la demo antigua recibe las alternativas de suelo, pared y mobiliario.
+  if (!parsed.articles.some((x: Workspace["articles"][number]) => x.code === "EQU-001")) {
+    const extra = createDemo().articles.filter(x => ["PAV-002", "PAV-003", "PIN-002", "CAR-003", "EQU-001"].includes(x.code) && !parsed.articles.some((y: Workspace["articles"][number]) => y.code === x.code || y.id === x.id));
+    parsed.articles.push(...extra);
+  }
   parsed.tasks = parsed.tasks.map((t: Workspace["tasks"][number]) => ({...t,assignee_id:t.assignee_id ?? null}));
   parsed.purchases = parsed.purchases.map((p: Workspace["purchases"][number]) => ({...p,assignee_id:p.assignee_id ?? null,assignee:p.assignee ?? ""}));
   return parsed;

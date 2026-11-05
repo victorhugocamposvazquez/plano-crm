@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { Footprints, ListPlus, Receipt, ArrowLeftRight, MessageSquare, Ellipsis, Pencil, LayoutTemplate, Camera, ChevronRight, Orbit } from "lucide-react";
+import { Footprints, ListPlus, Receipt, ArrowLeftRight, MessageSquare, Ellipsis, Pencil, LayoutTemplate, Camera, ChevronRight, Orbit, Box } from "lucide-react";
 import { Menu } from "@/components/ui/menu";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
@@ -80,7 +80,8 @@ export function ProjectMenu({ project, approvedVersion, puedeEstimar, onChat, so
     { id: "certificacion", label: "Preparar cobro", hint: approvedVersion ? `Quedan ${money(saldo)} sin IVA de la V${approvedVersion.number}` : "Necesita un presupuesto aceptado", icon: <Receipt size={16} strokeWidth={1.7} />, disabled: !approvedVersion || !can(actor.role, "certification.create"), onSelect: () => abrir("certificacion") },
     ...(puedeEstimar ? [
       { id: "visita", label: "Desde fotos", hint: "Fotos de la obra, notas y una cifra orientativa", icon: <Footprints size={16} strokeWidth={1.7} />, onSelect: () => router.push(`/proyectos/nueva?proyecto=${project.id}`) },
-      { id: "visita360", label: "Visita 360", hint: "Recorre la estancia y di qué va en cada sitio", icon: <Orbit size={16} strokeWidth={1.7} />, onSelect: () => router.push(`/proyectos/${project.id}/visita360`) }
+      { id: "visita360", label: "Visita 360", hint: "Recorre la estancia y di qué va en cada sitio", icon: <Orbit size={16} strokeWidth={1.7} />, onSelect: () => router.push(`/proyectos/${project.id}/visita360`) },
+      { id: "espacio3d", label: "Propuesta en 3D", hint: "Cambia suelo, paredes y muebles del catálogo por voz o tocando", icon: <Box size={16} strokeWidth={1.7} />, onSelect: () => router.push(`/proyectos/${project.id}/espacio3d`) }
     ] : []),
     { id: "chat", label: "Abrir el chat", hint: "Conversación del equipo", icon: <MessageSquare size={16} strokeWidth={1.7} />, onSelect: onChat }
   ];
@@ -101,6 +102,8 @@ export function ProjectMenu({ project, approvedVersion, puedeEstimar, onChat, so
             <button type="button" className="opt-row" onClick={() => { setDialogo(""); onManual?.(); }}><span className="opt-ico" data-tone="ink"><Pencil size={18} strokeWidth={1.7} aria-hidden="true" /></span><span className="opt-text"><strong>A mano, con el catálogo</strong><small>{borrador ? `Partidas del catálogo o libres en la V${borrador.number}.` : "Partidas del catálogo o libres, con la guía por capítulos."}</small></span><ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" className="muted" /></button>
             {planoHref && <button type="button" className="opt-row" onClick={() => ir(planoHref)}><span className="opt-ico" data-tone="blue"><LayoutTemplate size={18} strokeWidth={1.7} aria-hidden="true" /></span><span className="opt-text"><strong>Desde un plano</strong><small>Sube el PDF: Plano mide las paredes y propone partidas.</small></span><ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" className="muted" /></button>}
             {fotosHref && <button type="button" className="opt-row" onClick={() => ir(fotosHref)}><span className="opt-ico" data-tone="warning"><Camera size={18} strokeWidth={1.7} aria-hidden="true" /></span><span className="opt-text"><strong>Desde fotos</strong><small>Fotos de la obra, notas y una cifra orientativa.</small></span><ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" className="muted" /></button>}
+            <button type="button" className="opt-row" onClick={() => ir(`/proyectos/${project.id}/visita360`)}><span className="opt-ico"><Orbit size={18} strokeWidth={1.7} aria-hidden="true" /></span><span className="opt-text"><strong>Visita 360</strong><small>Recorre la estancia y di qué va en cada sitio.</small></span><ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" className="muted" /></button>
+            <button type="button" className="opt-row" onClick={() => ir(`/proyectos/${project.id}/espacio3d`)}><span className="opt-ico"><Box size={18} strokeWidth={1.7} aria-hidden="true" /></span><span className="opt-text"><strong>Propuesta en 3D</strong><small>Cambia suelo, paredes y muebles del catálogo por voz o tocando.</small></span><ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" className="muted" /></button>
           </div>}
           <div className="action-group" role="group" aria-labelledby="acciones-obra">
             <span className="section-label" id="acciones-obra"><span>Obra</span></span>
