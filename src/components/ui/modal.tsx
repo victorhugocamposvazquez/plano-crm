@@ -15,6 +15,9 @@ export function quitarFocoDeCerrar(dialog: HTMLDialogElement) {
 
 export function Modal({ open, onClose, title, children, footer, size = "md", panel, kicker }: { open: boolean; onClose: () => void; title: string; children: ReactNode; footer?: ReactNode; size?: "md" | "wide"; panel?: "md" | "wide"; kicker?: string }) {
   const ref = useRef<HTMLDialogElement>(null);
+  // Si se cierra porque `open` pasa a false (otro diálogo toma el relevo), no se avisa: onClose solo es para lo que hace la persona.
+  const abierto = useRef(open);
+  abierto.current = open;
 
   useEffect(() => {
     const dialog = ref.current;
@@ -24,7 +27,7 @@ export function Modal({ open, onClose, title, children, footer, size = "md", pan
   }, [open]);
 
   return (
-    <dialog ref={ref} className="modal" data-size={size} data-panel={panel} onClose={e => { if (e.target === e.currentTarget) onClose(); }} onClick={e => { if (e.target === e.currentTarget) onClose(); }} aria-label={title}>
+    <dialog ref={ref} className="modal" data-size={size} data-panel={panel} onClose={e => { if (e.target === e.currentTarget && abierto.current) onClose(); }} onClick={e => { if (e.target === e.currentTarget) onClose(); }} aria-label={title}>
       <div className="modal-body">
         <span className="modal-handle" aria-hidden="true" />
         <header className="modal-head">

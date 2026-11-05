@@ -42,7 +42,7 @@ export default function MasPage() {
   const fueraDePlazo = vencidas(facturasDe(data)).length;
   const entradas = [
     { href: "/clientes", label: "Clientes", icon: Users, aviso: "" },
-    { href: "/catalogo", label: "Catálogo", icon: BookOpen, aviso: "" },
+    { href: "/catalogo", label: "Catálogo / Actuaciones", icon: BookOpen, aviso: "" },
     { href: "/finanzas", label: "Finanzas", icon: Wallet, aviso: fueraDePlazo ? `${fueraDePlazo} ${fueraDePlazo === 1 ? "vencida" : "vencidas"}` : "" },
     { href: "/ajustes", label: "Ajustes de la empresa", icon: Settings, aviso: "" }
   ].filter(e => veSeccion(actor.role, e.href));

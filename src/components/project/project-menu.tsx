@@ -11,6 +11,7 @@ import { can, money, totals, projectStatus, type Project, type BudgetVersion } f
 import { oficios, oficiosHabituales, personas } from "@/lib/agenda";
 import { eurosACentimos } from "@/lib/catalogo";
 import { localDate } from "@/lib/hoy";
+import { DateField } from "@/components/ui/date-field";
 
 type Dialogo = "" | "acciones" | "estado" | "tarea" | "certificacion";
 const estados = Object.keys(projectStatus) as Project["status"][];
@@ -128,7 +129,7 @@ export function ProjectMenu({ project, approvedVersion, puedeEstimar, onChat, so
         <form id="nueva-tarea" className="form" onSubmit={crearTarea} style={{ maxWidth: "none" }}>
           <div className="line-grid">
             <label className="field" style={{ gridColumn: "1 / -1" }}><span>Tarea</span><input type="text" value={tarea.title} onChange={e => setTarea({ ...tarea, title: e.target.value })} placeholder="Replantear tabiquería con el electricista" required maxLength={500} autoFocus /></label>
-            <label className="field"><span>Fecha</span><input type="date" value={tarea.due_date} onChange={e => setTarea({ ...tarea, due_date: e.target.value })} required /></label>
+            <label className="field"><span>Fecha</span><DateField label="Fecha" value={tarea.due_date} onChange={v => setTarea({ ...tarea, due_date: v })} required /></label>
           </div>
           <details className="editor-advanced" open={Boolean(tarea.trade || tarea.assignee)}>
           <summary>Más detalles · oficio, responsable y cuánto cuenta</summary>

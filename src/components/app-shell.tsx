@@ -32,13 +32,13 @@ const catalogo: Item[] = [
   { href: "/finanzas", label: "Finanzas", icon: Wallet },
   { href: "/compras", label: "Materiales", icon: Package },
   { href: "/presupuestos", label: "Presupuestos", icon: FileText },
-  { href: "/catalogo", label: "Catálogo", icon: BookOpen },
+  { href: "/catalogo", label: "Catálogo / Actuaciones", icon: BookOpen },
   { href: "/ajustes", label: "Ajustes", icon: Settings }
 ];
 const masItem: Item = { href: "/mas", label: "Más", icon: Ellipsis };
 const menuEmpresaKey = "plano.menu.empresa";
 const secundarias = ["/clientes", "/presupuestos", "/catalogo", "/compras", "/documentos", "/finanzas", "/ajustes", "/ayuda", "/instalar", "/configuracion", "/sistema", "/laboratorio"];
-const seccionesMiga: Record<string, string> = { "/proyectos": "Proyectos", "/agenda": "Agenda", "/clientes": "Clientes", "/finanzas": "Finanzas", "/catalogo": "Catálogo", "/ajustes": "Ajustes", "/presupuestos": "Presupuestos", "/compras": "Materiales", "/documentos": "Documentos", "/mas": "Más", "/ayuda": "Ayuda", "/instalar": "Instalar", "/configuracion": "Ajustes", "/sistema": "Supervisión" };
+const seccionesMiga: Record<string, string> = { "/proyectos": "Proyectos", "/agenda": "Agenda", "/clientes": "Clientes", "/finanzas": "Finanzas", "/catalogo": "Catálogo / Actuaciones", "/ajustes": "Ajustes", "/presupuestos": "Presupuestos", "/compras": "Materiales", "/documentos": "Documentos", "/mas": "Más", "/ayuda": "Ayuda", "/instalar": "Instalar", "/configuracion": "Ajustes", "/sistema": "Supervisión" };
 
 function miga(pathname: string, data: Workspace): { href?: string; label: string }[] {
   if (pathname === "/") return [{ label: new Intl.DateTimeFormat("es-ES", { weekday: "long", day: "numeric", month: "long" }).format(new Date()).replace(/^/, "Hoy · ") }];

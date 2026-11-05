@@ -134,7 +134,7 @@ export default function CatalogoPage() {
   return (
     <div className="page">
       <div className="pl-head">
-        <div><h1 className="pl-title">Catálogo</h1><p className="pl-sub">Todo lo que se puede poner en un presupuesto. Toca un artículo para editarlo. Al presupuesto se añaden desde el propio presupuesto.</p></div>
+        <div><h1 className="pl-title">Catálogo / Actuaciones</h1><p className="pl-sub">Todo lo que se puede poner en un presupuesto. Toca un artículo para editarlo. Al presupuesto se añaden desde el propio presupuesto.</p></div>
         {allowed && <div className="pl-head-actions"><Button onClick={() => setImportParam("1")}><Upload size={16} strokeWidth={1.7} aria-hidden="true" />Subir tarifa de proveedor</Button><Button variant="primary" onClick={abrirNuevo}><Plus size={17} strokeWidth={1.8} aria-hidden="true" />Nuevo artículo</Button></div>}
       </div>
       <SearchBox seccion="catalogo" value={query} onChange={setQuery} label="Buscar artículos" placeholder="Busca lo que sea: material, medida, categoría, código…" count={loading ? undefined : `${encontrados.length} ${encontrados.length === 1 ? "artículo" : "artículos"}`} vocabulario={vocabulario} />
