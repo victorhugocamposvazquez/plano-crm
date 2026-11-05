@@ -75,6 +75,13 @@ export const capabilities: Capability[] = [
     evidence: [{ label: "Visita 360: tecnología y evolución", path: "docs/captura/visita-360.md" }, { label: "Medidas y superficies", path: "src/lib/medidas.ts" }, { label: "Fuentes, medidas y cuestiones pendientes", path: "docs/captura/estancias-catalogo.md" }],
   },
   {
+    id: "almacen", name: "Almacén y existencias", status: "partial",
+    summary: "Existencias de los artículos que se guardan en la nave, con movimientos y pedidos de Materiales ligados.",
+    available: ["Artículos «se guarda en almacén» con mínimo, ubicación, entradas, salidas y recuentos registrados con fecha y persona.", "Pedidos de Materiales ligados a un artículo: recibir suma, llevar a obra resta y lo recibido sin llevar queda reservado."],
+    pending: ["Aplicar la migración 202611050001_almacen.sql en producción tras revisarla.", "Proveedor, foto, precio de compra y reservas a mano sin pedido; avisos de mínimo en Hoy para Materiales."],
+    evidence: [{ label: "Migración", path: "supabase/migrations/202611050001_almacen.sql" }, { label: "Reglas del almacén", path: "src/lib/stock.ts" }, { label: "Pruebas", path: "tests/stock.test.ts" }],
+  },
+  {
     id: "virtual", name: "Entorno virtual y cambio de acabados", status: "partial",
     summary: "Laboratorio navegable con escenas sintéticas y selección ligada a importes de ejemplo.",
     available: ["Prototipo de local y nave con materiales físicos; cambio de artículos y diferencia económica."],

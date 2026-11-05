@@ -22,15 +22,15 @@ export type AuthContext=Awaited<ReturnType<typeof authenticated>>;
 export async function loadWorkspace({ supabase,organizationId }: AuthContext): Promise<Workspace> {
   const { data: org,error }=await supabase.from("organizations").select("id,name").eq("id",organizationId).single();
   if(error) databaseError(error);
-  const tables={ members:"organization_members",projects:"projects",articles:"articles",budgets:"budgets",versions:"budget_versions",tasks:"tasks",purchases:"purchases",documents:"documents",messages:"messages",activities:"activities",certifications:"certifications",invoices:"invoices" } as const;
+  const tables={ members:"organization_members",projects:"projects",articles:"articles",budgets:"budgets",versions:"budget_versions",tasks:"tasks",purchases:"purchases",documents:"documents",messages:"messages",activities:"activities",certifications:"certifications",invoices:"invoices",stock_movements:"stock_movements" } as const;
   const entries=await Promise.all(Object.entries(tables).map(async ([key,table])=>{
     const rows: unknown[]=[];
     for(let offset=0;offset<20000;offset+=500) {
       let query=supabase.from(table).select(table==="organization_members"?"user_id,display_name,position,role":"*").eq("organization_id",organizationId);
       query=table==="activities" ? query.order("created_at",{ascending:false}).order("id") : query.order(table==="organization_members"?"user_id":"id");
       const { data,error }=await query.range(offset,offset+(table==="activities"?199:499));
-      // Tolera el hueco entre desplegar y aplicar la migración de facturas: el espacio carga igual.
-      if(error && table==="invoices" && (error.code==="42P01" || error.code==="PGRST205")) return [key,[]];
+      // Tolera el hueco entre desplegar y aplicar las migraciones de facturas y almacén: el espacio carga igual.
+      if(error && (table==="invoices" || table==="stock_movements") && (error.code==="42P01" || error.code==="PGRST205")) return [key,[]];
       if(error) databaseError(error);
       rows.push(...(data || []));
       if(table==="activities" || (data?.length || 0)<500) return [key,rows];

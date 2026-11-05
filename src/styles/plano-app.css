@@ -1701,4 +1701,36 @@ a.fin-due-row { text-decoration: none; color: inherit; }
   .fin-cobro-row .fin-due-row { flex: 1 1 100%; padding-left: 0; padding-right: 0; }
   .fin-cobro-row .btn { flex: 1 1 100%; height: 44px; }
 }
-
+/* Almacén en el catálogo: existencias en la tarjeta y en la ficha del artículo. */
+.article-stock { margin-top: 4px; padding: 2px 8px; border-radius: var(--pl-radius-full); background: var(--pl-success-bg); color: var(--pl-success); font-size: var(--pl-text-xs); font-weight: var(--pl-weight-medium); }
+.article-stock[data-tone="warning"] { background: var(--pl-warning-bg); color: var(--pl-warning); }
+.article-stock[data-tone="danger"] { background: var(--pl-danger-bg); color: var(--pl-danger); }
+.almacen-ficha { display: grid; gap: 10px; margin: 0; padding: 12px 14px; border: var(--pl-hairline) solid var(--pl-line); border-radius: var(--pl-radius-control); }
+.almacen-ficha legend { padding: 0 6px; font-size: var(--pl-text-sm); font-weight: var(--pl-weight-semibold); }
+.almacen-check { display: flex; align-items: flex-start; gap: 10px; cursor: pointer; }
+.almacen-check input { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--pl-ink); flex-shrink: 0; }
+.almacen-check span { display: grid; gap: 2px; font-size: var(--pl-text-md); }
+.almacen-check small { font-size: var(--pl-text-sm); }
+.almacen { display: grid; gap: 12px; margin-bottom: 16px; padding-bottom: 16px; border-bottom: var(--pl-hairline) solid var(--pl-line); }
+.almacen-cifras { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 1px; margin: 0; border: var(--pl-hairline) solid var(--pl-line); border-radius: var(--pl-radius-control); overflow: hidden; background: var(--pl-line); }
+.almacen-cifras > div { padding: 10px 12px; background: var(--pl-surface); min-width: 0; }
+.almacen-cifras dt { font-size: var(--pl-text-xs); color: var(--pl-muted); }
+.almacen-cifras dd { margin: 2px 0 0; font-size: var(--pl-text-ui); font-weight: var(--pl-weight-medium); }
+.almacen-cifras > div[data-tone="warning"] dd { color: var(--pl-warning); }
+.almacen-cifras > div[data-tone="danger"] dd { color: var(--pl-danger); }
+.almacen-aviso { margin: 0; padding: 8px 12px; border-radius: var(--pl-radius-control); background: var(--pl-warning-bg); color: var(--pl-warning); font-size: var(--pl-text-md); }
+.almacen-acciones { display: flex; flex-wrap: wrap; gap: 8px; }
+.almacen-form { display: grid; gap: 10px; padding: 12px 14px; border-radius: var(--pl-radius-control); background: var(--pl-soft); }
+.almacen-titulo { margin: 0 0 6px; font-size: var(--pl-text-sm); font-weight: var(--pl-weight-semibold); }
+.almacen-movimientos { list-style: none; margin: 0; padding: 0; }
+.almacen-movimientos li { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: 4px 14px; align-items: baseline; padding: 8px 0; border-bottom: var(--pl-hairline) solid var(--pl-line); font-size: var(--pl-text-md); }
+.almacen-movimientos li > span:first-child { display: grid; gap: 2px; min-width: 0; }
+.almacen-movimientos small { font-size: var(--pl-text-xs); overflow-wrap: anywhere; }
+.almacen-movimientos [data-signo="mas"] { color: var(--pl-success); }
+@media (max-width: 480px) {
+  .almacen-cifras > div { padding: 8px; }
+  .almacen-cifras dd { font-size: var(--pl-text-md); }
+  .almacen-movimientos li { grid-template-columns: minmax(0, 1fr) auto; }
+  .almacen-movimientos li > span:last-child { grid-column: 2; }
+}
+.material-almacen { display: block; margin-top: 2px; color: var(--pl-muted); font-size: var(--pl-text-xs); font-weight: var(--pl-weight-regular); }

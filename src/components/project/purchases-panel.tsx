@@ -10,14 +10,16 @@ import { can, purchaseStatus, type Purchase } from "@/lib/domain";
 import { accionesPara, comandoPara, pendienteDeRecibir } from "@/lib/compras";
 import { unidades, unidadNombres, type Unidad } from "@/lib/catalogo";
 import { pedidosPorProveedor } from "@/lib/hoja-pedido";
+import { cantidadStock, estadoStock } from "@/lib/stock";
 
 /** Lista de materiales de un proyecto con su flujo: por pedir → pedido → recibido → en obra. */
 export function PurchasesPanel({ projectId, purchases, showAdd = true, approvedLabel }: { projectId: string; purchases: Purchase[]; showAdd?: boolean; approvedLabel?: string }) {
-  const { actor, busy, send, notify } = useWorkspace();
+  const { data, actor, busy, send, notify } = useWorkspace();
+  const deAlmacen = data.articles.filter(a => a.stocked).sort((a, b) => a.name.localeCompare(b.name, "es"));
   const canCreate = can(actor.role, "purchase.create");
   const canUpdate = can(actor.role, "purchase.update");
   const [adding, setAdding] = useState(false);
-  const [form, setForm] = useState({ name: "", supplier: "", quantity: "", unit: "ud" as Unidad });
+  const [form, setForm] = useState({ name: "", supplier: "", quantity: "", unit: "ud" as Unidad, article_id: "" });
   const [receiving, setReceiving] = useState<{ id: string; value: string } | null>(null);
   const [pending, setPending] = useState<string | null>(null);
   const proveedores = pedidosPorProveedor(purchases).filter(g => g.pendientes > 0);
@@ -36,9 +38,9 @@ export function PurchasesPanel({ projectId, purchases, showAdd = true, approvedL
     if (!(quantity > 0)) { notify("Indica una cantidad mayor que cero."); return; }
     setPending("new");
     try {
-      await send({ type: "purchase.create", project_id: projectId, name: form.name.trim(), supplier: form.supplier.trim(), quantity, unit: form.unit });
+      await send({ type: "purchase.create", project_id: projectId, name: form.name.trim(), supplier: form.supplier.trim(), quantity, unit: form.unit, ...(form.article_id ? { article_id: form.article_id } : {}) });
       notify(`Material añadido: ${form.name.trim()}`);
-      setForm({ name: "", supplier: form.supplier, quantity: "", unit: form.unit }); setAdding(false);
+      setForm({ name: "", supplier: form.supplier, quantity: "", unit: form.unit, article_id: "" }); setAdding(false);
     } catch (e) { notify(e instanceof Error ? e.message : "No se ha podido añadir el material."); }
     finally { setPending(null); }
   }
@@ -56,11 +58,12 @@ export function PurchasesPanel({ projectId, purchases, showAdd = true, approvedL
 
       {adding && canCreate && (
         <form className="form line" onSubmit={create} style={{ maxWidth: "none" }}>
+          {deAlmacen.length > 0 && <div className="field"><span>Del almacén</span><Select label="Artículo de almacén" value={form.article_id} onChange={id => { const a = deAlmacen.find(x => x.id === id); setForm(a ? { ...form, article_id: a.id, name: a.name, unit: ((unidades as readonly string[]).includes(a.unit) ? a.unit : "ud") as Unidad } : { ...form, article_id: "" }); }} options={[{ value: "", label: "Material suelto, sin almacén" }, ...deAlmacen.map(a => { const e = estadoStock(a, data.purchases); return { value: a.id, label: a.name, hint: `${cantidadStock(e.libre, a.unit)} libres` }; })]} placeholder="Material suelto, sin almacén" /><small className="muted text-xs">Si es de almacén, al recibirlo suma a la nave y al llevarlo a obra resta.</small></div>}
           <label className="field"><span>Material</span><input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Porcelánico 60×60 gris" required maxLength={500} autoFocus /></label>
           <div className="line-grid">
             <label className="field"><span>Proveedor</span><input type="text" value={form.supplier} onChange={e => setForm({ ...form, supplier: e.target.value })} placeholder="Almacén o taller" required maxLength={500} /></label>
             <label className="field"><span>Cantidad</span><span className="unit-input"><input type="text" inputMode="decimal" value={form.quantity} onChange={e => setForm({ ...form, quantity: e.target.value })} placeholder="32" required /><span>{form.unit}</span></span></label>
-            <div className="field"><span>Unidad</span><Select label="Unidad" value={form.unit} onChange={u => setForm({ ...form, unit: u })} options={unidades.map(u => ({ value: u, label: unidadNombres[u] }))} /></div>
+            {form.article_id ? <div className="field"><span>Unidad</span><span className="muted text-sm" style={{ minHeight: 44, display: "flex", alignItems: "center" }}>{unidadNombres[form.unit]} · la del artículo</span></div> : <div className="field"><span>Unidad</span><Select label="Unidad" value={form.unit} onChange={u => setForm({ ...form, unit: u })} options={unidades.map(u => ({ value: u, label: unidadNombres[u] }))} /></div>}
           </div>
           <div className="form-actions"><Button type="submit" variant="primary" disabled={pending === "new" || busy || !form.name.trim() || !form.supplier.trim() || !form.quantity}>{pending === "new" ? "Guardando…" : "Añadir a la lista"}</Button></div>
         </form>
@@ -77,7 +80,7 @@ export function PurchasesPanel({ projectId, purchases, showAdd = true, approvedL
             const tono = p.status === "ordered" ? "info" : p.status === "received" ? "warning" : p.status === "delivered" ? "success" : "warning";
             return (
               <div key={p.id} className="material-row">
-                <strong className="material-name">{p.name}<small className="solo-movil-inline"> · {p.supplier}</small></strong>
+                <strong className="material-name">{p.name}<small className="solo-movil-inline"> · {p.supplier}</small>{(() => { const a = p.article_id ? data.articles.find(x => x.id === p.article_id && x.stocked) : undefined; return a ? <small className="material-almacen">Almacén · {cantidadStock(estadoStock(a, data.purchases).libre, a.unit)} libres</small> : null; })()}</strong>
                 <span className="material-supplier">{p.supplier}</span>
                 <span className="pl-mono material-qty">{p.status === "ordered" && p.received_quantity > 0 ? `${p.received_quantity} de ${p.quantity} ${p.unit}` : `${p.quantity} ${p.unit}`}</span>
                 <span><Pill label={`${purchaseStatus[p.status]}${p.status === "ordered" && p.received_quantity > 0 ? ` · faltan ${falta}` : ""}`} tone={tono} /></span>

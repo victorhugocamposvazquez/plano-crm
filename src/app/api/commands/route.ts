@@ -12,7 +12,9 @@ export async function POST(request:Request) { return endpoint(async()=>{
   else { const {error}=await context.supabase.rpc("execute_command",{p_organization_id:context.organizationId,p_command:command,p_request_id:requestId});
   if(error) {
     const known=["La persona no pertenece a esta empresa.","La empresa debe conservar al menos una persona administradora.","No puedes quitarte a ti mismo del equipo.","Datos de equipo no válidos.","Persona no encontrada."];
-    if(known.includes(error.message ?? ""))throw new ApiError(error.code==="P0002"?404:400,error.message!);
+    // Los avisos del almacén explican qué hacer («Solo hay 6 en almacén.»): se enseñan tal cual.
+    const almacen=[/^Solo hay [\d.,]+ en almacén\.$/,/^El artículo se mide en [^:]{1,10}: el pedido también\.$/,/^Este artículo no se guarda en almacén\.$/,/^Indica una cantidad (válida|mayor que cero)\.$/,/^Artículo no encontrado\.$/];
+    if(known.includes(error.message ?? "") || almacen.some(r=>r.test(error.message ?? "")))throw new ApiError(error.code==="P0002"?404:400,error.message!);
     databaseError(error);
   } }
   const workspace=await loadWorkspace(context),me=workspace.members?.find(m=>m.user_id===context.actor.id);
