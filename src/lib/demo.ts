@@ -19,7 +19,10 @@ export function createDemo(): Workspace {
     { id: demoId(34), organization_id: org, code: "PIN-001", name: "Preparación y pintura de paredes", chapter: "Pintura", unit: "m²", unit_price: 1450, vat_rate: 21 },
     { id: demoId(35), organization_id: org, code: "ELE-001", name: "Punto de luz con mecanismo", chapter: "Electricidad", unit: "ud", unit_price: 7800, vat_rate: 21 },
     { id: demoId(36), organization_id: org, code: "CAR-002", name: "Armario a medida con distribución interior", chapter: "Carpintería", unit: "ud", unit_price: 166200, vat_rate: 21 },
-    { id: demoId(37), organization_id: org, code: "FON-001", name: "Instalación de fontanería de baño", chapter: "Fontanería", unit: "global", unit_price: 168000, vat_rate: 21 }
+    { id: demoId(37), organization_id: org, code: "FON-001", name: "Instalación de fontanería de baño", chapter: "Fontanería", unit: "global", unit_price: 168000, vat_rate: 21 },
+    // Material que se guarda en la nave: lleva existencias.
+    { id: demoId(38), organization_id: org, code: "MAT-001", name: "Placa de yeso laminado 13 mm", chapter: "Materiales", unit: "m²", unit_price: 690, vat_rate: 21, stocked: true, stock_qty: 120, stock_min: 40, stock_location: "Nave · pasillo 2" },
+    { id: demoId(39), organization_id: org, code: "MAT-002", name: "Cemento cola flexible (saco 25 kg)", chapter: "Materiales", unit: "ud", unit_price: 1450, vat_rate: 21, stocked: true, stock_qty: 6, stock_min: 10, stock_location: "Nave · estantería B" }
   ];
   const items: BudgetItem[] = articles.slice(0,6).map((a, i) => ({ id: demoId(100 + i), chapter: a.chapter, description: a.name, quantity: [42, 38, 86, 7, 235, 24][i], unit: a.unit as BudgetItem["unit"], unit_price: a.unit_price, adjustment_percent: 0, vat_rate: a.vat_rate, inclusion: "included" }));
   const revised = structuredClone(items); revised[0].adjustment_percent = 15; revised[2].description = "Tarima laminada roble natural, gama premium"; revised[2].unit_price = 5480; revised[3].quantity = 8;
@@ -52,10 +55,16 @@ export function createDemo(): Workspace {
       { id: demoId(207), organization_id: org, project_id: demoId(11), title: "Revisar propuesta con el cliente", trade: "Oficina", assignee_id: null, assignee: "Marta", due_date: date(1).slice(0,10), status: "pending", weight: 10 }
     ],
     purchases: [
-      { id: demoId(300), organization_id: org, project_id: demoId(10), name: "Placas de yeso laminado", supplier: "Proveedor de ejemplo", assignee_id: null, assignee: "", quantity: 80, unit: "m²", received_quantity: 40, delivered_quantity: 40, status: "ordered" },
+      { id: demoId(300), organization_id: org, project_id: demoId(10), name: "Placas de yeso laminado", supplier: "Proveedor de ejemplo", assignee_id: null, assignee: "", quantity: 80, unit: "m²", received_quantity: 40, delivered_quantity: 40, status: "ordered", article_id: demoId(38) },
       { id: demoId(301), organization_id: org, project_id: demoId(12), name: "Muebles de cocina", supplier: "Taller de ejemplo", assignee_id: null, assignee: "", quantity: 1, unit: "global", received_quantity: 0, delivered_quantity: 0, status: "planned" }
     ],
     documents: [], certifications: [],
+    stock_movements: [
+      { id: demoId(800), organization_id: org, article_id: demoId(38), project_id: null, purchase_id: null, kind: "recuento", quantity: 120, stock_after: 120, note: "Inventario de la nave", actor_name: "Pablo · Demo", created_at: date(-20) },
+      { id: demoId(801), organization_id: org, article_id: demoId(38), project_id: demoId(10), purchase_id: demoId(300), kind: "recepcion", quantity: 40, stock_after: 160, note: "", actor_name: "Pablo · Demo", created_at: date(-6) },
+      { id: demoId(802), organization_id: org, article_id: demoId(38), project_id: demoId(10), purchase_id: demoId(300), kind: "a_obra", quantity: -40, stock_after: 120, note: "", actor_name: "Dani · Demo", created_at: date(-5) },
+      { id: demoId(803), organization_id: org, article_id: demoId(39), project_id: null, purchase_id: null, kind: "recuento", quantity: 6, stock_after: 6, note: "Inventario de la nave", actor_name: "Pablo · Demo", created_at: date(-20) }
+    ],
     invoices: [
       { id: demoId(600), organization_id: org, project_id: demoId(10), certification_id: null, client_name: "Cliente de ejemplo 01", concept: "Señal al aceptar", base: 300000, vat_rate: 21, tax: 63000, total: 363000, status: "paid", number: `${now.getFullYear()}-0001`, number_year: now.getFullYear(), number_seq: 1, issue_date: date(-14).slice(0, 10), due_date: date(-7).slice(0, 10), paid_on: date(-9).slice(0, 10), created_by_name: "Marta · Demo", created_at: date(-14), updated_at: date(-9) },
       { id: demoId(601), organization_id: org, project_id: demoId(10), certification_id: null, client_name: "Cliente de ejemplo 01", concept: "Cobro parcial · demolición", base: 250000, vat_rate: 21, tax: 52500, total: 302500, status: "sent", number: `${now.getFullYear()}-0002`, number_year: now.getFullYear(), number_seq: 2, issue_date: date(-10).slice(0, 10), due_date: date(-3).slice(0, 10), paid_on: null, created_by_name: "Marta · Demo", created_at: date(-10), updated_at: date(-10) }

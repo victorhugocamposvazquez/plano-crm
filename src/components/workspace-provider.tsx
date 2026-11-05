@@ -22,6 +22,14 @@ function savedDemo(): Workspace {
   if (!parsed.organization_id || !Array.isArray(parsed.projects) || !Array.isArray(parsed.versions) || !Array.isArray(parsed.certifications)) throw new Error("No se ha podido abrir la demostración guardada. Conserva los datos del navegador y contacta con soporte.");
   // Completa la demo antigua sin vincular nombres libres a UUID por suposición.
   parsed.members ??= createDemo().members;
+  // Almacén (nov 2026): la demo antigua recibe los dos materiales de ejemplo con sus movimientos, y el pedido de placas se liga.
+  if (!parsed.articles.some((x: Workspace["articles"][number]) => x.stocked)) {
+    const demo = createDemo(), nuevos = demo.articles.filter(x => x.stocked && !parsed.articles.some((y: Workspace["articles"][number]) => y.code === x.code));
+    parsed.articles.push(...nuevos);
+    parsed.stock_movements = [...(parsed.stock_movements ?? []), ...(demo.stock_movements ?? []).filter(m => nuevos.some(x => x.id === m.article_id))];
+    const ligado = demo.purchases.find(x => x.article_id), pedido = ligado && parsed.purchases.find((x: Workspace["purchases"][number]) => x.id === ligado.id);
+    if (pedido && pedido.article_id === undefined && nuevos.some(x => x.id === ligado.article_id)) pedido.article_id = ligado.article_id;
+  }
   parsed.tasks = parsed.tasks.map((t: Workspace["tasks"][number]) => ({...t,assignee_id:t.assignee_id ?? null}));
   parsed.purchases = parsed.purchases.map((p: Workspace["purchases"][number]) => ({...p,assignee_id:p.assignee_id ?? null,assignee:p.assignee ?? ""}));
   return parsed;
