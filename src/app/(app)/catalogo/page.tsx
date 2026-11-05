@@ -14,6 +14,8 @@ import { buscarTolerante, leerConsulta } from "@/lib/busqueda";
 import { can, money, type Article } from "@/lib/domain";
 import { AlmacenArticulo } from "@/components/catalog/almacen-articulo";
 import { StockRapido, puedeLlevarStock } from "@/components/catalog/stock-rapido";
+import { QuienLoHace } from "@/components/equipo/quien-lo-hace";
+import { operariosDe } from "@/lib/operarios";
 import { cantidadStock, estadoStock } from "@/lib/stock";
 import { unidades, unidadNombres, eurosACentimos, codigoSugerido, agruparPorCapitulo, capitulos, type Unidad } from "@/lib/catalogo";
 
@@ -164,6 +166,7 @@ export default function CatalogoPage() {
                 <span className="catalog-round" data-open={abierta} aria-hidden="true"><ChevronDown size={15} strokeWidth={1.8} /></span>
                 <strong>{chapter}</strong>
                 <span className="muted text-sm catalog-group-count">{list.length} {list.length === 1 ? "artículo" : "artículos"}</span>
+                {(() => { const ops = operariosDe(chapter, data.operarios ?? []), libres = ops.filter(o => o.available).length; return ops.length > 0 && <span className="catalog-operarios">{ops.length} {ops.length === 1 ? "operario" : "operarios"}{libres < ops.length ? ` · ${libres} disponibles` : ""}</span>; })()}
                 <span className="catalog-pill">{abierta ? "Ocultar" : "Mostrar"}</span>
               </button>
               {abierta && <div className="article-grid">
@@ -195,6 +198,7 @@ export default function CatalogoPage() {
         {ficha?.article && <Button onClick={duplicar} disabled={guardando || busy || !puedeGuardar}><Copy size={15} strokeWidth={1.7} aria-hidden="true" />Duplicar</Button>}
         <Button variant="primary" type="submit" form="ficha-articulo" disabled={guardando || busy || !puedeGuardar}>{guardando ? "Guardando…" : "Guardar"}</Button>
       </>}>
+        {ficha?.article && <QuienLoHace categoria={ficha.article.chapter} />}
         {ficha?.article?.stocked && <AlmacenArticulo article={data.articles.find(a => a.id === ficha.article!.id) ?? ficha.article} />}
         <form id="ficha-articulo" className="form" onSubmit={guardar} style={{ maxWidth: "none" }}>
           <label className="field"><span>Nombre</span><input type="text" value={form.name} onChange={e => setForm({ ...form, name: e.target.value })} placeholder="Preparación y pintura plástica lisa de paramentos" required maxLength={500} /></label>

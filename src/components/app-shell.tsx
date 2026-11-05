@@ -2,7 +2,7 @@
 import { Fragment, useCallback, useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { House, Layers2, CalendarDays, Users, Ellipsis, Plus, Search, BookOpen, Wallet, Settings, MessageSquare, ChevronUp, ChevronRight, ChevronLeft, ChevronDown, Package, FileText } from "lucide-react";
+import { House, Layers2, CalendarDays, Users, Ellipsis, Plus, Search, BookOpen, Wallet, Settings, MessageSquare, ChevronUp, ChevronRight, ChevronLeft, ChevronDown, Package, FileText, HardHat } from "lucide-react";
 import { CommandPalette } from "@/components/command-palette";
 import { QuickCreateList, QuickCreatePanels, useQuickCreate, opcionesPara } from "@/components/quick-create";
 import { AccountMenu, AvatarRing, useAvisos } from "@/components/account-menu";
@@ -33,12 +33,13 @@ const catalogo: Item[] = [
   { href: "/compras", label: "Materiales", icon: Package },
   { href: "/presupuestos", label: "Presupuestos", icon: FileText },
   { href: "/catalogo", label: "Catálogo / Actuaciones", icon: BookOpen },
+  { href: "/equipo", label: "Equipo", icon: HardHat },
   { href: "/ajustes", label: "Ajustes", icon: Settings }
 ];
 const masItem: Item = { href: "/mas", label: "Más", icon: Ellipsis };
 const menuEmpresaKey = "plano.menu.empresa";
-const secundarias = ["/clientes", "/presupuestos", "/catalogo", "/compras", "/documentos", "/finanzas", "/ajustes", "/ayuda", "/instalar", "/configuracion", "/sistema", "/laboratorio"];
-const seccionesMiga: Record<string, string> = { "/proyectos": "Proyectos", "/agenda": "Agenda", "/clientes": "Clientes", "/finanzas": "Finanzas", "/catalogo": "Catálogo / Actuaciones", "/ajustes": "Ajustes", "/presupuestos": "Presupuestos", "/compras": "Materiales", "/documentos": "Documentos", "/mas": "Más", "/ayuda": "Ayuda", "/instalar": "Instalar", "/configuracion": "Ajustes", "/sistema": "Supervisión" };
+const secundarias = ["/clientes", "/presupuestos", "/catalogo", "/equipo", "/compras", "/documentos", "/finanzas", "/ajustes", "/ayuda", "/instalar", "/configuracion", "/sistema", "/laboratorio"];
+const seccionesMiga: Record<string, string> = { "/proyectos": "Proyectos", "/agenda": "Agenda", "/clientes": "Clientes", "/finanzas": "Finanzas", "/catalogo": "Catálogo / Actuaciones", "/equipo": "Equipo", "/ajustes": "Ajustes", "/presupuestos": "Presupuestos", "/compras": "Materiales", "/documentos": "Documentos", "/mas": "Más", "/ayuda": "Ayuda", "/instalar": "Instalar", "/configuracion": "Ajustes", "/sistema": "Supervisión" };
 
 function miga(pathname: string, data: Workspace): { href?: string; label: string }[] {
   if (pathname === "/") return [{ label: new Intl.DateTimeFormat("es-ES", { weekday: "long", day: "numeric", month: "long" }).format(new Date()).replace(/^/, "Hoy · ") }];

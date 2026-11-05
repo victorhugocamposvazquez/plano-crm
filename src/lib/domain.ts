@@ -25,7 +25,9 @@ export type BudgetVersion = { id: string; organization_id: string; budget_id: st
 /** Cada guardado conserva cambios y fecha de servidor; las copias de versión no son ediciones. */
 export type BudgetItemEdit = { item_id: string; version_id: string; draft_revision: number; kind: ItemChange["kind"]; fields: string[]; occurred_at: string; actor_name: string };
 export type BudgetItemEvent = BudgetItemEdit & { id: string; organization_id: string; budget_id: string; actor_id: string; before_item?: BudgetItem; after_item?: BudgetItem };
-export type Task = { id: string; organization_id: string; project_id: string; title: string; trade: string; assignee: string; assignee_id: string | null; due_date: string; status: "pending" | "done"; weight: number };
+export type Task = { id: string; organization_id: string; project_id: string; title: string; trade: string; assignee: string; assignee_id: string | null; operario_id?: string | null; due_date: string; status: "pending" | "done"; weight: number };
+/** Persona que trabaja en las obras, tenga o no cuenta en Plano: propia, autónoma o de una subcontrata. `trades` son categorías del catálogo que hace. */
+export type Operario = { id: string; organization_id: string; name: string; phone: string; email: string; company: string; trades: string[]; hourly_cost: number | null; available: boolean; user_id: string | null; notes: string; created_at: string };
 export type Purchase = { id: string; organization_id: string; project_id: string; name: string; supplier: string; assignee: string; assignee_id: string | null; quantity: number; received_quantity: number; delivered_quantity: number; unit: string; status: "planned" | "ordered" | "received" | "delivered"; article_id?: string | null };
 /** Un cambio en las existencias de un artículo: `quantity` con signo y existencias después del cambio. */
 export type StockMovement = { id: string; organization_id: string; article_id: string; project_id: string | null; purchase_id: string | null; kind: "entrada" | "salida" | "recuento" | "recepcion" | "a_obra"; quantity: number; stock_after: number; note: string; actor_name: string; created_at: string };
@@ -35,9 +37,21 @@ export type Activity = { id: string; organization_id: string; project_id: string
 export type Certification = { id: string; organization_id: string; project_id: string; budget_version_id: string; title: string; amount: number; status: "draft"; created_at: string };
 /** Registro de factura: el número se asigna al enviarla, en serie anual sin huecos. No sustituye a la factura oficial. */
 export type Invoice = { id: string; organization_id: string; project_id: string; certification_id: string | null; client_name: string; concept: string; base: number; vat_rate: number; tax: number; total: number; status: "draft" | "sent" | "paid"; number: string | null; number_year: number | null; number_seq: number | null; issue_date: string | null; due_date: string | null; paid_on: string | null; created_by_name: string; created_at: string; updated_at: string };
-export type Workspace = { organization_id: string; organization_name: string; members: OrganizationMember[]; projects: Project[]; articles: Article[]; budgets: Budget[]; versions: BudgetVersion[]; tasks: Task[]; purchases: Purchase[]; documents: Document[]; messages: Message[]; activities: Activity[]; certifications: Certification[]; plan_captures?: PlanDraft[]; room_captures?: RoomDraft[]; room_imports?: RoomImport[]; budget_item_events?: BudgetItemEvent[]; invoices?: Invoice[]; stock_movements?: StockMovement[] };
+export type Workspace = { organization_id: string; organization_name: string; members: OrganizationMember[]; projects: Project[]; articles: Article[]; budgets: Budget[]; versions: BudgetVersion[]; tasks: Task[]; purchases: Purchase[]; documents: Document[]; messages: Message[]; activities: Activity[]; certifications: Certification[]; plan_captures?: PlanDraft[]; room_captures?: RoomDraft[]; room_imports?: RoomImport[]; budget_item_events?: BudgetItemEvent[]; invoices?: Invoice[]; stock_movements?: StockMovement[]; operarios?: Operario[] };
 
 const text = z.string().trim().min(1).max(500);
+/** Campos de la ficha de un operario. El teléfono admite espacios, «+» y guiones; el coste por hora va en céntimos. */
+const operarioCampos = {
+  name: z.string().trim().min(1).max(120),
+  phone: z.string().trim().max(40).regex(/^[0-9+()\s.-]*$/, "El teléfono solo admite números, espacios, «+» y guiones."),
+  email: z.union([z.literal(""), z.email().max(200)]),
+  company: z.string().trim().max(120),
+  trades: z.array(z.string().trim().min(1).max(120)).max(20),
+  hourly_cost: z.number().int().min(0).max(100000).nullable(),
+  available: z.boolean(),
+  user_id: z.uuid().nullable(),
+  notes: z.string().trim().max(500)
+};
 export const commandSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("member.invite"), email: z.email().trim().toLowerCase().max(254), position: positionSchema, role: roleSchema }),
   z.object({ type: z.literal("member.update"), user_id: z.uuid(), position: positionSchema, role: roleSchema }),
@@ -53,9 +67,12 @@ export const commandSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("article.update"), id: z.uuid(), code: text.optional(), name: text.optional(), chapter: z.string().trim().min(1).max(120).optional(), unit: z.enum(["m²", "ml", "ud", "h", "global"]).optional(), unit_price: z.number().int().min(0).max(100000000).optional(), vat_rate: z.number().min(0).max(30).multipleOf(0.01).optional(), stocked: z.boolean().optional(), stock_min: z.number().min(0).max(1000000).nullable().optional(), stock_location: z.string().trim().max(120).optional() }),
   z.object({ type: z.literal("article.delete"), id: z.uuid() }),
   z.object({ type: z.literal("stock.move"), article_id: z.uuid(), kind: z.enum(["entrada", "salida", "recuento"]), quantity: z.number().min(0).max(1000000), note: z.string().trim().max(300).optional(), project_id: z.uuid().optional() }),
-  z.object({ type: z.literal("task.create"), project_id: z.uuid(), title: text, trade: text, assignee: z.string().max(120).optional(), assignee_id: z.uuid().nullable().optional(), due_date: z.iso.date(), weight: z.number().int().min(1).max(100) }),
+  z.object({ type: z.literal("task.create"), project_id: z.uuid(), title: text, trade: text, assignee: z.string().max(120).optional(), assignee_id: z.uuid().nullable().optional(), operario_id: z.uuid().nullable().optional(), due_date: z.iso.date(), weight: z.number().int().min(1).max(100) }),
   z.object({ type: z.literal("task.toggle"), id: z.uuid(), status: z.enum(["pending", "done"]) }),
-  z.object({ type: z.literal("task.update"), id: z.uuid(), title: text.optional(), trade: text.optional(), assignee: z.string().max(120).optional(), assignee_id: z.uuid().nullable().optional(), due_date: z.iso.date().optional(), weight: z.number().int().min(1).max(100).optional() }),
+  z.object({ type: z.literal("task.update"), id: z.uuid(), title: text.optional(), trade: text.optional(), assignee: z.string().max(120).optional(), assignee_id: z.uuid().nullable().optional(), operario_id: z.uuid().nullable().optional(), due_date: z.iso.date().optional(), weight: z.number().int().min(1).max(100).optional() }),
+  z.object({ type: z.literal("operario.create"), ...operarioCampos }),
+  z.object({ type: z.literal("operario.update"), id: z.uuid(), ...Object.fromEntries(Object.entries(operarioCampos).map(([k, v]) => [k, v.optional()])) as { [K in keyof typeof operarioCampos]: z.ZodOptional<(typeof operarioCampos)[K]> } }),
+  z.object({ type: z.literal("operario.delete"), id: z.uuid() }),
   z.object({ type: z.literal("task.delete"), id: z.uuid() }),
   z.object({ type: z.literal("purchase.create"), project_id: z.uuid(), name: text, supplier: text, quantity: z.number().positive().max(1000000), unit: z.enum(["m²", "ml", "ud", "h", "global"]), article_id: z.uuid().nullable().optional() }),
   z.object({ type: z.literal("purchase.update"), id: z.uuid(), assignee_id: z.uuid().nullable().optional(), assignee: z.string().max(120).optional(), status: z.enum(["planned", "ordered", "received", "delivered"]).optional(), received_quantity: z.number().min(0).optional(), delivered_quantity: z.number().min(0).optional() }),
@@ -129,10 +146,12 @@ export function applyCommand(previous: Workspace, input: Command, actor: Actor, 
   if (projectId && !state.projects.some(p => p.id === projectId)) throw new Error("Proyecto no encontrado.");
   const version = (id: string) => { const v = state.versions.find(v => v.id === id); if (!v) throw new Error("Revisión no encontrada."); const b = state.budgets.find(b => b.id === v.budget_id)!; projectId = b.project_id; return { v, b }; };
   const newVersion = (budgetId: string, number: number, items: BudgetItem[], reason: string): BudgetVersion => ({ id: uuid(), organization_id: org, budget_id: budgetId, number, status: "draft", draft_revision: 0, items, notes: "", change_reason: reason, created_by_name: actor.name, created_at: now, updated_at: now, approved_at: null, approval_reference: null });
-  const assignment = (input: { assignee_id?: string | null; assignee?: string }, current = { assignee_id: null as string | null, assignee: "" }) => {
-    if (input.assignee_id) { const member = state.members.find(m => m.user_id === input.assignee_id); if (!member) throw new Error("La persona no pertenece a esta empresa."); return { assignee_id: member.user_id, assignee: member.display_name }; }
-    if (input.assignee_id === null || input.assignee !== undefined) return { assignee_id: null, assignee: input.assignee ?? "" };
-    return current;
+  // Responsable de una tarea: una persona con cuenta (assignee_id), un operario de la ficha (operario_id) o un nombre libre.
+  const assignment = (input: { assignee_id?: string | null; assignee?: string; operario_id?: string | null }, current: { assignee_id: string | null; assignee: string; operario_id?: string | null } = { assignee_id: null, assignee: "", operario_id: null }) => {
+    if (input.operario_id) { const o = (state.operarios ?? []).find(x => x.id === input.operario_id); if (!o) throw new Error("Ese operario no está en el equipo."); return { assignee_id: o.user_id && state.members.some(m => m.user_id === o.user_id) ? o.user_id : null, assignee: o.name, operario_id: o.id }; }
+    if (input.assignee_id) { const member = state.members.find(m => m.user_id === input.assignee_id); if (!member) throw new Error("La persona no pertenece a esta empresa."); return { assignee_id: member.user_id, assignee: member.display_name, operario_id: null }; }
+    if (input.assignee_id === null || input.operario_id === null || input.assignee !== undefined) return { assignee_id: null, assignee: input.assignee ?? "", operario_id: null };
+    return { ...current, operario_id: current.operario_id ?? null };
   };
   let activity = "";
   switch (command.type) {
@@ -225,6 +244,27 @@ export function applyCommand(previous: Workspace, input: Command, actor: Actor, 
       (state.stock_movements ??= []).push({ id: uuid(), organization_id: org, article_id: a.id, project_id: command.project_id ?? null, purchase_id: null, kind: command.kind, quantity: delta, stock_after: a.stock_qty, note: command.note ?? "", actor_name: actor.name, created_at: now });
       activity = `Almacén · ${a.name}: ${command.kind === "recuento" ? `recuento, ${a.stock_qty} ${a.unit}` : `${command.kind} de ${command.quantity} ${a.unit}`}`; break;
     }
+    case "operario.create": {
+      const { type: _, ...campos } = command; void _;
+      if (campos.user_id && !state.members.some(m => m.user_id === campos.user_id)) throw new Error("Esa cuenta no pertenece a esta empresa.");
+      (state.operarios ??= []).push({ id: uuid(), organization_id: org, ...campos, created_at: now }); activity = `Operario añadido: ${campos.name}`; break;
+    }
+    case "operario.update": {
+      const o = (state.operarios ?? []).find(x => x.id === command.id); if (!o) throw new Error("Operario no encontrado.");
+      const { type: _, id: __, ...cambios } = command; void _; void __;
+      if (cambios.user_id && !state.members.some(m => m.user_id === cambios.user_id)) throw new Error("Esa cuenta no pertenece a esta empresa.");
+      Object.assign(o, Object.fromEntries(Object.entries(cambios).filter(([, v]) => v !== undefined)));
+      // Las tareas que tiene asignadas siguen con su nombre al día.
+      for (const t of state.tasks) if (t.operario_id === o.id) t.assignee = o.name;
+      activity = `Operario actualizado: ${o.name}`; break;
+    }
+    case "operario.delete": {
+      const o = (state.operarios ?? []).find(x => x.id === command.id); if (!o) throw new Error("Operario no encontrado.");
+      state.operarios = (state.operarios ?? []).filter(x => x.id !== o.id);
+      // Sus tareas se quedan con el nombre escrito, sin vínculo.
+      for (const t of state.tasks) if (t.operario_id === o.id) t.operario_id = null;
+      activity = `Operario dado de baja: ${o.name}`; break;
+    }
     case "task.create": {
       const { type: _, ...fields } = command; void _;
       state.tasks.push({ id: uuid(), organization_id: org, ...fields, ...assignment(command), status: "pending" }); activity = `Tarea planificada: ${command.title}`; break;
@@ -234,7 +274,7 @@ export function applyCommand(previous: Workspace, input: Command, actor: Actor, 
     }
     case "task.update": {
       const t = state.tasks.find(t => t.id === command.id); if (!t) throw new Error("Tarea no encontrada.");
-      const assigned = assignment(command,t);
+      const assigned = assignment(command, { assignee_id: t.assignee_id, assignee: t.assignee, operario_id: t.operario_id ?? null });
       const { type: _, id: __, ...cambios } = command; void _; void __;
       Object.assign(t, Object.fromEntries(Object.entries(cambios).filter(([, v]) => v !== undefined)));
       Object.assign(t, assigned);
@@ -254,7 +294,8 @@ export function applyCommand(previous: Workspace, input: Command, actor: Actor, 
       const received = command.received_quantity ?? p.received_quantity, delivered = command.delivered_quantity ?? p.delivered_quantity, status = command.status ?? p.status;
       if (received > p.quantity || delivered > received) throw new Error("Las cantidades entregadas no pueden superar las recibidas, ni estas las pedidas.");
       if ((status === "planned" && received !== 0) || (status === "received" && received !== p.quantity) || (status === "delivered" && delivered !== p.quantity)) throw new Error("El estado no coincide con las cantidades recibidas o entregadas.");
-      Object.assign(p, assignment(command,p));
+      const { operario_id: _sinOperario, ...asignado } = assignment(command, p); void _sinOperario;
+      Object.assign(p, asignado);
       // Pedido ligado a un artículo de almacén: lo recibido entra en la nave y lo llevado a obra sale.
       const art = p.article_id ? state.articles.find(a => a.id === p.article_id) : undefined;
       if (art?.stocked) {

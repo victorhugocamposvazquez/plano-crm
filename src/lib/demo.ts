@@ -65,6 +65,13 @@ export function createDemo(): Workspace {
       { id: demoId(301), organization_id: org, project_id: demoId(12), name: "Muebles de cocina", supplier: "Taller de ejemplo", assignee_id: null, assignee: "", quantity: 1, unit: "global", received_quantity: 0, delivered_quantity: 0, status: "planned" }
     ],
     documents: [], certifications: [],
+    // Operarios de ejemplo: una subcontrata, una autónoma, uno de plantilla sin cuenta y la persona de obra que sí la tiene.
+    operarios: [
+      { id: demoId(900), organization_id: org, name: "Manuel Rey", phone: "+34 600 112 233", email: "manuel@derribosrey.example", company: "Derribos Rey", trades: ["Demoliciones"], hourly_cost: 2800, available: true, user_id: null, notes: "Trae contenedor propio.", created_at: date(-40) },
+      { id: demoId(901), organization_id: org, name: "Iván Souto", phone: "+34 622 334 455", email: "", company: "", trades: ["Albañilería", "Demoliciones"], hourly_cost: 2400, available: false, user_id: null, notes: "De vacaciones hasta el lunes.", created_at: date(-60) },
+      { id: demoId(902), organization_id: org, name: "Lucía Paz", phone: "+34 611 223 344", email: "lucia.paz@example.com", company: "Autónoma", trades: ["Pintura"], hourly_cost: 2200, available: true, user_id: null, notes: "", created_at: date(-30) },
+      { id: demoId(903), organization_id: org, name: "Ana · Demo", phone: "+34 633 445 566", email: "", company: "", trades: ["Pavimentos", "Carpintería"], hourly_cost: null, available: true, user_id: demoId(706), notes: "", created_at: date(-90) }
+    ],
     stock_movements: [
       { id: demoId(800), organization_id: org, article_id: demoId(38), project_id: null, purchase_id: null, kind: "recuento", quantity: 120, stock_after: 120, note: "Inventario de la nave", actor_name: "Pablo · Demo", created_at: date(-20) },
       { id: demoId(801), organization_id: org, article_id: demoId(38), project_id: demoId(10), purchase_id: demoId(300), kind: "recepcion", quantity: 40, stock_after: 160, note: "", actor_name: "Pablo · Demo", created_at: date(-6) },

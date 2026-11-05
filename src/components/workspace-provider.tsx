@@ -44,6 +44,8 @@ function savedDemo(): Workspace {
       if (guardado) parsed.stock_movements = [...(parsed.stock_movements ?? []), ...(demo.stock_movements ?? []).filter(m => m.article_id === x.id && !(parsed.stock_movements ?? []).some((y: { id: string }) => y.id === m.id))];
     }
   }
+  // Operarios (nov 2026): la demo antigua recibe los de ejemplo.
+  parsed.operarios ??= createDemo().operarios;
   parsed.tasks = parsed.tasks.map((t: Workspace["tasks"][number]) => ({...t,assignee_id:t.assignee_id ?? null}));
   parsed.purchases = parsed.purchases.map((p: Workspace["purchases"][number]) => ({...p,assignee_id:p.assignee_id ?? null,assignee:p.assignee ?? ""}));
   return parsed;

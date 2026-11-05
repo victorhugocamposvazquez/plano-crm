@@ -1,10 +1,11 @@
 "use client";
 import Link from "next/link";
-import { BookOpen, ChevronRight, CircleHelp, FolderDown, Palette, Smartphone, Sparkles, Users } from "lucide-react";
+import { BookOpen, ChevronRight, CircleHelp, FolderDown, HardHat, Palette, Smartphone, Sparkles, Users } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
 import { veSeccion } from "@/lib/navegacion";
 
 const entradas = [
+  { href: "/equipo", label: "Equipo y operarios", hint: "Quién trabaja en las obras, sus oficios y su contacto", icon: HardHat },
   { href: "/configuracion/identidad", label: "Identidad de la empresa", hint: "Logo, colores y datos legales del PDF", icon: Palette },
   { href: "/catalogo?importar=1", label: "Subir tarifa de proveedor", hint: "Importa artículos y precios desde un Excel o CSV", icon: BookOpen },
   { href: "/configuracion/importar", label: "Importar proyectos antiguos", hint: "Carga proyectos, presupuestos y documentos desde una carpeta", icon: FolderDown },

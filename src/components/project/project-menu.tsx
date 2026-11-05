@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { useWorkspace } from "@/components/workspace-provider";
 import { can, money, totals, projectStatus, type Project, type BudgetVersion } from "@/lib/domain";
-import { oficios, oficiosHabituales, personas } from "@/lib/agenda";
+import { oficios, oficiosHabituales } from "@/lib/agenda";
+import { ResponsableField, asignacion, sinResponsable, type Responsable } from "@/components/equipo/responsable-field";
 import { eurosACentimos } from "@/lib/catalogo";
 import { localDate } from "@/lib/hoy";
 import { DateField } from "@/components/ui/date-field";
@@ -28,10 +29,9 @@ export function ProjectMenu({ project, approvedVersion, puedeEstimar, onChat, so
   const [dialogo, setDialogo] = useState<Dialogo>("");
   const [pending, setPending] = useState(false);
   const [estado, setEstado] = useState<Project["status"]>(project.status);
-  const [tarea, setTarea] = useState({ title: "", trade: "", assignee: "", due_date: localDate(), weight: "10" });
+  const [tarea, setTarea] = useState<{ title: string; trade: string; responsable: Responsable; due_date: string; weight: string }>({ title: "", trade: "", responsable: sinResponsable, due_date: localDate(), weight: "10" });
   const [cert, setCert] = useState({ title: "", amount: "" });
-  const listaOficios = useMemo(() => { const o = oficios(data.tasks); return o.length ? o : oficiosHabituales; }, [data.tasks]);
-  const listaPersonas = useMemo(() => personas(data.tasks), [data.tasks]);
+  const listaOficios = useMemo(() => { const o = oficios(data.tasks); return [...new Set([...(o.length ? o : oficiosHabituales), ...(data.operarios ?? []).flatMap(x => x.trades)])]; }, [data.tasks, data.operarios]);
   const reservado = data.certifications.filter(c => approvedVersion && c.budget_version_id === approvedVersion.id).reduce((s, c) => s + c.amount, 0);
   const saldo = approvedVersion ? totals(approvedVersion.items).base - reservado : 0;
   const importe = eurosACentimos(cert.amount);
@@ -54,9 +54,9 @@ export function ProjectMenu({ project, approvedVersion, puedeEstimar, onChat, so
     if (pending || busy) return;
     setPending(true);
     try {
-      await send({ type: "task.create", project_id: project.id, title: tarea.title.trim(), trade: tarea.trade.trim() || "Coordinación", assignee: tarea.assignee.trim(), due_date: tarea.due_date, weight: Math.min(100, Math.max(1, Number(tarea.weight) || 10)) });
+      await send({ type: "task.create", project_id: project.id, title: tarea.title.trim(), trade: tarea.trade.trim() || "Coordinación", ...asignacion(tarea.responsable), due_date: tarea.due_date, weight: Math.min(100, Math.max(1, Number(tarea.weight) || 10)) });
       notify(`Tarea planificada: ${tarea.title.trim()}`);
-      setTarea({ title: "", trade: tarea.trade, assignee: tarea.assignee, due_date: tarea.due_date, weight: "10" });
+      setTarea({ title: "", trade: tarea.trade, responsable: tarea.responsable, due_date: tarea.due_date, weight: "10" });
       setDialogo("");
     } catch (e) { notify(e instanceof Error ? e.message : "No se ha podido crear la tarea."); }
     finally { setPending(false); }
@@ -131,13 +131,13 @@ export function ProjectMenu({ project, approvedVersion, puedeEstimar, onChat, so
             <label className="field" style={{ gridColumn: "1 / -1" }}><span>Tarea</span><input type="text" value={tarea.title} onChange={e => setTarea({ ...tarea, title: e.target.value })} placeholder="Replantear tabiquería con el electricista" required maxLength={500} autoFocus /></label>
             <label className="field"><span>Fecha</span><DateField label="Fecha" value={tarea.due_date} onChange={v => setTarea({ ...tarea, due_date: v })} required /></label>
           </div>
-          <details className="editor-advanced" open={Boolean(tarea.trade || tarea.assignee)}>
+          <details className="editor-advanced" open={Boolean(tarea.trade || tarea.responsable.valor)}>
           <summary>Más detalles · oficio, responsable y cuánto cuenta</summary>
           <div className="line-grid" style={{ marginTop: 10 }}>
             <div className="field"><span>Oficio</span><Select label="Oficio" value={tarea.trade} onChange={v => setTarea({ ...tarea, trade: v })} options={listaOficios.map(o => ({ value: o, label: o }))} placeholder="Coordinación" /></div>
-            <label className="field"><span>Responsable</span><input list="personas-ficha" type="text" value={tarea.assignee} onChange={e => setTarea({ ...tarea, assignee: e.target.value })} placeholder="Nombre o equipo" maxLength={120} /><datalist id="personas-ficha">{listaPersonas.map(p => <option key={p} value={p} />)}</datalist></label>
             <label className="field"><span>Cuánto cuenta en el avance</span><span className="unit-input"><input type="number" inputMode="numeric" min={1} max={100} value={tarea.weight} onChange={e => setTarea({ ...tarea, weight: e.target.value })} /><span>%</span></span></label>
           </div>
+          <ResponsableField value={tarea.responsable} onChange={r => setTarea({ ...tarea, responsable: r })} oficio={tarea.trade} />
           <p className="muted text-xs">Sin oficio queda como «Coordinación»; el avance se reparte entre las tareas y 10 es lo normal. Se ve también en la Agenda.</p>
           </details>
         </form>

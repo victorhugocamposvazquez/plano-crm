@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent, type ReactNode } from "react";
 import Link from "next/link";
-import { ChevronLeft, LayoutGrid, AtSign, Camera, MapPin, ListPlus, ArrowUp, Hash, FileText, ListChecks, Package, Receipt, X, Paperclip, Pencil, Trash2, Check, SmilePlus, Loader2, Image as ImageIcon, ExternalLink, Download, Search, Info, CircleHelp, ArrowLeft, Users, Layers2, Link2, ChevronRight, Slash, Sparkles, Activity } from "lucide-react";
+import { MessageCircle, ChevronLeft, LayoutGrid, AtSign, Camera, MapPin, ListPlus, ArrowUp, Hash, FileText, ListChecks, Package, Receipt, X, Paperclip, Pencil, Trash2, Check, SmilePlus, Loader2, Image as ImageIcon, ExternalLink, Download, Search, Info, CircleHelp, ArrowLeft, Users, Layers2, Link2, ChevronRight, Slash, Sparkles, Activity } from "lucide-react";
 import { Menu } from "@/components/ui/menu";
 import { Modal } from "@/components/ui/modal";
 import { Popover } from "@/components/ui/popover";
@@ -16,6 +16,7 @@ import { parseMessage, encodeRef, referenciables, filtrarReferencias, destinoRef
 import { agruparMensajes, iniciales, tonoAutor } from "@/lib/chat-grupos";
 import { buscarMensajes, trozos, participantes as listarParticipantes, elementosCompartidos } from "@/lib/chat-busqueda";
 import { comandos, accesosRapidos, interpretar, sugerir, type Comando, type VistaChat } from "@/lib/chat-comandos";
+import { EnviarParte } from "@/components/equipo/enviar-parte";
 
 const time = new Intl.DateTimeFormat("es-ES", { hour: "2-digit", minute: "2-digit" });
 const day = new Intl.DateTimeFormat("es-ES", { weekday: "long", day: "numeric", month: "long" });
@@ -56,6 +57,7 @@ export function ChatPanel({ projectId, messages, title, subtitle, onClose }: { p
   const [picker, setPicker] = useState<Picker>(pickerCerrado);
   const [cmdActive, setCmdActive] = useState(0);
   const [adjuntarAbierto, setAdjuntarAbierto] = useState(false);
+  const [enviarParte, setEnviarParte] = useState(false);
   const [mencionAbierta, setMencionAbierta] = useState(false);
   const fotoInput = useRef<HTMLInputElement>(null);
   const chipsRef = useRef<HTMLElement>(null);
@@ -74,7 +76,8 @@ export function ChatPanel({ projectId, messages, title, subtitle, onClose }: { p
   const conteoCat = useMemo(() => Object.fromEntries(categorias.map(c => [c.type, options.filter(o => o.type === c.type).length])) as Record<RefType, number>, [options]);
   const gente = useMemo(() => listarParticipantes(messages), [messages]);
   // A quién se puede mencionar: quien ya ha escrito y quien tiene tareas en esta obra.
-  const equipo = useMemo(() => [...new Set([...gente.map(p => p.name.split(" · ")[0]), ...data.tasks.filter(t => t.project_id === projectId && t.assignee).map(t => t.assignee)])].filter(n => n !== actor.name.split(" · ")[0]), [gente, data.tasks, projectId, actor.name]);
+  // Primero quien ya ha escrito o tiene tareas en esta obra; luego el resto de la empresa y los operarios disponibles.
+  const equipo = useMemo(() => [...new Set([...gente.map(p => p.name.split(" · ")[0]), ...data.tasks.filter(t => t.project_id === projectId && t.assignee).map(t => t.assignee), ...data.members.map(m => m.display_name.split(" · ")[0]), ...(data.operarios ?? []).filter(o => o.available).map(o => o.name.split(" · ")[0])])].filter(n => n && n !== actor.name.split(" · ")[0]), [gente, data.tasks, data.members, data.operarios, projectId, actor.name]);
   const compartidos = useMemo(() => elementosCompartidos(messages, data), [messages, data]);
   const coincidencias = useMemo(() => (buscando ? buscarMensajes(messages, consulta) : null), [buscando, consulta, messages]);
   const sugerencias = useMemo(() => (body.trim().startsWith("/") && !picker.open ? sugerir(body, 8) : []), [body, picker.open]);
@@ -437,6 +440,7 @@ export function ChatPanel({ projectId, messages, title, subtitle, onClose }: { p
               <button type="button" className="composer-pop-item" disabled={!conteoCat.v} onClick={() => compartir("v")}><Receipt size={16} strokeWidth={1.7} aria-hidden="true" />Presupuesto</button>
               <button type="button" className="composer-pop-item" disabled={!conteoCat.t} onClick={() => compartir("t")}><ListChecks size={16} strokeWidth={1.7} aria-hidden="true" />Tarea</button>
               <button type="button" className="composer-pop-item" onClick={compartirUbicacion}><MapPin size={16} strokeWidth={1.7} aria-hidden="true" />Ubicación de la obra</button>
+              <button type="button" className="composer-pop-item" onClick={() => { setAdjuntarAbierto(false); setEnviarParte(true); }}><MessageCircle size={16} strokeWidth={1.7} aria-hidden="true" />Parte a un operario por WhatsApp</button>
             </Popover>
             <input ref={attachInput} type="file" accept={adjuntables.join(",")} onChange={e => { void adjuntar(e.target.files?.[0]); e.target.value = ""; }} style={{ display: "none" }} aria-hidden="true" tabIndex={-1} />
             <input ref={fotoInput} type="file" accept="image/*" capture="environment" onChange={e => { void adjuntar(e.target.files?.[0]); e.target.value = ""; }} style={{ display: "none" }} aria-hidden="true" tabIndex={-1} />
@@ -453,6 +457,7 @@ export function ChatPanel({ projectId, messages, title, subtitle, onClose }: { p
         </form>
       ) : !allowed ? <p className="muted text-xs">Tu perfil puede leer la conversación pero no escribir.</p> : null}
 
+      <EnviarParte open={enviarParte} projectId={projectId} onClose={() => setEnviarParte(false)} />
       <TaskDialog task={openTask ? data.tasks.find(t => t.id === openTask.id) ?? null : null} onClose={() => setOpenTask(null)} />
       <NewTaskDialog projectId={projectId} open={Boolean(tareaDesde)} initialTitle={tareaDesde?.titulo ?? ""} origen={tareaDesde ? `Desde un mensaje de ${tareaDesde.autor}` : undefined} onClose={() => setTareaDesde(null)} />
       <ChatPeek vista={peek} projectId={projectId} onChange={setPeek} onClose={() => setPeek(null)} />
