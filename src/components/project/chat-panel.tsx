@@ -7,9 +7,9 @@ import { Modal } from "@/components/ui/modal";
 import { Popover } from "@/components/ui/popover";
 import { useWorkspace } from "@/components/workspace-provider";
 import { TaskDialog } from "@/components/project/task-dialog";
+import { NewTaskDialog } from "@/components/project/new-task-dialog";
 import { ChatPeek } from "@/components/project/chat-peek";
 import { iniciales as inicialesProyecto } from "@/lib/pasos";
-import { localDate } from "@/lib/hoy";
 import { can, dateLabel, type Document, type Message, type Task } from "@/lib/domain";
 import { isImage, formatSize } from "@/lib/documentos";
 import { parseMessage, encodeRef, referenciables, filtrarReferencias, destinoRef, categorias, nombreCategoria, type Ref, type RefOption, type RefType } from "@/lib/chat-refs";
@@ -60,6 +60,8 @@ export function ChatPanel({ projectId, messages, title, subtitle, onClose }: { p
   const fotoInput = useRef<HTMLInputElement>(null);
   const chipsRef = useRef<HTMLElement>(null);
   const [openTask, setOpenTask] = useState<Task | null>(null);
+  // Tarea nueva desde un mensaje: se abre el editor con el texto del mensaje para revisar título, fecha y responsable.
+  const [tareaDesde, setTareaDesde] = useState<{ titulo: string; autor: string } | null>(null);
   const lightbox = useRef<HTMLDialogElement>(null);
   const attachInput = useRef<HTMLInputElement>(null);
   const end = useRef<HTMLDivElement>(null);
@@ -213,13 +215,10 @@ export function ChatPanel({ projectId, messages, title, subtitle, onClose }: { p
     setBody(b => `${b}${b && !b.endsWith(" ") ? " " : ""}${lugar} · https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(lugar)} `);
     setTimeout(() => textarea.current?.focus(), 0);
   }
-  async function hacerTarea(m: Message) {
-    const titulo = parseMessage(m.body).map(part => (part.kind === "text" ? part.text : part.ref.label)).join("").trim().slice(0, 200);
+  function hacerTarea(m: Message) {
+    const titulo = parseMessage(m.body).map(part => (part.kind === "text" ? part.text : part.ref.label)).join("").replace(/\s+/g, " ").trim().slice(0, 200);
     if (!titulo) return;
-    try {
-      await send({ type: "task.create", project_id: projectId, title: titulo, trade: "Coordinación", assignee: "", due_date: localDate(), weight: 10 });
-      notify(`Tarea creada para hoy: ${titulo}`);
-    } catch (e) { notify(e instanceof Error ? e.message : "No se ha podido crear la tarea."); }
+    setTareaDesde({ titulo, autor: m.author_name });
   }
 
   /** Miniatura de una foto adjunta: la URL se resuelve igual que al abrir el documento. */
@@ -338,7 +337,7 @@ export function ChatPanel({ projectId, messages, title, subtitle, onClose }: { p
                     {g.items.map((m, i) => {
                       const borrado = Boolean(m.deleted_at);
                       const acciones = borrado ? [] : [
-                        ...(can(actor.role, "task.create") ? [{ id: "tarea", label: "Hacer tarea", hint: "La crea para hoy con este texto", icon: <ListPlus size={15} strokeWidth={1.7} />, onSelect: () => void hacerTarea(m) }] : []),
+                        ...(can(actor.role, "task.create") ? [{ id: "tarea", label: "Hacer tarea", hint: "Con este texto; eliges fecha y responsable", icon: <ListPlus size={15} strokeWidth={1.7} />, onSelect: () => hacerTarea(m) }] : []),
                         ...(g.mine ? [{ id: "editar", label: "Editar", icon: <Pencil size={15} strokeWidth={1.7} />, onSelect: () => setEditing({ id: m.id, body: m.body }) }] : []),
                         ...(g.mine || puedeBorrarAjenos ? [{ id: "borrar", label: "Borrar", hint: "Queda constancia de que hubo un mensaje", icon: <Trash2 size={15} strokeWidth={1.7} />, danger: true, onSelect: () => void borrar(m.id) }] : [])
                       ];
@@ -455,6 +454,7 @@ export function ChatPanel({ projectId, messages, title, subtitle, onClose }: { p
       ) : !allowed ? <p className="muted text-xs">Tu perfil puede leer la conversación pero no escribir.</p> : null}
 
       <TaskDialog task={openTask ? data.tasks.find(t => t.id === openTask.id) ?? null : null} onClose={() => setOpenTask(null)} />
+      <NewTaskDialog projectId={projectId} open={Boolean(tareaDesde)} initialTitle={tareaDesde?.titulo ?? ""} origen={tareaDesde ? `Desde un mensaje de ${tareaDesde.autor}` : undefined} onClose={() => setTareaDesde(null)} />
       <ChatPeek vista={peek} projectId={projectId} onChange={setPeek} onClose={() => setPeek(null)} />
 
       <Modal open={ayuda} onClose={() => setAyuda(false)} title="Cómo se usa el chat" footer={<button type="button" className="btn btn-primary" onClick={() => setAyuda(false)}>Entendido</button>}>
