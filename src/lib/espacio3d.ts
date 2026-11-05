@@ -2,14 +2,16 @@
  * Propuesta en 3D: el espacio navegable de ejemplo (local o nave, de `lib/visual`) vestido con los artículos del catálogo.
  * Se cambia suelo, paredes (con su color) y mobiliario diciéndolo, escribiéndolo o tocando la escena.
  * Las cantidades salen de las medidas del espacio (las de ejemplo hasta que se digan las de verdad), nunca de la geometría dibujada.
- * Aquí solo lo puro: qué artículo va en cada elemento, cómo se ve, cuánto cuesta y qué significa cada orden.
+ * Si el artículo se guarda en la nave, se dice cuánto queda libre y cuánto faltaría pedir.
+ * Aquí solo lo puro: qué artículo va en cada elemento, cómo se ve, cuánto cuesta, qué hay en almacén y qué significa cada orden.
  */
-import type { Article, BudgetItem } from "./domain";
+import type { Article, BudgetItem, Purchase } from "./domain";
 import type { SpatialScene, VisualAsset } from "./visual/schema";
 import { normalizar } from "./busqueda";
 import { buscarArticulo } from "./visita360";
 import { interpretarMedidas, type Medidas } from "./medidas";
 import { partidaDesdeArticulo } from "./presupuesto";
+import { cantidadStock, estadoStock } from "./stock";
 
 export type Elemento = "suelo" | "paredes" | "mueble";
 export const elementos: Elemento[] = ["suelo", "paredes", "mueble"];
@@ -159,6 +161,35 @@ export function partidas3d(estado: Estado3d, articles: Article[]): Partida3d[] {
   });
 }
 
+// ── Almacén ────────────────────────────────────────────────────────────────
+export type Disponibilidad = { libre: number; necesita: number; falta: number; estado: "cubre" | "corto" | "agotado"; ubicacion: string; unit: string };
+/** Lo que hay libre en la nave de un artículo de almacén frente a lo que pide la propuesta; null si no se guarda en almacén. */
+export function disponibilidad(article: Article, necesita: number, purchases: Purchase[]): Disponibilidad | null {
+  if (!article.stocked) return null;
+  const libre = Math.max(0, estadoStock(article, purchases).libre), falta = Math.max(0, Math.round((necesita - libre) * 1000) / 1000);
+  return { libre, necesita, falta, estado: falta === 0 ? "cubre" : libre <= 0 ? "agotado" : "corto", ubicacion: article.stock_location ?? "", unit: article.unit };
+}
+const hayLibre = (n: number, unit: string) => n === 1 ? `queda ${cantidadStock(n, unit)} libre` : `quedan ${cantidadStock(n, unit)} libres`;
+const enDonde = (ubicacion: string) => ubicacion ? ` (${ubicacion})` : "";
+/** En palabras, para la pantalla y la voz. */
+export function describirDisponibilidad(d: Disponibilidad): string {
+  if (d.estado === "cubre") return `En almacén ${hayLibre(d.libre, d.unit)}: basta para ${cantidadStock(d.necesita, d.unit)}${enDonde(d.ubicacion)}.`;
+  if (d.estado === "agotado") return `No queda libre en almacén: hay que pedir ${cantidadStock(d.necesita, d.unit)}.`;
+  return `En almacén ${hayLibre(d.libre, d.unit)}: ${d.falta === 1 ? "falta" : "faltan"} ${cantidadStock(d.falta, d.unit)} por pedir.`;
+}
+/** Solo lo que hay libre, para preguntar por un artículo que no está en la propuesta. */
+export const describirLibre = (d: Disponibilidad) => d.libre > 0 ? `en almacén ${hayLibre(d.libre, d.unit)}${enDonde(d.ubicacion)}.` : "no queda libre en almacén.";
+/** «Porcelánico…: en almacén…»: tras dos puntos, en minúscula. */
+export const conNombre = (nombre: string, texto: string) => `${nombre}: ${texto.charAt(0).toLocaleLowerCase()}${texto.slice(1)}`;
+/** La disponibilidad de cada partida elegida que sale de un artículo de almacén. */
+export function stockDePropuesta(estado: Estado3d, articles: Article[], purchases: Purchase[]): { elemento: Elemento; article: Article; d: Disponibilidad }[] {
+  const q = cantidades(estado);
+  return elementos.flatMap(e => {
+    const el = estado[e], a = el && articles.find(x => x.id === el.article_id), d = a && disponibilidad(a, q[e], purchases);
+    return a && d ? [{ elemento: e, article: a, d }] : [];
+  });
+}
+
 // ── Órdenes ────────────────────────────────────────────────────────────────
 export type Vista = "overview" | "inside" | "focus";
 export type Movimiento = "left" | "right" | "closer" | "farther";
@@ -171,6 +202,7 @@ export type Orden3d =
   | { tipo: "espacio"; espacio: TipoEspacio }
   | { tipo: "vista"; vista: Vista; elemento?: Elemento }
   | { tipo: "mover"; mover: Movimiento }
+  | { tipo: "stock"; article?: Article }
   | { tipo: "total" } | { tipo: "incorporar" } | { tipo: "deshacer" };
 
 const palabrasElemento: Record<Elemento, RegExp> = {
@@ -194,6 +226,12 @@ export function interpretar3d(frase: string, articles: Article[]): Orden3d | nul
   const t = normalizar(frase).replace(/[¿?¡!]/g, " ").replace(/\s+/g, " ").trim();
   if (!t) return null;
   if (/\b(cuanto va|cuanto es|cuanto cuesta|cuanto sale|cuanto llevamos|que llevamos|total|dime el total)\b/.test(t)) return { tipo: "total" };
+  // «¿Hay stock?», «¿cuánto queda de porcelánico?», «¿qué tenemos en el almacén?». «Vamos al almacén» es cambiar de espacio.
+  if (/\b(stock|existencias|queda|quedan|que tenemos|tenemos en|hay en (el )?almacen|en (el )?almacen|disponible|disponibles)\b/.test(t) && !/^(vamos|ve|ir|pasa|pasamos|llevame|cambia)\b/.test(t)) {
+    const lista = elementos.flatMap(e => candidatos(articles, e));
+    const article = buscarArticulo(t.replace(/\b(stock|existencias|queda|quedan|tenemos|almacen|nave|disponibles?|hay|cuanto|cuantos|cuantas)\b/g, " ").replace(genericas, " "), lista) ?? undefined;
+    return article ? { tipo: "stock", article } : { tipo: "stock" };
+  }
   if (/\b(incorpora|incorporar|al presupuesto|pasalo|pasarlo|guardalo)\b/.test(t)) return { tipo: "incorporar" };
   if (/\b(deshaz|deshacer|anula|lo ultimo no)\b/.test(t)) return { tipo: "deshacer" };
   const med = interpretarMedidas(frase, []);

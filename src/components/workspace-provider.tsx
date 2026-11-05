@@ -35,6 +35,15 @@ function savedDemo(): Workspace {
     const extra = createDemo().articles.filter(x => ["PAV-002", "PAV-003", "PIN-002", "CAR-003", "EQU-001"].includes(x.code) && !parsed.articles.some((y: Workspace["articles"][number]) => y.code === x.code || y.id === x.id));
     parsed.articles.push(...extra);
   }
+  // Stock de las alternativas del 3D (nov 2026): porcelánico, mueble auxiliar y estanterías se guardan en la nave.
+  if (!parsed.articles.some((x: Workspace["articles"][number]) => x.code === "EQU-001" && x.stocked)) {
+    const demo = createDemo();
+    for (const x of demo.articles.filter(a => a.stocked && ["PAV-002", "CAR-003", "EQU-001"].includes(a.code))) {
+      const guardado = parsed.articles.find((y: Workspace["articles"][number]) => y.id === x.id);
+      if (guardado && !guardado.stocked) Object.assign(guardado, { stocked: true, stock_qty: x.stock_qty, stock_min: x.stock_min, stock_location: x.stock_location });
+      if (guardado) parsed.stock_movements = [...(parsed.stock_movements ?? []), ...(demo.stock_movements ?? []).filter(m => m.article_id === x.id && !(parsed.stock_movements ?? []).some((y: { id: string }) => y.id === m.id))];
+    }
+  }
   parsed.tasks = parsed.tasks.map((t: Workspace["tasks"][number]) => ({...t,assignee_id:t.assignee_id ?? null}));
   parsed.purchases = parsed.purchases.map((p: Workspace["purchases"][number]) => ({...p,assignee_id:p.assignee_id ?? null,assignee:p.assignee ?? ""}));
   return parsed;

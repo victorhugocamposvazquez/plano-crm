@@ -11,7 +11,7 @@ import { budgetHistory } from "@/lib/budget-history";
 import { can, lineTotal, money, totals, type Project } from "@/lib/domain";
 import { decir, escuchar, type Recognition } from "@/lib/voz";
 import {
-  aplicar3d, aspectos, cantidades, candidatos, color, coloresDe, describirDims, elementos, escena3d, espacios, estadoInicial, huecos,
+  aplicar3d, aspectos, cantidades, candidatos, color, coloresDe, conNombre, describirDims, describirDisponibilidad, describirLibre, disponibilidad, elementoDe, elementos, escena3d, espacios, estadoInicial, huecos, stockDePropuesta,
   interpretar3d, nombreElemento, partidas3d, unidadesQueCaben, type Elemento, type Estado3d, type Orden3d, type TipoEspacio, type Vista
 } from "@/lib/espacio3d";
 import type { VisualAsset } from "@/lib/visual/schema";
@@ -23,7 +23,7 @@ type Visor = Awaited<ReturnType<typeof createSpaceViewer>>;
 const clave = (projectId: string) => `plano.espacio3d.${projectId}`;
 const cifra = (n: number) => new Intl.NumberFormat("es-ES", { maximumFractionDigits: 2 }).format(n);
 const rgb = (c: readonly number[]) => `rgb(${c[0]} ${c[1]} ${c[2]})`;
-const ayuda = "Prueba: «pon porcelánico en el suelo», «pinta las paredes de verde salvia», «pon dos estanterías», «mide 6 por 4 y 3 de alto», «entra» o «¿cuánto va?».";
+const ayuda = "Prueba: «pon porcelánico en el suelo», «pinta las paredes de verde salvia», «pon dos estanterías», «mide 6 por 4 y 3 de alto», «entra», «¿hay stock?» o «¿cuánto va?».";
 
 function leer(projectId: string): Estado3d | null {
   try { const raw = localStorage.getItem(clave(projectId)); const e = raw ? JSON.parse(raw) : null; return e && (e.tipo === "local" || e.tipo === "nave") && e.dims ? e : null; } catch { return null; }
@@ -61,6 +61,8 @@ export function Espacio3d({ project, budgetId }: { project: Project; budgetId: s
   const q = cantidades(estado);
   const partidas = useMemo(() => partidas3d(estado, data.articles), [estado, data.articles]);
   const total = totals(partidas);
+  const stock = useMemo(() => stockDePropuesta(estado, data.articles, data.purchases), [estado, data.articles, data.purchases]);
+  const porPedir = stock.filter(x => x.d.falta > 0);
 
   // El visor se crea de nuevo solo si cambia la forma (espacio, medidas, qué mueble y cuántos); materiales y colores se actualizan en el sitio.
   const forma = JSON.stringify([estado.tipo, estado.dims, estado.mueble?.article_id ?? null, estado.mueble?.unidades ?? 0, looks.mueble?.dimensions_m ?? null]);
@@ -104,7 +106,8 @@ export function Espacio3d({ project, budgetId }: { project: Project; budgetId: s
   /** Qué responde Plano tras una orden que cambia algo: lo puesto, cuánto sale y cuánto cuesta. */
   function explicar(o: Orden3d, nuevo: Estado3d): string {
     const p = partidas3d(nuevo, data.articles), linea = (e: Elemento) => p.find(i => i.elemento === e);
-    const coste = (e: Elemento) => { const l = linea(e); return l ? ` ${cifra(l.quantity)} ${l.unit}, ${money(lineTotal(l))} sin IVA.` : ""; };
+    const almacen = (e: Elemento) => { const x = stockDePropuesta(nuevo, data.articles, data.purchases).find(y => y.elemento === e); return x ? ` ${describirDisponibilidad(x.d)}` : ""; };
+    const coste = (e: Elemento) => { const l = linea(e); return l ? ` ${cifra(l.quantity)} ${l.unit}, ${money(lineTotal(l))} sin IVA.${almacen(e)}` : ""; };
     switch (o.tipo) {
       case "poner": return `${nombreElemento[o.elemento]}: ${o.article.name}${nuevo[o.elemento]?.color ? `, ${nuevo[o.elemento]!.color}` : ""}.${coste(o.elemento)}`;
       case "color": return nuevo[o.elemento] ? `${nombreElemento[o.elemento]} en ${o.color}.${coste(o.elemento)}` : `No hay en el catálogo nada para ${nombreElemento[o.elemento].toLocaleLowerCase()}.`;
@@ -144,6 +147,15 @@ export function Espacio3d({ project, budgetId }: { project: Project; budgetId: s
     const o = interpretar3d(frase, data.articles);
     if (!o) { responder(`No lo he entendido. ${ayuda}`); return; }
     if (o.tipo === "total") { responder(partidas.length ? `Van ${money(total.total)} con IVA en ${partidas.length} ${partidas.length === 1 ? "partida" : "partidas"}.` : "Todavía no has cambiado nada."); return; }
+    if (o.tipo === "stock") {
+      if (o.article) {
+        const e = elementoDe(o.article), elegido = e && estado[e]?.article_id === o.article.id;
+        const d = e ? disponibilidad(o.article, cantidades(estado)[e], data.purchases) : null;
+        responder(!d ? `${o.article.name} no se guarda en almacén: se pide para la obra.` : conNombre(o.article.name, elegido ? describirDisponibilidad(d) : describirLibre(d))); return;
+      }
+      responder(stock.length ? stock.map(x => conNombre(x.article.name, describirDisponibilidad(x.d))).join(" ") : partidas.length ? "Nada de lo elegido se guarda en almacén." : "Todavía no has elegido nada. En la lista, lo que se guarda en la nave dice cuánto queda libre.");
+      return;
+    }
     if (o.tipo === "incorporar") { if (!partidas.length) responder("No hay nada que pasar todavía."); else { responder("Lo paso al presupuesto."); void incorporar(); } return; }
     if (o.tipo === "deshacer") { const prev = historial.at(-1); if (!prev) { responder("No hay nada que deshacer."); return; } setHistorial(h => h.slice(0, -1)); setEstado(prev); responder("Deshecho."); return; }
     if (o.tipo === "vista") { ver(o.vista, o.elemento); responder(o.vista === "inside" ? "Dentro del espacio." : o.vista === "overview" ? "Vista general." : `Mirando ${nombreElemento[o.elemento!].toLocaleLowerCase()}.`); return; }
@@ -152,7 +164,7 @@ export function Espacio3d({ project, budgetId }: { project: Project; budgetId: s
     if ("elemento" in o) setSel(o.elemento); else if (o.tipo === "unidades") setSel("mueble");
     cambiar(nuevo); responder(explicar(o, nuevo));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [data.articles, estado, historial, partidas, total.total, incorporar, seleccionVisor]);
+  }, [data.articles, data.purchases, estado, historial, partidas, stock, total.total, incorporar, seleccionVisor]);
   const atenderRef = useRef(atender); atenderRef.current = atender;
 
   // Tocar la escena elige el elemento y abre sus alternativas.
@@ -239,7 +251,7 @@ export function Espacio3d({ project, budgetId }: { project: Project; budgetId: s
         {lista.length === 0 && <p className="muted text-sm" style={{ margin: 0 }}>No hay en el catálogo nada para {nombreElemento[sel].toLocaleLowerCase()}. Añádelo en Catálogo y aparecerá aquí.</p>}
         {lista.length > 0 && <div className="e3d-lista">
           <button type="button" aria-pressed={!elegido} onClick={() => { const o: Orden3d = { tipo: "quitar", elemento: sel }; cambiar(aplicar3d(estado, o, data.articles)); setRespuesta(explicar(o, estado)); }}><span>{sel === "mueble" ? "Sin muebles" : "Dejar como está"}</span><small>Sin partida</small></button>
-          {lista.map(a => <button key={a.id} type="button" aria-pressed={elegido?.article_id === a.id} onClick={() => ponerArticulo(a.id)}><span>{a.name}</span><small className="pl-mono">{money(a.unit_price)} / {a.unit}</small></button>)}
+          {lista.map(a => { const d = disponibilidad(a, q[sel], data.purchases); return <button key={a.id} type="button" aria-pressed={elegido?.article_id === a.id} onClick={() => ponerArticulo(a.id)}><span>{a.name}</span><small className="pl-mono">{money(a.unit_price)} / {a.unit}</small>{d && <small className="e3d-stock" data-estado={d.estado}>{d.estado === "agotado" ? "Agotado en almacén" : `Almacén: ${cifra(d.libre)} ${a.unit} ${d.libre === 1 ? "libre" : "libres"}${d.falta > 0 ? ` de ${cifra(d.necesita)}` : ""}`}</small>}</button>; })}
         </div>}
         {sel !== "suelo" && elegido && <div className="e3d-colores" role="group" aria-label="Color">
           {coloresDe[sel].map(nombre => { const c = color(nombre)!; return <button key={nombre} type="button" aria-pressed={elegido.color === nombre} onClick={() => ponerColor(nombre)} title={nombre}><i style={{ background: rgb(c.rgb) }} aria-hidden="true" /><span>{nombre}</span></button>; })}
@@ -257,16 +269,17 @@ export function Espacio3d({ project, budgetId }: { project: Project; budgetId: s
     <section className="pl-card v360-ticket" aria-label="Lo que entra en el presupuesto">
       {partidas.length === 0 && <p className="v360-ayuda" style={{ paddingTop: 14 }}><Rotate3d size={16} strokeWidth={1.6} aria-hidden="true" style={{ verticalAlign: "-3px", marginRight: 6 }} />Todavía no has cambiado nada. {ayuda}</p>}
       {partidas.map(i => <div key={i.id} className="v360-linea">
-        <span className="v360-linea-texto"><span><strong>{i.description}</strong><small>{nombreElemento[i.elemento]} · {cifra(i.quantity)} {i.unit} × {money(i.unit_price)}</small></span></span>
+        <span className="v360-linea-texto"><span><strong>{i.description}</strong><small>{nombreElemento[i.elemento]} · {cifra(i.quantity)} {i.unit} × {money(i.unit_price)}</small>{(() => { const x = stock.find(y => y.elemento === i.elemento); return x && <small className="e3d-stock" data-estado={x.d.estado}>{describirDisponibilidad(x.d)}</small>; })()}</span></span>
         <span className="pl-mono">{money(lineTotal(i))}</span>
         <span />
       </div>)}
       {partidas.length > 0 && <div className="v360-total"><span><small>Total con IVA · {partidas.length} {partidas.length === 1 ? "partida" : "partidas"}</small></span><strong>{money(total.total)}</strong></div>}
+      {porPedir.length > 0 && <div className="e3d-pedir" role="note"><strong>Por pedir</strong><span>{porPedir.map(x => `${cifra(x.d.falta)} ${x.d.unit} de ${x.article.name.toLocaleLowerCase()}`).join(" · ")}</span></div>}
       {partidas.length > 0 && <div className="v360-acciones">
         <Button variant="secondary" disabled={!historial.length} onClick={() => { const prev = historial.at(-1); if (prev) { setHistorial(h => h.slice(0, -1)); setEstado(prev); } }}><Undo2 size={15} strokeWidth={1.7} aria-hidden="true" />Deshacer</Button>
         {puede ? <Button variant="primary" data-accent="orange" disabled={guardando || busy} onClick={() => void incorporar()}>{guardando ? "Pasando…" : "Pasar al presupuesto"}</Button> : <span className="muted text-sm">Tu perfil puede mirar, pero no presupuestar.</span>}
       </div>}
-      {partidas.length > 0 && <p className="v360-ayuda">Las cantidades salen de las medidas del espacio, no del dibujo. El espacio y los modelos son de ejemplo; los precios, los del catálogo.</p>}
+      {partidas.length > 0 && <p className="v360-ayuda">Las cantidades salen de las medidas del espacio, no del dibujo. El espacio y los modelos son de ejemplo; los precios y el almacén, los del catálogo. Libre es lo que hay en la nave menos lo recibido para otras obras y aún no llevado.</p>}
     </section>
 
     <Modal open={Boolean(medidasForm)} onClose={() => setMedidasForm(null)} title={`Medidas · ${espacios[estado.tipo].nombre.toLocaleLowerCase()}`} footer={<>
