@@ -381,8 +381,8 @@ export function ChatPanel({ projectId, messages, title, subtitle, onClose }: { p
       {vista === "chat" && (
         <div className="chat-quick-wrap">
           <nav ref={chipsRef} className="chat-quick" aria-label="Consultar sin salir del chat">
-            <button type="button" className="chip" data-acceso="operario" title="Enviar una tarea a un operario por WhatsApp, con su enlace" onClick={() => setEnviarParte(true)}><MessageCircle size={14} strokeWidth={1.8} aria-hidden="true" />Enviar tarea a un operario</button>
             {accesosRapidos.map(c => { const Icon = iconoAcceso[c.id] ?? Sparkles; return <button key={c.id} type="button" className="chip" data-acceso={c.id} title={c.descripcion} onClick={() => consultar(c)}><Icon size={14} strokeWidth={1.8} aria-hidden="true" />{c.acceso}</button>; })}
+            <button type="button" className="chip" data-acceso="operario" title="Enviar una tarea a un operario por WhatsApp, con su enlace" onClick={() => setEnviarParte(true)}><MessageCircle size={14} strokeWidth={1.8} aria-hidden="true" />Enviar tarea a un operario</button>
           </nav>
           <button type="button" className="chat-quick-more" aria-label="Ver más" title="Ver más" onClick={() => chipsRef.current?.scrollBy({ left: 160, behavior: "smooth" })}><ChevronRight size={15} strokeWidth={1.9} aria-hidden="true" /></button>
         </div>

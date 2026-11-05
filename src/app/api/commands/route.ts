@@ -15,7 +15,7 @@ export async function POST(request:Request) { return endpoint(async()=>{
     // Los avisos del almacén explican qué hacer («Solo hay 6 en almacén.»): se enseñan tal cual.
     const almacen=[/^Solo hay [\d.,]+ en almacén\.$/,/^El artículo se mide en [^:]{1,10}: el pedido también\.$/,/^Este artículo no se guarda en almacén\.$/,/^Indica una cantidad (válida|mayor que cero)\.$/,/^Artículo no encontrado\.$/,
       // Y los de la ficha de operarios.
-      /^Ese operario no está en el equipo\.$/,/^Esa cuenta no pertenece a esta empresa\.$/,/^El teléfono solo admite números, espacios, «\+» y guiones\.$/,/^El correo no es válido\.$/,/^Escribe el nombre del operario\.$/,/^Operario no encontrado\.$/,/^Parte no encontrado\.$/,/^Datos del parte no válidos\.$/,/^Envío no encontrado\.$/,/^Datos del envío no válidos\.$/,/^Tarea no encontrada\.$/];
+      /^Ese operario no está en el equipo\.$/,/^Esa cuenta no pertenece a esta empresa\.$/,/^El teléfono solo admite números, espacios, «\+» y guiones\.$/,/^El correo no es válido\.$/,/^Escribe el nombre del operario\.$/,/^Operario no encontrado\.$/,/^Parte no encontrado\.$/,/^Datos del parte no válidos\.$/,/^Envío no encontrado\.$/,/^Datos del envío no válidos\.$/,/^Ese punto ya no está en la lista\.$/,/^La lista admite hasta 50 puntos\.$/,/^Cada punto de la lista lleva un texto de hasta 300 caracteres\.$/,/^La descripción es demasiado larga\.$/,/^Tarea no encontrada\.$/];
     if(known.includes(error.message ?? "") || almacen.some(r=>r.test(error.message ?? "")))throw new ApiError(error.code==="P0002"?404:400,error.message!);
     databaseError(error);
   } }

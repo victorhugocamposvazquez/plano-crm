@@ -44,6 +44,11 @@ function savedDemo(): Workspace {
       if (guardado) parsed.stock_movements = [...(parsed.stock_movements ?? []), ...(demo.stock_movements ?? []).filter(m => m.article_id === x.id && !(parsed.stock_movements ?? []).some((y: { id: string }) => y.id === m.id))];
     }
   }
+  // Tareas con lista (nov 2026): la tarea de replanteo de la demo recibe su descripción y su lista de ejemplo.
+  if (!parsed.tasks.some((t: Workspace["tasks"][number]) => t.checklist?.length)) {
+    const t = parsed.tasks.find((x: Workspace["tasks"][number]) => x.id === "00000000-0000-4000-8000-000000000202"), ejemplo = createDemo().tasks.find(x => x.id === "00000000-0000-4000-8000-000000000202");
+    if (t && ejemplo) { t.description ??= ejemplo.description; t.checklist = ejemplo.checklist; }
+  }
   // Operarios (nov 2026): la demo antigua recibe los de ejemplo.
   parsed.operarios ??= createDemo().operarios;
   parsed.tasks = parsed.tasks.map((t: Workspace["tasks"][number]) => ({...t,assignee_id:t.assignee_id ?? null}));

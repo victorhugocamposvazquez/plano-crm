@@ -1,6 +1,13 @@
 import type { BudgetItem, Workspace, Actor } from "./domain";
 export const demoActor: Actor = { id: "00000000-0000-4000-8000-000000000001", name: "Alex · Demo", role: "admin", position: "direccion" };
 export const demoId = (n: number) => `00000000-0000-4000-8000-${String(n).padStart(12, "0")}`;
+/** Lista de ejemplo para enseñar las tareas con puntos que marcar. */
+export const listaReplanteo = [
+  { id: "rep-1", text: "Comprobar medidas del plano en la vivienda", done: true },
+  { id: "rep-2", text: "Marcar tabiques nuevos en el suelo", done: false },
+  { id: "rep-3", text: "Marcar cajas, enchufes y puntos de luz", done: false },
+  { id: "rep-4", text: "Fotos del replanteo al chat", done: false }
+];
 export function createDemo(): Workspace {
   const org = demoId(2), now = new Date();
   const date = (offset: number) => { const d = new Date(now); d.setDate(d.getDate() + offset); return d.toISOString(); };
@@ -53,7 +60,7 @@ export function createDemo(): Workspace {
     tasks: [
       { id: demoId(200), organization_id: org, project_id: demoId(10), title: "Protecciones y preparación de la vivienda", trade: "Albañilería", assignee_id: null, assignee: "Equipo de obra", due_date: date(-10).slice(0,10), status: "done", weight: 10 },
       { id: demoId(201), organization_id: org, project_id: demoId(10), title: "Demoliciones y retirada de escombros", trade: "Albañilería", assignee_id: null, assignee: "Equipo de obra", due_date: date(-5).slice(0,10), status: "done", weight: 30 },
-      { id: demoId(202), organization_id: org, project_id: demoId(10), title: "Replantear tabiquería con el electricista", trade: "Coordinación", assignee_id: null, assignee: "Alex", due_date: date(0).slice(0,10), status: "pending", weight: 20 },
+      { id: demoId(202), organization_id: org, project_id: demoId(10), title: "Replantear tabiquería con el electricista", trade: "Coordinación", assignee_id: null, assignee: "Alex", due_date: date(0).slice(0,10), status: "pending", weight: 20 , description: "Marcar en suelo y paredes por dónde van los tabiques nuevos y dónde salen cajas y enchufes antes de levantar nada.", checklist: listaReplanteo },
       { id: demoId(203), organization_id: org, project_id: demoId(10), title: "Ejecutar instalaciones y revestimientos", trade: "Instalaciones", assignee_id: null, assignee: "Equipo de obra", due_date: date(7).slice(0,10), status: "pending", weight: 40 },
       { id: demoId(204), organization_id: org, project_id: demoId(12), title: "Desmontar cocina y proteger pavimento", trade: "Carpintería", assignee_id: null, assignee: "Dani", due_date: date(-2).slice(0,10), status: "done", weight: 30 },
       { id: demoId(205), organization_id: org, project_id: demoId(12), title: "Confirmar medidas de la encimera", trade: "Carpintería", assignee_id: null, assignee: "Dani", due_date: date(0).slice(0,10), status: "pending", weight: 20 },

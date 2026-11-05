@@ -6,11 +6,12 @@ import { Brand } from "@/components/ui/brand";
 import { supabaseConfigured } from "@/lib/supabase/browser";
 import { calendarioParte, mapaDe } from "@/lib/parte";
 import { enlaceLlamar, enlaceWhatsapp } from "@/lib/operarios";
-import { MAX_FOTO_BYTES, parteFoto, parteHecho, parteMensaje, tokenValido, vistaParte, type VistaParte } from "@/lib/parte-vivo";
+import { MAX_FOTO_BYTES, parteCheck, parteFoto, parteHecho, parteMensaje, tokenValido, vistaParte, type VistaParte } from "@/lib/parte-vivo";
+import { textoProgreso } from "@/lib/lista-tarea";
 import type { Workspace } from "@/lib/domain";
 
 type Lista = Extract<VistaParte, { estado: "ok" }>;
-type Servicio = { ver(): Promise<VistaParte>; hecho(nota: string): Promise<VistaParte>; mensaje(texto: string): Promise<VistaParte>; foto(f: Blob, nombre: string): Promise<VistaParte> };
+type Servicio = { ver(): Promise<VistaParte>; hecho(nota: string): Promise<VistaParte>; mensaje(texto: string): Promise<VistaParte>; foto(f: Blob, nombre: string): Promise<VistaParte>; check(item: string, done: boolean): Promise<VistaParte> };
 
 const fechaLarga = (iso: string) => new Intl.DateTimeFormat("es-ES", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).format(new Date(`${iso}T12:00:00`)).replace(/^./, c => c.toUpperCase());
 const horaCorta = (iso: string) => new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "long", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
@@ -23,6 +24,7 @@ function servicioSupabase(token: string): Servicio {
     ver: () => rpc("parte_ver", {}),
     hecho: nota => rpc("parte_hecho", { p_nota: nota }),
     mensaje: texto => rpc("parte_mensaje", { p_texto: texto }),
+    check: (item, done) => rpc("parte_check", { p_item: item, p_done: done }),
     async foto(f, nombre) {
       const c = await cliente();
       const { data: ruta, error } = await c.rpc("parte_reservar_foto", { p_token: token }); if (error || !ruta) throw new Error(error?.message || "No se ha podido preparar la foto.");
@@ -42,6 +44,7 @@ function servicioDemo(token: string): Servicio {
     async ver() { const ws = leer(); if (!ws) return { estado: "no_valido" }; const s = ws.task_shares?.find(x => x.token === token); if (s) { s.seen_at = ahora(); guardar(ws); } return vistaParte(ws, token, ahora()); },
     hecho: nota => con(ws => parteHecho(ws, token, nota, ahora(), uuid)),
     mensaje: texto => con(ws => parteMensaje(ws, token, texto, ahora(), uuid)),
+    check: (item, done) => con(ws => parteCheck(ws, token, item, done, ahora())),
     async foto(f, nombre) {
       const ws = leer(); if (!ws) return { estado: "no_valido" };
       const s = ws.task_shares?.find(x => x.token === token), t = s && ws.tasks.find(x => x.id === s.task_id);
@@ -73,7 +76,7 @@ export default function ParteVivoPage() {
   const servicio = useRef<Servicio | null>(null);
   const [vista, setVista] = useState<VistaParte | null>(null);
   const [nota, setNota] = useState(""), [mensaje, setMensaje] = useState("");
-  const [ocupado, setOcupado] = useState<"" | "hecho" | "mensaje" | "foto">(""), [aviso, setAviso] = useState(""), [fallo, setFallo] = useState("");
+  const [ocupado, setOcupado] = useState<"" | "hecho" | "mensaje" | "foto" | "check">(""), [aviso, setAviso] = useState(""), [fallo, setFallo] = useState("");
   const camara = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -82,7 +85,7 @@ export default function ParteVivoPage() {
     servicio.current.ver().then(setVista).catch(() => setVista({ estado: "no_valido" }));
   }, [token]);
 
-  const hacer = useCallback(async (tipo: "hecho" | "mensaje" | "foto", fn: () => Promise<VistaParte>, ok: string) => {
+  const hacer = useCallback(async (tipo: "hecho" | "mensaje" | "foto" | "check", fn: () => Promise<VistaParte>, ok: string) => {
     if (ocupado) return;
     setOcupado(tipo); setFallo(""); setAviso("");
     try { setVista(await fn()); setAviso(ok); } catch (e) { setFallo(e instanceof Error ? e.message : "No se ha podido completar. Inténtalo otra vez."); }
@@ -121,6 +124,14 @@ export default function ParteVivoPage() {
       {v.obra && <p><strong>{v.obra}</strong></p>}
       {v.direccion && <p>{v.direccion}</p>}
       {v.direccion && <a className="btn btn-primary" href={mapaDe(v.direccion)} target="_blank" rel="noopener noreferrer"><MapPin size={17} strokeWidth={1.6} aria-hidden="true" />Cómo llegar</a>}
+    </section>}
+    {v.descripcion && <section className="parte-bloque" aria-labelledby="pv-descripcion"><h2 id="pv-descripcion">Qué hay que hacer</h2><p className="parte-texto">{v.descripcion}</p></section>}
+    {v.lista.length > 0 && <section className="parte-bloque parte-accion" aria-labelledby="pv-lista">
+      <h2 id="pv-lista">Lista · {textoProgreso(v.lista)}</h2>
+      <ul className="lista-puntos lista-puntos-ver parte-lista">{v.lista.map(p => <li key={p.id}><label>
+        <input type="checkbox" checked={p.done} disabled={Boolean(ocupado)} onChange={e => void hacer("check", () => servicio.current!.check(p.id, e.target.checked), "")} />
+        <span data-hecho={p.done || undefined}>{p.text}</span>
+      </label></li>)}</ul>
     </section>}
     {v.notas && <section className="parte-bloque" aria-labelledby="pv-notas"><h2 id="pv-notas">A tener en cuenta</h2><p className="parte-texto">{v.notas}</p></section>}
     {v.material.length > 0 && <section className="parte-bloque" aria-labelledby="pv-material"><h2 id="pv-material">Material en obra</h2><ul className="parte-material">{v.material.map(m => <li key={m}><Package size={16} strokeWidth={1.6} aria-hidden="true" />{m}</li>)}</ul></section>}
