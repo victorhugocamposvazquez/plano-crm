@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createDemo } from "@/lib/demo";
-import { describirDisponibilidad, disponibilidad, stockDePropuesta, aplicar3d, aspectos, cantidades, candidatos, colorDicho, elementoDe, escena3d, estadoInicial, interpretar3d, partidas3d, type Orden3d } from "@/lib/espacio3d";
+import { enCamino, porPedir, proveedorHabitual, describirDisponibilidad, disponibilidad, stockDePropuesta, aplicar3d, aspectos, cantidades, candidatos, colorDicho, elementoDe, escena3d, estadoInicial, interpretar3d, partidas3d, type Orden3d } from "@/lib/espacio3d";
 
 const { articles } = createDemo();
 const nombre = (o: Orden3d | null) => o && o.tipo === "poner" ? o.article.name : null;
@@ -88,5 +88,18 @@ describe("Propuesta en 3D con el catálogo", () => {
     expect(interpretar3d("¿cuántas estanterías tenemos en el almacén?", articles)).toMatchObject({ tipo: "stock", article: { code: "EQU-001" } });
     expect(interpretar3d("vamos al almacén", articles)).toEqual({ tipo: "espacio", espacio: "nave" });
     expect(interpretar3d("pon estanterías en la nave", articles)).toMatchObject({ tipo: "poner", elemento: "mueble" });
+  });
+
+  it("descuenta de lo que falta lo ya pedido para esta obra y recuerda el proveedor", () => {
+    const demo = createDemo(), proyecto = demo.projects[1].id, porcelanico = demo.articles.find(a => a.code === "PAV-002")!;
+    const nave = aplicar3d(aplicar3d(estadoInicial("nave"), interpretar3d("pon porcelánico en el suelo", articles)!, articles), interpretar3d("pon dos estanterías", articles)!, articles);
+    expect(porPedir(nave, demo.articles, demo.purchases, proyecto)).toEqual([expect.objectContaining({ falta: 36, pedido: 0, queda: 36 })]);
+    const pedidos = [...demo.purchases, { id: "p1", organization_id: demo.organization_id, project_id: proyecto, name: porcelanico.name, supplier: "Cerámicas Ártabro", assignee: "", assignee_id: null, quantity: 20, received_quantity: 0, delivered_quantity: 0, unit: "m²", status: "ordered" as const, article_id: porcelanico.id }];
+    expect(enCamino(proyecto, porcelanico.id, pedidos)).toBe(20);
+    expect(porPedir(nave, demo.articles, pedidos, proyecto)[0]).toMatchObject({ falta: 36, pedido: 20, queda: 16 });
+    expect(porPedir(nave, demo.articles, pedidos, demo.projects[0].id)[0]).toMatchObject({ pedido: 0, queda: 36 });
+    expect(proveedorHabitual(porcelanico.id, pedidos)).toBe("Cerámicas Ártabro");
+    expect(interpretar3d("pide lo que falta", articles)).toEqual({ tipo: "pedir" });
+    expect(interpretar3d("haz el pedido", articles)).toEqual({ tipo: "pedir" });
   });
 });

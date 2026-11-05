@@ -190,6 +190,24 @@ export function stockDePropuesta(estado: Estado3d, articles: Article[], purchase
   });
 }
 
+/** Lo pedido en Materiales para este proyecto y artículo que aún no ha llegado (previsto o pedido). */
+export function enCamino(projectId: string, articleId: string, purchases: Purchase[]): number {
+  return Math.round(purchases.filter(p => p.project_id === projectId && p.article_id === articleId && (p.status === "planned" || p.status === "ordered"))
+    .reduce((s, p) => s + Math.max(0, p.quantity - p.received_quantity), 0) * 1000) / 1000;
+}
+/** El último proveedor al que se pidió este artículo, para no tener que escribirlo. */
+export function proveedorHabitual(articleId: string, purchases: Purchase[]): string {
+  return [...purchases].reverse().find(p => p.article_id === articleId && p.supplier.trim())?.supplier ?? "";
+}
+export type PorPedir = { elemento: Elemento; article: Article; falta: number; pedido: number; queda: number };
+/** Lo que no cubre el almacén, menos lo que ya está pedido para esta obra: lo que queda por pedir. */
+export function porPedir(estado: Estado3d, articles: Article[], purchases: Purchase[], projectId: string): PorPedir[] {
+  return stockDePropuesta(estado, articles, purchases).filter(x => x.d.falta > 0).map(x => {
+    const pedido = enCamino(projectId, x.article.id, purchases);
+    return { elemento: x.elemento, article: x.article, falta: x.d.falta, pedido, queda: Math.max(0, Math.round((x.d.falta - pedido) * 1000) / 1000) };
+  });
+}
+
 // ── Órdenes ────────────────────────────────────────────────────────────────
 export type Vista = "overview" | "inside" | "focus";
 export type Movimiento = "left" | "right" | "closer" | "farther";
@@ -203,6 +221,7 @@ export type Orden3d =
   | { tipo: "vista"; vista: Vista; elemento?: Elemento }
   | { tipo: "mover"; mover: Movimiento }
   | { tipo: "stock"; article?: Article }
+  | { tipo: "pedir" }
   | { tipo: "total" } | { tipo: "incorporar" } | { tipo: "deshacer" };
 
 const palabrasElemento: Record<Elemento, RegExp> = {
@@ -227,6 +246,7 @@ export function interpretar3d(frase: string, articles: Article[]): Orden3d | nul
   if (!t) return null;
   if (/\b(cuanto va|cuanto es|cuanto cuesta|cuanto sale|cuanto llevamos|que llevamos|total|dime el total)\b/.test(t)) return { tipo: "total" };
   // «¿Hay stock?», «¿cuánto queda de porcelánico?», «¿qué tenemos en el almacén?». «Vamos al almacén» es cambiar de espacio.
+  if (/^(pide|pidelo|pidela|pidelos|pedir|pedimos|haz el pedido|haz los pedidos|encarga|encargalo|encargamos)\b|\b(pide lo que falta|pedir lo que falta|haz el pedido)\b/.test(t)) return { tipo: "pedir" };
   if (/\b(stock|existencias|queda|quedan|que tenemos|tenemos en|hay en (el )?almacen|en (el )?almacen|disponible|disponibles)\b/.test(t) && !/^(vamos|ve|ir|pasa|pasamos|llevame|cambia)\b/.test(t)) {
     const lista = elementos.flatMap(e => candidatos(articles, e));
     const article = buscarArticulo(t.replace(/\b(stock|existencias|queda|quedan|tenemos|almacen|nave|disponibles?|hay|cuanto|cuantos|cuantas)\b/g, " ").replace(genericas, " "), lista) ?? undefined;
