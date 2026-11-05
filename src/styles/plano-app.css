@@ -1734,3 +1734,9 @@ a.fin-due-row { text-decoration: none; color: inherit; }
   .almacen-movimientos li > span:last-child { grid-column: 2; }
 }
 .material-almacen { display: block; margin-top: 2px; color: var(--pl-muted); font-size: var(--pl-text-xs); font-weight: var(--pl-weight-regular); }
+/* Comparador de versiones: lo añadido en verde y lo retirado en rojo, sea cual sea el efecto en el precio. Lo modificado queda neutro. */
+.pv-change-icon[data-cambio="added"], .comparison-icon[data-cambio="added"] { background: var(--pl-success-bg); color: var(--pl-success); }
+.pv-change-icon[data-cambio="removed"], .comparison-icon[data-cambio="removed"] { background: var(--pl-danger-bg); color: var(--pl-danger); }
+.pv-change-delta[data-cambio="added"], .comparison-delta[data-cambio="added"], .comparison-impact[data-cambio="added"] > strong { color: var(--pl-success); }
+.pv-change-delta[data-cambio="removed"], .comparison-delta[data-cambio="removed"], .comparison-impact[data-cambio="removed"] > strong { color: var(--pl-danger); }
+.pv-change-delta:not([data-cambio]), .comparison-delta:not([data-cambio]) { color: var(--pl-ink); }

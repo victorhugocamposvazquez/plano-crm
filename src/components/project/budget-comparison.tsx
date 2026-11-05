@@ -16,6 +16,8 @@ function fieldValue(item: BudgetItem, field: keyof BudgetItem) {
   return String(item[field]);
 }
 
+/** Color por lo que pasa con la partida, no por el precio: lo añadido en verde, lo retirado en rojo; lo modificado, neutro. */
+const cambio = (kind: string) => (kind === "added" ? "added" : kind === "removed" ? "removed" : undefined);
 function explanation(change: ItemChange) {
   const { before, after, fields, kind } = change;
   if (kind === "added") return after?.inclusion === "included" ? "Se añade este trabajo al presupuesto." : after?.inclusion === "optional" ? "Se añade una alternativa. Su precio no se suma al presupuesto." : "Se añade como trabajo excluido. Su precio no se suma al presupuesto.";
@@ -89,9 +91,9 @@ export function BudgetComparison({ before, after, edits = [], editStatus = "read
       {changes.map(change => {
         const item = (change.before ?? change.after)!, diferencia = contribution(change.after).total - contribution(change.before).total, edit = latest.get(change.id);
         return <article key={change.id} className="pv-change">
-          <span className="pv-change-icon" data-tone={diferencia > 0 ? "up" : diferencia < 0 ? "down" : undefined} aria-hidden="true">{change.kind === "added" ? "+" : change.kind === "removed" ? "−" : diferencia > 0 ? "↑" : diferencia < 0 ? "↓" : "="}</span>
+          <span className="pv-change-icon" data-cambio={cambio(change.kind)} aria-hidden="true">{change.kind === "added" ? "+" : change.kind === "removed" ? "−" : diferencia > 0 ? "↑" : diferencia < 0 ? "↓" : "="}</span>
           <div><strong>{item.description}</strong><p>{explanation(change)}</p><small>{edit ? <>Última edición: <time dateTime={edit.occurred_at}>{versionTimestamp(edit.occurred_at)}</time> · {edit.actor_name}</> : `Se cambió en la V${after.number}`}</small></div>
-          {diferencia !== 0 && <span className="pl-mono pv-change-delta" data-tone={diferencia > 0 ? "up" : "down"}>{diferencia > 0 ? "+" : "−"}{money(Math.abs(diferencia))}</span>}
+          {diferencia !== 0 && <span className="pl-mono pv-change-delta" data-cambio={cambio(change.kind)}>{diferencia > 0 ? "+" : "−"}{money(Math.abs(diferencia))}</span>}
         </article>;
       })}
       {comparison.notesChanged && <article className="pv-change"><span className="pv-change-icon" aria-hidden="true">=</span><div><strong>Condiciones</strong><p>Cambia el texto de las condiciones.</p></div></article>}
@@ -116,10 +118,10 @@ export function BudgetComparison({ before, after, edits = [], editStatus = "read
         const previous = contribution(change.before), next = contribution(change.after), difference = next.total - previous.total;
         const kind = change.kind === "changed" ? "Partida modificada" : change.kind === "removed" ? "Partida eliminada" : change.after?.inclusion === "optional" ? "Alternativa añadida" : change.after?.inclusion === "excluded" ? "Partida excluida añadida" : "Partida añadida";
         return <article key={change.id} className="comparison-change" aria-label={`Cambios en ${item.description}`}>
-          <span className="comparison-icon" data-tone={difference > 0 ? "up" : difference < 0 ? "down" : undefined} aria-hidden="true">{change.kind === "added" ? "+" : change.kind === "removed" ? "−" : difference > 0 ? "↑" : difference < 0 ? "↓" : "="}</span>
+          <span className="comparison-icon" data-cambio={cambio(change.kind)} aria-hidden="true">{change.kind === "added" ? "+" : change.kind === "removed" ? "−" : difference > 0 ? "↑" : difference < 0 ? "↓" : "="}</span>
           <header><span className="comparison-overline">{kind}</span><h4>{item.description}</h4><p>{explanation(change)}</p></header>
-          {difference !== 0 && <strong className="comparison-delta pl-mono" data-tone={difference > 0 ? "up" : "down"}>{difference > 0 ? "+" : "−"}{money(Math.abs(difference))}</strong>}
-          <footer className="comparison-impact" data-tone={tone(difference)}><span>Impacto en el total</span><strong>{impact(difference)}{difference !== 0 && " · con IVA"}</strong></footer>
+          {difference !== 0 && <strong className="comparison-delta pl-mono" data-cambio={cambio(change.kind)}>{difference > 0 ? "+" : "−"}{money(Math.abs(difference))}</strong>}
+          <footer className="comparison-impact" data-tone={change.kind === "changed" ? tone(difference) : undefined} data-cambio={cambio(change.kind)}><span>Impacto en el total</span><strong>{impact(difference)}{difference !== 0 && " · con IVA"}</strong></footer>
           <ItemEditDate edit={latest.get(change.id)} version={after} status={editStatus}/>
           <details className="comparison-calculation"><summary>Ver V{before.number} y V{after.number} en detalle</summary><Pair beforeLabel={beforeLabel} afterLabel={afterLabel} longText={fields.some(field => field === "description" || field === "chapter")} before={<Snapshot item={change.before} other={change.after} fields={fields} side="before"/>} after={<Snapshot item={change.after} other={change.before} fields={fields} side="after"/>}/><details className="comparison-calculation"><summary>Cálculo e impuestos</summary><Pair beforeLabel={beforeLabel} afterLabel={afterLabel} before={<ItemCalculation item={change.before}/>} after={<ItemCalculation item={change.after}/>}/></details></details>
         </article>;
