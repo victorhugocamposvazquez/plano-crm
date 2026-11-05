@@ -3620,3 +3620,8 @@ a.flow-back, a.flow-back:hover { text-decoration: none; }
 @media (prefers-reduced-motion: reduce) { .pulse-dot::after { animation: none; opacity: 0.35; } }
 .budget-history-card[data-actual] { border-color: var(--pl-success); box-shadow: inset 4px 0 0 var(--pl-success); }
 .budget-version-picker .current-badge { align-self: flex-start; }
+/* Tarea nueva: atajos de fecha encima del calendario. */
+.nueva-tarea { display: flex; flex-direction: column; gap: var(--pl-space-3); }
+.nueva-tarea textarea { resize: vertical; min-height: 64px; font: inherit; }
+.nueva-tarea-atajos { display: flex; flex-wrap: wrap; gap: var(--pl-space-2); margin-bottom: var(--pl-space-2); }
+.nueva-tarea-atajos .segment { flex: 0 0 auto; min-height: var(--pl-touch); }
