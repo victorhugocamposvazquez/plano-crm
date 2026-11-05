@@ -440,10 +440,11 @@ export function ChatPanel({ projectId, messages, title, subtitle, onClose }: { p
               <button type="button" className="composer-pop-item" disabled={!conteoCat.v} onClick={() => compartir("v")}><Receipt size={16} strokeWidth={1.7} aria-hidden="true" />Presupuesto</button>
               <button type="button" className="composer-pop-item" disabled={!conteoCat.t} onClick={() => compartir("t")}><ListChecks size={16} strokeWidth={1.7} aria-hidden="true" />Tarea</button>
               <button type="button" className="composer-pop-item" onClick={compartirUbicacion}><MapPin size={16} strokeWidth={1.7} aria-hidden="true" />Ubicación de la obra</button>
-              <button type="button" className="composer-pop-item" onClick={() => { setAdjuntarAbierto(false); setEnviarParte(true); }}><MessageCircle size={16} strokeWidth={1.7} aria-hidden="true" />Parte a un operario por WhatsApp</button>
+              <button type="button" className="composer-pop-item" onClick={() => { setAdjuntarAbierto(false); setEnviarParte(true); }}><MessageCircle size={16} strokeWidth={1.7} aria-hidden="true" />Enviar tarea por WhatsApp</button>
             </Popover>
             <input ref={attachInput} type="file" accept={adjuntables.join(",")} onChange={e => { void adjuntar(e.target.files?.[0]); e.target.value = ""; }} style={{ display: "none" }} aria-hidden="true" tabIndex={-1} />
             <input ref={fotoInput} type="file" accept="image/*" capture="environment" onChange={e => { void adjuntar(e.target.files?.[0]); e.target.value = ""; }} style={{ display: "none" }} aria-hidden="true" tabIndex={-1} />
+            <button type="button" className="composer-tool composer-wa" aria-label="Enviar una tarea por WhatsApp a un operario" title="Enviar tarea por WhatsApp" onClick={() => setEnviarParte(true)}><MessageCircle size={18} strokeWidth={1.7} aria-hidden="true" /><span className="composer-wa-texto" aria-hidden="true">WhatsApp</span></button>
             <Popover open={mencionAbierta} onClose={() => setMencionAbierta(false)} side="top" panelClassName="composer-pop" trigger={
               <button type="button" className="composer-tool composer-at" aria-label="Mencionar a alguien" title="Mencionar a alguien" aria-expanded={mencionAbierta} onClick={() => setMencionAbierta(v => !v)}><AtSign size={18} strokeWidth={1.7} aria-hidden="true" /></button>
             }>

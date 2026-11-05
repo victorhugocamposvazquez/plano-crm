@@ -1871,3 +1871,10 @@ button.article-open:focus-visible { outline: 2px solid var(--pl-blue); outline-o
 .parte-enviado .operario-estado:not([data-tone]) { background: var(--pl-raised); color: var(--pl-muted); }
 .parte-enviado-acciones { display: inline-flex; gap: 4px; }
 .parte-enviado-acciones .btn { min-height: 34px; padding: 0 10px; font-size: var(--pl-text-sm); }
+/* Chat: enviar una tarea por WhatsApp a un operario, a la vista junto al clip. */
+.composer-wa { color: var(--pl-success); }
+.composer-wa-texto { display: none; }
+@media (min-width: 768px) {
+  .composer .composer-wa { width: auto; gap: 6px; padding: 0 10px; font-size: var(--pl-text-sm); font-weight: var(--pl-weight-medium); }
+  .composer-wa-texto { display: inline; }
+}
