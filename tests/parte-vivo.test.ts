@@ -36,15 +36,15 @@ describe("Parte vivo por WhatsApp", () => {
     const { ws, tarea, token } = conParte();
     const a = parteHecho(ws, token, "Quedan dos sacos.", ahora, uuid);
     expect(a.tasks.find(t => t.id === tarea.id)!.status).toBe("done");
-    const mensajes = a.messages.filter(m => m.author_name === "Manuel Rey · parte");
+    const mensajes = a.messages.filter(m => m.author_name === "Manuel Rey · por enlace");
     expect(mensajes.map(m => m.body)).toEqual([`Hecho: ${tarea.title}\nQuedan dos sacos.`]);
     expect(parteHecho(a, token, "", ahora, uuid).messages.length).toBe(a.messages.length);
-    expect(estadoEnvio(a.task_shares!.find(s => s.token === token)!, ahora).texto).toBe("Hecho desde el parte");
+    expect(estadoEnvio(a.task_shares!.find(s => s.token === token)!, ahora).texto).toBe("Hecha por el operario");
   });
   it("lleva los mensajes al chat con límite, y las fotos a Planos y fotos", () => {
     const { ws, tarea, token } = conParte();
     let w = parteMensaje(ws, token, "  ¿Dejo el escombro en el portal?  ", ahora, uuid);
-    expect(w.messages.at(-1)).toMatchObject({ project_id: tarea.project_id, body: "¿Dejo el escombro en el portal?", author_name: "Manuel Rey · parte" });
+    expect(w.messages.at(-1)).toMatchObject({ project_id: tarea.project_id, body: "¿Dejo el escombro en el portal?", author_name: "Manuel Rey · por enlace" });
     expect(() => parteMensaje(w, token, "   ", ahora, uuid)).toThrow("Escribe el mensaje.");
     w = parteFoto(w, token, { path: `${w.organization_id}/${tarea.project_id}/x`, mime: "image/jpeg", size: 120000, nombre: "Antes" }, ahora, uuid);
     expect(w.documents.at(-1)).toMatchObject({ name: `Antes · ${tarea.title}`, category: "during" });

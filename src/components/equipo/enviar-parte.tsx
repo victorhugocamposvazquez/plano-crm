@@ -1,6 +1,6 @@
 "use client";
 import { useEffect, useMemo, useState } from "react";
-import { Check, Copy, Link2, Loader2, MessageCircle } from "lucide-react";
+import { Check, Copy, Link2, Loader2, MessageCircle, Plus } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,7 @@ const cifra = (n: number) => new Intl.NumberFormat("es-ES", { maximumFractionDig
  * el operario ve la tarea al día, «Cómo llegar», a quién llamar y el material, y puede marcarla hecha, escribir y subir fotos.
  * Si no se puede crear (por ejemplo, sin la migración), se envía el parte de solo lectura. Sin `task`, primero se elige la tarea.
  */
-export function EnviarParte({ open, projectId, task, onClose }: { open: boolean; projectId: string; task?: Task | null; onClose: () => void }) {
+export function EnviarParte({ open, projectId, task, onClose, onNuevaTarea }: { open: boolean; projectId: string; task?: Task | null; onClose: () => void; onNuevaTarea?: () => void }) {
   const { data, actor, notify, send, busy } = useWorkspace();
   const project = data.projects.find(p => p.id === projectId);
   const pendientes = useMemo(() => data.tasks.filter(t => t.project_id === projectId && t.status === "pending").sort((a, b) => a.due_date.localeCompare(b.due_date)), [data.tasks, projectId]);
@@ -61,7 +61,7 @@ export function EnviarParte({ open, projectId, task, onClose }: { open: boolean;
       const token = ws.task_shares?.find(x => x.id === id)?.token;
       if (!token) throw new Error("sin token");
       setVivo(enlaceVivo(window.location.origin, token));
-    } catch { setSoloLectura(true); notify("No se ha podido crear el parte con respuesta: se enviará el de solo lectura (sin marcar hecho ni fotos)."); }
+    } catch { setSoloLectura(true); notify("No se ha podido crear el enlace con respuesta: se enviará uno de solo lectura (sin marcar hecha ni fotos)."); }
     finally { setCreando(false); }
   }
   const whatsapp = parte ? whatsappParte(operario?.phone ?? "", parte, enlace) : "";
@@ -69,18 +69,19 @@ export function EnviarParte({ open, projectId, task, onClose }: { open: boolean;
   function recordarTelefono() { try { if (telefono.trim()) localStorage.setItem(claveTelefono, telefono.trim()); } catch { /* sin almacenamiento */ } }
   async function copiar() {
     if (!enlace) return;
-    try { await navigator.clipboard.writeText(enlace); setCopiado(true); notify("Enlace del parte copiado"); } catch { notify("No se ha podido copiar. Mantén pulsado el enlace para copiarlo."); }
+    try { await navigator.clipboard.writeText(enlace); setCopiado(true); notify("Enlace de la tarea copiado"); } catch { notify("No se ha podido copiar. Mantén pulsado el enlace para copiarlo."); }
   }
 
-  return <Modal open={open} onClose={onClose} title="Enviar parte por WhatsApp" kicker={project?.name} footer={<>
+  return <Modal open={open} onClose={onClose} title="Enviar tarea por WhatsApp" kicker={project?.name} footer={<>
     {!enlace && parte && <Button variant="primary" onClick={() => void crearVivo()} disabled={creando || busy}>{creando ? <Loader2 size={15} className="spin" aria-hidden="true" /> : <Link2 size={15} strokeWidth={1.7} aria-hidden="true" />}{creando ? "Creando…" : "Crear el enlace"}</Button>}
     {enlace && <Button variant="secondary" onClick={() => void copiar()}>{copiado ? <Check size={15} strokeWidth={1.8} aria-hidden="true" /> : <Copy size={15} strokeWidth={1.7} aria-hidden="true" />}{copiado ? "Copiado" : "Copiar enlace"}</Button>}
-    {enlace && whatsapp && <a className="btn btn-primary" href={whatsapp} target="_blank" rel="noopener noreferrer" onClick={() => { recordarTelefono(); notify(`Parte enviado${operario ? ` a ${operario.name}` : ""}`); onClose(); }}><MessageCircle size={16} strokeWidth={1.7} aria-hidden="true" />Abrir WhatsApp</a>}
+    {enlace && whatsapp && <a className="btn btn-primary" href={whatsapp} target="_blank" rel="noopener noreferrer" onClick={() => { recordarTelefono(); notify(`Tarea enviada${operario ? ` a ${operario.name}` : ""}`); onClose(); }}><MessageCircle size={16} strokeWidth={1.7} aria-hidden="true" />Abrir WhatsApp</a>}
   </>}>
     <div className="form" style={{ maxWidth: "none" }}>
       {!task && (pendientes.length
         ? <div className="field"><span>Tarea</span><Select label="Tarea" value={tareaId} onChange={setTareaId} options={pendientes.map(t => ({ value: t.id, label: t.title, hint: `${t.trade} · ${t.due_date.split("-").reverse().join("/")}` }))} placeholder="Elige la tarea" /></div>
-        : <p className="muted text-sm" style={{ margin: 0 }}>No hay tareas pendientes en este proyecto. Crea una y vuelve a enviarla.</p>)}
+        : <p className="muted text-sm" style={{ margin: 0 }}>No hay tareas pendientes en este proyecto.</p>)}
+      {!task && onNuevaTarea && <button type="button" className="chip enviar-nueva" onClick={onNuevaTarea}><Plus size={14} strokeWidth={1.8} aria-hidden="true" />Crear una tarea nueva y enviarla</button>}
       {tarea && <>
         <div className="field"><span>Para</span><Select label="Para" value={para} onChange={setPara} options={[{ value: "", label: "Elegir en WhatsApp", hint: "Sin teléfono guardado" }, ...operarios.map(o => ({ value: o.id, label: o.name, hint: [o.trades.join(", "), o.phone || "sin teléfono", !o.available && "no disponible"].filter(Boolean).join(" · ") }))]} placeholder="Elegir en WhatsApp" /></div>
         {operario && !operario.phone && <p className="muted text-sm" style={{ margin: 0 }}>{operario.name} no tiene teléfono en su ficha: WhatsApp te dejará elegir a quién enviarlo.</p>}
@@ -88,7 +89,7 @@ export function EnviarParte({ open, projectId, task, onClose }: { open: boolean;
         <label className="field"><span>Tu teléfono, por si tiene dudas</span><input type="tel" inputMode="tel" value={telefono} onChange={e => setTelefono(e.target.value)} placeholder="+34 600 00 00 00" maxLength={40} /></label>
         <label className="field"><span>A tener en cuenta</span><textarea rows={3} value={notas} onChange={e => setNotas(e.target.value)} maxLength={800} placeholder="Llave en portería, aparcar en la calle de atrás, trae escalera…" /></label>
         {materialObra.length > 0 && <fieldset className="parte-elegir-material">
-          <legend>Material que ve en el parte</legend>
+          <legend>Material que verá</legend>
           {materialObra.map(m => <label key={m.id} className="almacen-check"><input type="checkbox" checked={material.includes(m.id)} onChange={e => setMaterial(l => e.target.checked ? [...l, m.id] : l.filter(x => x !== m.id))} /><span>{m.texto}</span></label>)}
         </fieldset>}
         {parte && <details className="editor-advanced"><summary>Ver el mensaje</summary><pre className="parte-previa">{mensajeParte(parte, "[enlace al parte]")}</pre></details>}
@@ -108,10 +109,10 @@ export function PartesEnviados({ taskId }: { taskId: string }) {
   if (!lista.length) return null;
   const puede = can(actor.role, "parte.revoke");
   const fecha = (iso: string) => new Intl.DateTimeFormat("es-ES", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(iso));
-  async function copiar(token: string) { try { await navigator.clipboard.writeText(enlaceVivo(window.location.origin, token)); notify("Enlace del parte copiado"); } catch { notify("No se ha podido copiar el enlace."); } }
-  async function anular(id: string) { try { await send({ type: "parte.revoke", id }); notify("Parte anulado: el enlace ya no funciona."); } catch (e) { notify(e instanceof Error ? e.message : "No se ha podido anular."); } }
-  return <section className="partes-enviados" aria-label="Partes enviados">
-    <h4>Partes enviados</h4>
+  async function copiar(token: string) { try { await navigator.clipboard.writeText(enlaceVivo(window.location.origin, token)); notify("Enlace de la tarea copiado"); } catch { notify("No se ha podido copiar el enlace."); } }
+  async function anular(id: string) { try { await send({ type: "parte.revoke", id }); notify("Enlace anulado: ya no funciona."); } catch (e) { notify(e instanceof Error ? e.message : "No se ha podido anular."); } }
+  return <section className="partes-enviados" aria-label="Envíos por WhatsApp">
+    <h4>Enviada por WhatsApp</h4>
     {lista.map(s => { const e = estadoEnvio(s, ahora), activo = !s.revoked_at && s.expires_at > ahora; return <div key={s.id} className="parte-enviado">
       <span><strong>{s.snapshot.para || "Sin destinatario"}</strong><small>{fecha(s.created_at)} · {s.created_by_name.split(" · ")[0]}{s.photos_count ? ` · ${s.photos_count} ${s.photos_count === 1 ? "foto" : "fotos"}` : ""}{s.messages_count ? ` · ${s.messages_count} ${s.messages_count === 1 ? "mensaje" : "mensajes"}` : ""}</small></span>
       <span className="operario-estado" data-tone={e.tono === "success" ? "success" : e.tono === "warning" ? "warning" : undefined}>{e.texto}</span>

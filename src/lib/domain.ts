@@ -276,11 +276,11 @@ export function applyCommand(previous: Workspace, input: Command, actor: Actor, 
       const token = (uuid() + uuid()).replace(/-/g, "").toLowerCase();
       const caduca = new Date(now); caduca.setDate(caduca.getDate() + 30);
       (state.task_shares ??= []).push({ id: command.id, organization_id: org, task_id: t.id, operario_id: command.operario_id ?? null, token, snapshot: command.snapshot, created_by_name: actor.name, created_at: now, expires_at: caduca.toISOString(), revoked_at: null, done_at: null, seen_at: null, messages_count: 0, photos_count: 0 });
-      projectId = t.project_id; activity = `Parte enviado: ${t.title}`; break;
+      projectId = t.project_id; activity = `Tarea enviada por WhatsApp: ${t.title}`; break;
     }
     case "parte.revoke": {
-      const sh = (state.task_shares ?? []).find(x => x.id === command.id && !x.revoked_at); if (!sh) throw new Error("Parte no encontrado.");
-      sh.revoked_at = now; const t = state.tasks.find(x => x.id === sh.task_id); projectId = t?.project_id ?? null; activity = `Parte anulado: ${t?.title ?? ""}`; break;
+      const sh = (state.task_shares ?? []).find(x => x.id === command.id && !x.revoked_at); if (!sh) throw new Error("Envío no encontrado.");
+      sh.revoked_at = now; const t = state.tasks.find(x => x.id === sh.task_id); projectId = t?.project_id ?? null; activity = `Enlace anulado: ${t?.title ?? ""}`; break;
     }
     case "task.create": {
       const { type: _, ...fields } = command; void _;

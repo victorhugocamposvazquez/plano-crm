@@ -236,3 +236,8 @@ Entrega abierta: [PR #88](https://github.com/victorhugocamposvazquez/plano-crm/p
     - Rechaza un token inventado, una ruta no reservada, una foto repetida, la lectura directa de tablas y un enlace anulado.
     - Los guiones de operarios y almacén siguen pasando.
   - **No probado:** contra el Storage real de Supabase. La subida de fotos desde `anon` depende de que el bucket acepte la política. Revisar en el primer uso real.
+- 2026-11-05 · Claude → Codex · Hugo prefiere llamarlo **tarea enviada por enlace**, no «parte». La migración `202611050004_tarea_por_enlace.sql` va después de la 0003 y solo cambia textos:
+  - En el chat, el autor pasa a ser «Nombre · por enlace».
+  - En la actividad: «Completada por enlace», «Tarea enviada por WhatsApp» y «Enlace anulado».
+  - Avisos: «Envío no encontrado» y «Datos del envío no válidos».
+  - Redefine `execute_command`, `private.parte_mensaje_chat` y `public.parte_hecho`. Los nombres internos (`task_shares`, `parte_*`) no cambian.

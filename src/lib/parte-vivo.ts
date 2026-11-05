@@ -17,7 +17,7 @@ function parte(ws: Workspace, token: string, ahora: string): TaskShare | undefin
   if (!tokenValido(token)) return undefined;
   return (ws.task_shares ?? []).find(s => s.token === token && !s.revoked_at && s.expires_at > ahora && ws.tasks.some(t => t.id === s.task_id));
 }
-const quien = (s: TaskShare, ws: Workspace) => `${s.snapshot.para || ws.tasks.find(t => t.id === s.task_id)?.assignee || "Operario"} · parte`.slice(0, 120);
+const quien = (s: TaskShare, ws: Workspace) => `${s.snapshot.para || ws.tasks.find(t => t.id === s.task_id)?.assignee || "Operario"} · por enlace`.slice(0, 120);
 
 /** Lo que enseña la página: la tarea al día y lo escrito al enviarla. Nunca el cliente ni precios. */
 export function vistaParte(ws: Workspace, token: string, ahora: string): VistaParte {
@@ -44,7 +44,7 @@ export function parteHecho(previo: Workspace, token: string, nota: string, ahora
     t.status = "done"; s.done_at = ahora;
     const n = nota.trim().slice(0, 1000);
     alChat(ws, s, `Hecho: ${t.title}${n ? `\n${n}` : ""}`, ahora, uuid);
-    ws.activities.unshift({ id: uuid(), organization_id: ws.organization_id, project_id: t.project_id, text: `Completada desde el parte: ${t.title}`, actor_name: s.snapshot.para || "Operario", created_at: ahora });
+    ws.activities.unshift({ id: uuid(), organization_id: ws.organization_id, project_id: t.project_id, text: `Completada por enlace: ${t.title}`, actor_name: s.snapshot.para || "Operario", created_at: ahora });
   }
   return ws;
 }
@@ -77,7 +77,7 @@ export function parteFoto(previo: Workspace, token: string, foto: { path: string
 export function estadoEnvio(s: TaskShare, ahora: string): { texto: string; tono: "success" | "info" | "muted" | "warning" } {
   if (s.revoked_at) return { texto: "Anulado", tono: "muted" };
   if (s.expires_at <= ahora) return { texto: "Caducado", tono: "muted" };
-  if (s.done_at) return { texto: "Hecho desde el parte", tono: "success" };
+  if (s.done_at) return { texto: "Hecha por el operario", tono: "success" };
   if (s.seen_at) return { texto: "Abierto", tono: "info" };
   return { texto: "Sin abrir", tono: "warning" };
 }

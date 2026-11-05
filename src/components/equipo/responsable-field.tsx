@@ -51,6 +51,6 @@ export function ResponsableField({ value, onChange, oficio, mensaje }: { value: 
   return <>
     <div className="field"><span>Responsable</span><Select label="Responsable" value={value.valor} onChange={v => onChange({ valor: v, libre: v === "otra" ? value.libre : "" })} options={opciones} placeholder="Sin asignar" /></div>
     {value.valor === "otra" && <label className="field"><span>Quién</span><input type="text" value={value.libre} onChange={e => onChange({ ...value, libre: e.target.value })} placeholder="Electricista de Ferrer, cuadrilla de pintura…" maxLength={120} /></label>}
-    {operario && <OperarioCard operario={operario} compacta mensaje={mensaje} />}
+    {operario && <OperarioCard operario={operario} compacta mensaje={mensaje} sinWhatsapp />}
   </>;
 }
