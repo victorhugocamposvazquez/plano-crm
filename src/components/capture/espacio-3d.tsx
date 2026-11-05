@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
 import { budgetHistory } from "@/lib/budget-history";
 import { can, lineTotal, money, totals, type Project } from "@/lib/domain";
-import { decir, escuchar, type Recognition } from "@/lib/voz";
+import { decir, escuchar, type Escucha } from "@/lib/voz";
 import {
   aplicar3d, aspectos, cantidades, candidatos, color, coloresDe, conNombre, describirDims, describirDisponibilidad, describirLibre, disponibilidad, elementoDe, elementos, escena3d, espacios, estadoInicial, huecos, porPedir, proveedorHabitual, stockDePropuesta, type PorPedir,
   interpretar3d, nombreElemento, partidas3d, unidadesQueCaben, type Elemento, type Estado3d, type Orden3d, type TipoEspacio, type Vista
@@ -89,7 +89,7 @@ export function Espacio3d({ project, budgetId }: { project: Project; budgetId: s
   const escena = useMemo(() => escena3d(estado, looks.mueble), [forma]);
   const seleccionVisor = useMemo(() => ({ suelo: looks.suelo!.id, paredes: looks.paredes!.id, mueble: looks.mueble?.id ?? "ninguno" }), [looks]);
 
-  const host = useRef<HTMLDivElement>(null), visor = useRef<Visor | null>(null), rec = useRef<Recognition | null>(null);
+  const host = useRef<HTMLDivElement>(null), visor = useRef<Visor | null>(null), rec = useRef<Escucha | null>(null);
   const assets = useRef<VisualAsset[]>([]);
   const ultimo = useRef({ seleccionVisor, sel, vista });
   ultimo.current = { seleccionVisor, sel, vista };
@@ -199,12 +199,12 @@ export function Espacio3d({ project, budgetId }: { project: Project; budgetId: s
   };
 
   function alternarVoz() {
-    if (escuchando) { rec.current?.stop(); setEscuchando(false); return; }
+    if (escuchando) { rec.current?.parar(); rec.current = null; setEscuchando(false); return; }
     const r = escuchar({ alOir: t => atenderRef.current(t), alParcial: setOido, alTerminar: () => { setEscuchando(false); rec.current = null; }, alError: notify });
     if (!r) { notify("Este navegador no tiene dictado. Usa Chrome, Edge o Safari, o escribe la orden."); return; }
     rec.current = r; setEscuchando(true); setRespuesta(`Te escucho. ${ayuda}`);
   }
-  useEffect(() => () => rec.current?.stop(), []);
+  useEffect(() => () => rec.current?.parar(), []);
 
   function elegirEspacio(tipo: TipoEspacio) { if (tipo !== estado.tipo) { cambiar(aplicar3d(estado, { tipo: "espacio", espacio: tipo }, data.articles)); setVista("overview"); setRespuesta(""); } }
   function guardarMedidas() {
