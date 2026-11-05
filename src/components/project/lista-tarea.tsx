@@ -39,8 +39,9 @@ function accionesSubtarea(p: PuntoLista, { puedeAsignar, onAsignar, onQuitar, on
 /**
  * Editor de las subtareas de una tarea, tipo Trello: añadir con Intro (o pegar varias líneas de golpe), marcar, corregir y quitar.
  * Con `puedeAsignar` (Administración), cada subtarea se asigna a un operario o a una persona; si no, se ve a quién va.
+ * Sin `marcar` (en una plantilla) no hay casilla: solo se escriben, ordenan y quitan.
  */
-export function ChecklistEditor({ value, onChange, puedeAsignar = false }: { value: PuntoLista[]; onChange: (l: PuntoLista[]) => void; puedeAsignar?: boolean }) {
+export function ChecklistEditor({ value, onChange, puedeAsignar = false, marcar = true }: { value: PuntoLista[]; onChange: (l: PuntoLista[]) => void; puedeAsignar?: boolean; marcar?: boolean }) {
   const { data } = useWorkspace();
   const [nuevo, setNuevo] = useState("");
   const [asignando, setAsignando] = useState<PuntoLista | null>(null);
@@ -59,7 +60,7 @@ export function ChecklistEditor({ value, onChange, puedeAsignar = false }: { val
   return <div className="lista-editor">
     {value.length > 0 && <ul className="lista-puntos">
       {value.map((p, i) => <li key={p.id}>
-        <input type="checkbox" checked={p.done} onChange={e => onChange(value.map(x => x.id === p.id ? { ...x, done: e.target.checked } : x))} aria-label={`Hecho: ${p.text}`} />
+        {marcar && <input type="checkbox" checked={p.done} onChange={e => onChange(value.map(x => x.id === p.id ? { ...x, done: e.target.checked } : x))} aria-label={`Hecho: ${p.text}`} />}
         <input type="text" className="lista-texto" value={p.text} maxLength={300} onChange={e => onChange(value.map(x => x.id === p.id ? { ...x, text: e.target.value } : x))} onBlur={() => { if (!p.text.trim()) onChange(value.filter(x => x.id !== p.id)); }} aria-label={`Subtarea ${i + 1}`} data-hecho={p.done || undefined} />
         <Asignada p={p} onCambiar={puedeAsignar ? () => setAsignando(p) : undefined} />
         <Menu size="sm" label={`Opciones de ${p.text || "la subtarea"}`} items={accionesSubtarea(p, { puedeAsignar, onAsignar: () => setAsignando(p), onQuitar: () => cambiarQuien(p.id, ""), onEliminar: () => onChange(value.filter(x => x.id !== p.id)) })} />

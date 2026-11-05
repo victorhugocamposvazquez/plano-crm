@@ -1942,3 +1942,13 @@ button.subtarea-quien:hover { background: var(--pl-line); color: var(--pl-ink); 
 .plantillas-tarea { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 6px; }
 .plantillas-tarea .menu .btn { min-height: 40px; gap: 6px; }
 .plantilla-sugerida { border-color: var(--pl-blue); color: var(--pl-blue); font-weight: var(--pl-weight-medium); }
+.plantilla-aviso { margin: 0; padding: 10px 12px; border-radius: var(--pl-radius-control); background: var(--pl-soft); color: var(--pl-muted); font-size: var(--pl-text-sm); }
+.plantillas-gestion { display: flex; flex-direction: column; gap: 22px; }
+.plantillas-gestion h4 { margin: 0 0 6px; font-size: var(--pl-text-ui); font-weight: var(--pl-weight-medium); }
+.plantillas-gestion p { margin: 0 0 8px; }
+.plantillas-gestion ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; }
+.plantillas-gestion li { display: flex; align-items: center; justify-content: space-between; gap: 10px; min-height: 52px; padding: 6px 0; border-top: var(--pl-hairline) solid var(--pl-line); }
+.plantillas-gestion li > span:first-child { display: flex; flex-direction: column; min-width: 0; }
+.plantillas-gestion li small { color: var(--pl-muted); font-size: var(--pl-text-sm); }
+.plantillas-acciones { display: flex; align-items: center; gap: 2px; flex-shrink: 0; }
+.plantillas-gestion .btn { flex-shrink: 0; gap: 6px; }

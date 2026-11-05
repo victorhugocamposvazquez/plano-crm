@@ -253,3 +253,10 @@ Entrega abierta: [PR #88](https://github.com/victorhugocamposvazquez/plano-crm/p
   - **Al guardar quien no es Administración:** `private.subtareas` conserva el responsable que ya tenía cada subtarea (por id) e ignora lo que llegue de asignación.
   - **El operario por enlace** marca subtareas, pero no las asigna.
   - **Probado** en Postgres 18 local, junto con los guiones anteriores.
+- 2026-11-05 · Claude → Codex · **Plantillas de tarea propias de la empresa** (rama `claude/plantillas-empresa`), a petición de Hugo.
+  - **Migración** `202611050007_plantillas_tarea.sql`, **sin aplicar**. Va después de la 0006 y redefine `execute_command` entera.
+  - **Tabla `task_templates`:** nombre (único por empresa sin distinguir mayúsculas), oficio, subtareas (`text[]`, de 1 a 50) y quién la guardó. Lectura para miembros.
+  - **Comandos:** `template.create`, `template.update` y `template.delete`. Los usan administración, oficina y jefatura de obra; el equipo de obra y quien solo mira, no.
+  - **Plantillas de base:** las 8 siguen fijas en `src/lib/plantillas-tarea.ts`. Una propia con el mismo nombre que una de base la sustituye en la interfaz.
+  - `loadWorkspace` tolera que la tabla aún no exista.
+  - **Probado** en Postgres 18 local (crear, nombre repetido, vacía, corregir como jefe de obra, equipo sin permiso, borrar y actividad), junto con los guiones de subtareas, lista, operarios, enlace y almacén.

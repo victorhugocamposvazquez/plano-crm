@@ -79,6 +79,10 @@ export function createDemo(): Workspace {
       { id: demoId(902), organization_id: org, name: "Lucía Paz", phone: "+34 611 223 344", email: "lucia.paz@example.com", company: "Autónoma", trades: ["Pintura"], hourly_cost: 2200, available: true, user_id: null, notes: "", created_at: date(-30) },
       { id: demoId(903), organization_id: org, name: "Ana · Demo", phone: "+34 633 445 566", email: "", company: "", trades: ["Pavimentos", "Carpintería"], hourly_cost: null, available: true, user_id: demoId(706), notes: "", created_at: date(-90) }
     ],
+    // Una plantilla propia de ejemplo, para que se vea junto a las de base.
+    task_templates: [
+      { id: demoId(950), organization_id: org, name: "Cambiar ventanas", trade: "Carpintería", subtasks: ["Confirmar medidas con el taller", "Avisar al cliente del día", "Proteger suelo y muebles", "Desmontar ventanas antiguas", "Colocar las nuevas y sellar", "Retirar las viejas al punto limpio"], created_by_name: "Pablo · Demo", created_at: date(-15), updated_at: date(-15) }
+    ],
     stock_movements: [
       { id: demoId(800), organization_id: org, article_id: demoId(38), project_id: null, purchase_id: null, kind: "recuento", quantity: 120, stock_after: 120, note: "Inventario de la nave", actor_name: "Pablo · Demo", created_at: date(-20) },
       { id: demoId(801), organization_id: org, article_id: demoId(38), project_id: demoId(10), purchase_id: demoId(300), kind: "recepcion", quantity: 40, stock_after: 160, note: "", actor_name: "Pablo · Demo", created_at: date(-6) },

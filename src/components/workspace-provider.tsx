@@ -54,6 +54,8 @@ function savedDemo(): Workspace {
     for (const p of t?.checklist ?? []) { const e = ejemplo?.checklist?.find(x => x.id === p.id); if (e?.assignee && !p.assignee) Object.assign(p, { assignee: e.assignee, assignee_id: e.assignee_id, operario_id: e.operario_id }); } }
   // Operarios (nov 2026): la demo antigua recibe los de ejemplo.
   parsed.operarios ??= createDemo().operarios;
+  // Plantillas de tarea propias (nov 2026): la demo antigua recibe la de ejemplo.
+  parsed.task_templates ??= createDemo().task_templates;
   parsed.tasks = parsed.tasks.map((t: Workspace["tasks"][number]) => ({...t,assignee_id:t.assignee_id ?? null}));
   parsed.purchases = parsed.purchases.map((p: Workspace["purchases"][number]) => ({...p,assignee_id:p.assignee_id ?? null,assignee:p.assignee ?? ""}));
   return parsed;

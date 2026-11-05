@@ -67,7 +67,7 @@ export function NewTaskDialog({ projectId, open, initialTitle = "", onClose, ori
     <form id={formId} className="form nueva-tarea" onSubmit={crear} style={{ maxWidth: "none" }}>
       <label className="field"><span>Tarea</span><textarea value={title} onChange={e => setTitle(e.target.value)} rows={2} maxLength={500} required autoFocus placeholder="Replantear tabiquería con el electricista" /></label>
       <label className="field"><span>Descripción</span><textarea rows={2} value={description} onChange={e => setDescription(e.target.value)} maxLength={4000} placeholder="Opcional: cómo hacerlo, qué tener en cuenta" /></label>
-      <div className="field"><span>Subtareas</span><PlantillasTarea titulo={title} subtareas={checklist} onAplicar={(l, p) => { setChecklist(l); if (!trade || trade === "Coordinación") setTrade(p.oficio); }} /><ChecklistEditor value={checklist} onChange={setChecklist} puedeAsignar={can(actor.role, "task.subassign")} /></div>
+      <div className="field"><span>Subtareas</span><PlantillasTarea titulo={title} oficio={trade} subtareas={checklist} onAplicar={(l, p) => { setChecklist(l); if (!trade || trade === "Coordinación") setTrade(p.oficio); }} /><ChecklistEditor value={checklist} onChange={setChecklist} puedeAsignar={can(actor.role, "task.subassign")} /></div>
       <div className="field">
         <span>Fecha</span>
         <div className="nueva-tarea-atajos" role="group" aria-label="Fecha rápida">
