@@ -54,7 +54,7 @@ export function parteCheck(previo: Workspace, token: string, item: string, done:
   const ws = structuredClone(previo), s = parte(ws, token, ahora);
   if (!s) throw new Error("Este enlace ya no es válido.");
   const punto = ws.tasks.find(x => x.id === s.task_id)!.checklist?.find(p => p.id === item);
-  if (!punto) throw new Error("Ese punto ya no está en la lista.");
+  if (!punto) throw new Error("Esa subtarea ya no existe.");
   punto.done = done;
   return ws;
 }

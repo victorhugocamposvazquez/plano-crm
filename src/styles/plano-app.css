@@ -1911,3 +1911,12 @@ button.article-open:focus-visible { outline: 2px solid var(--pl-blue); outline-o
 .field .lista-nuevo input { height: 42px; padding: 0; border: 0; background: none; box-shadow: none; font-size: var(--pl-text-md); }
 .field .lista-nuevo input:focus-visible { outline: none; border: 0; }
 .field .lista-puntos input[type="checkbox"] { width: 18px; height: 18px; padding: 0; }
+/* Subtareas: a quién va cada una */
+.subtarea-asignar { flex: 0 0 auto; width: 190px; max-width: 45%; }
+.subtarea-asignar .select-button { height: 34px; padding: 0 8px 0 10px; font-size: var(--pl-text-sm); }
+.subtarea-quien { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 4px; max-width: 45%; padding: 2px 8px; border-radius: var(--pl-radius-full); background: var(--pl-raised); color: var(--pl-muted); font-size: var(--pl-text-xs); font-weight: var(--pl-weight-medium); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.subtarea-quien-enlace { color: var(--pl-muted); font-size: var(--pl-text-sm); text-decoration: none; display: inline; }
+@media (max-width: 767px) {
+  .lista-puntos li:has(.subtarea-asignar) { flex-wrap: wrap; padding-bottom: 6px; }
+  .subtarea-asignar { width: 100%; max-width: none; padding-left: 28px; }
+}

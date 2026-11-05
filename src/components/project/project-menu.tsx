@@ -138,7 +138,7 @@ export function ProjectMenu({ project, approvedVersion, puedeEstimar, onChat, so
             <label className="field"><span>Fecha</span><DateField label="Fecha" value={tarea.due_date} onChange={v => setTarea({ ...tarea, due_date: v })} required /></label>
           </div>
           <label className="field"><span>Descripción</span><textarea rows={2} value={tarea.description} onChange={e => setTarea({ ...tarea, description: e.target.value })} maxLength={4000} placeholder="Opcional: cómo hacerlo, qué tener en cuenta" /></label>
-          <div className="field"><span>Lista de comprobación</span><ChecklistEditor value={tarea.checklist} onChange={l => setTarea({ ...tarea, checklist: l })} /></div>
+          <div className="field"><span>Subtareas</span><ChecklistEditor value={tarea.checklist} onChange={l => setTarea({ ...tarea, checklist: l })} puedeAsignar={can(actor.role, "task.subassign")} /></div>
           <ResponsableField value={tarea.responsable} onChange={r => { if (r.valor.startsWith("op:") && !tarea.responsable.valor.startsWith("op:")) setEnviarAlCrear(true); setTarea({ ...tarea, responsable: r }); }} oficio={tarea.trade} />
           <button type="button" className="chip enviar-al-crear" aria-pressed={enviarAlCrear} onClick={() => setEnviarAlCrear(v => !v)}><MessageCircle size={14} strokeWidth={1.8} aria-hidden="true" />{enviarAlCrear ? "Se enviará al operario por WhatsApp" : "Enviársela por WhatsApp al crearla"}</button>
           <details className="editor-advanced" open={Boolean(tarea.trade)}>

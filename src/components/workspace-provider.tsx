@@ -49,6 +49,9 @@ function savedDemo(): Workspace {
     const t = parsed.tasks.find((x: Workspace["tasks"][number]) => x.id === "00000000-0000-4000-8000-000000000202"), ejemplo = createDemo().tasks.find(x => x.id === "00000000-0000-4000-8000-000000000202");
     if (t && ejemplo) { t.description ??= ejemplo.description; t.checklist = ejemplo.checklist; }
   }
+  // Subtareas asignadas (nov 2026): las del replanteo de ejemplo reciben a quién van, si aún no lo tenían.
+  { const t = parsed.tasks.find((x: Workspace["tasks"][number]) => x.id === "00000000-0000-4000-8000-000000000202"), ejemplo = createDemo().tasks.find(x => x.id === "00000000-0000-4000-8000-000000000202");
+    for (const p of t?.checklist ?? []) { const e = ejemplo?.checklist?.find(x => x.id === p.id); if (e?.assignee && !p.assignee) Object.assign(p, { assignee: e.assignee, assignee_id: e.assignee_id, operario_id: e.operario_id }); } }
   // Operarios (nov 2026): la demo antigua recibe los de ejemplo.
   parsed.operarios ??= createDemo().operarios;
   parsed.tasks = parsed.tasks.map((t: Workspace["tasks"][number]) => ({...t,assignee_id:t.assignee_id ?? null}));

@@ -127,10 +127,10 @@ export default function ParteVivoPage() {
     </section>}
     {v.descripcion && <section className="parte-bloque" aria-labelledby="pv-descripcion"><h2 id="pv-descripcion">Qué hay que hacer</h2><p className="parte-texto">{v.descripcion}</p></section>}
     {v.lista.length > 0 && <section className="parte-bloque parte-accion" aria-labelledby="pv-lista">
-      <h2 id="pv-lista">Lista · {textoProgreso(v.lista)}</h2>
+      <h2 id="pv-lista">Subtareas · {textoProgreso(v.lista)}</h2>
       <ul className="lista-puntos lista-puntos-ver parte-lista">{v.lista.map(p => <li key={p.id}><label>
         <input type="checkbox" checked={p.done} disabled={Boolean(ocupado)} onChange={e => void hacer("check", () => servicio.current!.check(p.id, e.target.checked), "")} />
-        <span data-hecho={p.done || undefined}>{p.text}</span>
+        <span data-hecho={p.done || undefined}>{p.text}{p.assignee && <small className="subtarea-quien-enlace"> · {p.assignee}</small>}</span>
       </label></li>)}</ul>
     </section>}
     {v.notas && <section className="parte-bloque" aria-labelledby="pv-notas"><h2 id="pv-notas">A tener en cuenta</h2><p className="parte-texto">{v.notas}</p></section>}

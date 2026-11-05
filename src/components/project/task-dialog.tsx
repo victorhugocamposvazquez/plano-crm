@@ -79,7 +79,7 @@ export function TaskDialog({ task, onClose }: { task: Task | null; onClose: () =
             <label className="field"><span>Fecha</span><DateField label="Fecha" value={form.due_date} onChange={v => setForm({ ...form, due_date: v })} required /></label>
           </div>
           <label className="field"><span>Descripción</span><textarea rows={3} value={form.description} onChange={e => setForm({ ...form, description: e.target.value })} maxLength={4000} placeholder="Qué hay que hacer, cómo y lo que hay que tener en cuenta" /></label>
-          <div className="field"><span>Lista de comprobación</span><ChecklistEditor value={form.checklist} onChange={l => setForm({ ...form, checklist: l })} /></div>
+          <div className="field"><span>Subtareas</span><ChecklistEditor value={form.checklist} onChange={l => setForm({ ...form, checklist: l })} puedeAsignar={can(actor.role, "task.subassign")} /></div>
           <ResponsableField value={form.responsable} onChange={r => setForm({ ...form, responsable: r })} oficio={form.trade} />
           <div className="line-grid">
             <label className="field"><span>Cuánto cuenta en el avance</span><span className="unit-input"><input type="number" inputMode="numeric" min={1} max={100} value={form.weight} onChange={e => setForm({ ...form, weight: e.target.value })} /><span>%</span></span></label>

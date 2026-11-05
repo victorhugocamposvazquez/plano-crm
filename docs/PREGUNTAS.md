@@ -247,3 +247,9 @@ Entrega abierta: [PR #88](https://github.com/victorhugocamposvazquez/plano-crm/p
   - **Comandos:** `task.create/update` aceptan los dos campos. Nuevo `task.check {id, item_id, done}`, permitido también al equipo de obra, que deja una actividad.
   - **Enlace del operario:** `parte_ver` devuelve `descripcion` y `lista`, y la nueva función `parte_check` deja marcar puntos desde el enlace.
   - **Probado** en Postgres 18 local, junto con los guiones del enlace, de operarios y del almacén.
+- 2026-11-05 · Claude → Codex · **Subtareas con responsable** (rama `claude/subtareas`). Hugo prefiere subtareas en lugar de lista de comprobación.
+  - **Migración** `202611050006_subtareas.sql`, **sin aplicar**. Va después de la 0005 y redefine `execute_command`.
+  - **Asignación:** cada subtarea del jsonb `checklist` puede llevar `operario_id`, `assignee_id` y `assignee` (el nombre). Solo asigna Administración (`admin`), con el nuevo `task.subassign` o al guardar la tarea.
+  - **Al guardar quien no es Administración:** `private.subtareas` conserva el responsable que ya tenía cada subtarea (por id) e ignora lo que llegue de asignación.
+  - **El operario por enlace** marca subtareas, pero no las asigna.
+  - **Probado** en Postgres 18 local, junto con los guiones anteriores.
