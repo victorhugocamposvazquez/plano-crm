@@ -8,6 +8,7 @@ import { dateLabel } from "@/lib/domain";
 import { localDate } from "@/lib/hoy";
 import { oficios, oficiosHabituales, sumarDias } from "@/lib/agenda";
 import { puestoNombres } from "@/lib/puestos";
+import { DateField } from "@/components/ui/date-field";
 
 const OTRA = "__otra__";
 /** El próximo lunes (si hoy es lunes, el de la semana que viene). */
@@ -60,7 +61,7 @@ export function NewTaskDialog({ projectId, open, initialTitle = "", onClose, ori
         <div className="nueva-tarea-atajos" role="group" aria-label="Fecha rápida">
           {atajos.map(a => <button key={a.label} type="button" className="segment" aria-pressed={due === a.fecha} onClick={() => setDue(a.fecha)}>{a.label}</button>)}
         </div>
-        <input type="date" value={due} min={hoy} onChange={e => setDue(e.target.value)} required aria-label="Fecha de la tarea" />
+        <DateField label="Fecha de la tarea" value={due} min={hoy} onChange={setDue} required />
       </div>
       <div className="line-grid">
         <div className="field"><span>Responsable</span><Select label="Responsable" value={responsable} onChange={setResponsable} options={opcionesPersona} placeholder="Sin asignar" /></div>

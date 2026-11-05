@@ -9,6 +9,7 @@ import { InvoicePanel } from "@/components/project/invoice-panel";
 import { useWorkspace } from "@/components/workspace-provider";
 import { localDate } from "@/lib/hoy";
 import { can, type Role } from "@/lib/domain";
+import { DateField } from "@/components/ui/date-field";
 
 type Panel = "tarea" | "factura";
 type Opcion = { id: string; label: string; hint: string; icon: typeof Layers2; permitido: (role: Role) => boolean; href?: string; panel?: Panel };
@@ -73,7 +74,7 @@ function TareaPanel({ open, onClose, fecha }: { open: boolean; onClose: () => vo
       <form id="panel-tarea" className="form" onSubmit={crear} style={{ maxWidth: "none" }}>
         <div className="field"><span>Proyecto</span><Select label="Proyecto" value={form.project_id} onChange={v => setForm({ ...form, project_id: v })} options={data.projects.map(p => ({ value: p.id, label: p.name, hint: p.client_name }))} placeholder="Elegir proyecto…" /></div>
         <label className="field"><span>Qué hay que hacer</span><input type="text" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} placeholder="Replantear tabiquería con el electricista" required maxLength={500} autoFocus /></label>
-        <label className="field"><span>Cuándo</span><input type="date" value={form.due_date} onChange={e => setForm({ ...form, due_date: e.target.value })} required /></label>
+        <label className="field"><span>Cuándo</span><DateField label="Cuándo" value={form.due_date} onChange={v => setForm({ ...form, due_date: v })} required /></label>
         <p className="muted text-xs">Con esto basta. El oficio y el responsable se ponen luego en la tarea, si hacen falta.</p>
       </form>
     </Modal>

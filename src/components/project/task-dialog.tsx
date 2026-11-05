@@ -10,6 +10,7 @@ import { useWorkspace } from "@/components/workspace-provider";
 import { can, dateLabel, type Task } from "@/lib/domain";
 import { localDate } from "@/lib/hoy";
 import { oficios, oficiosHabituales, personas, sumarDias } from "@/lib/agenda";
+import { DateField } from "@/components/ui/date-field";
 
 const fechaLarga = new Intl.DateTimeFormat("es-ES", { weekday: "long", day: "numeric", month: "long", year: "numeric" });
 
@@ -70,7 +71,7 @@ export function TaskDialog({ task, onClose }: { task: Task | null; onClose: () =
           <label className="field"><span>Tarea</span><input type="text" value={form.title} onChange={e => setForm({ ...form, title: e.target.value })} required maxLength={500} autoFocus /></label>
           <div className="line-grid">
             <div className="field"><span>Oficio</span><Select label="Oficio" value={form.trade} onChange={v => setForm({ ...form, trade: v })} options={[...new Set([...listaOficios, form.trade].filter(Boolean))].map(o => ({ value: o, label: o }))} placeholder="Elegir oficio…" /></div>
-            <label className="field"><span>Fecha</span><input type="date" value={form.due_date} onChange={e => setForm({ ...form, due_date: e.target.value })} required /></label>
+            <label className="field"><span>Fecha</span><DateField label="Fecha" value={form.due_date} onChange={v => setForm({ ...form, due_date: v })} required /></label>
           </div>
           <div className="line-grid">
             <label className="field"><span>Responsable</span><input list="personas-tarea" type="text" value={form.assignee} onChange={e => setForm({ ...form, assignee: e.target.value })} placeholder="Nombre o equipo" maxLength={120} /><datalist id="personas-tarea">{listaPersonas.map(p => <option key={p} value={p} />)}</datalist></label>

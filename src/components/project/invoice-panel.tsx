@@ -10,6 +10,7 @@ import { eurosACentimos } from "@/lib/catalogo";
 import { etiquetaFactura, facturasDe, recordatorioFactura, vencimientoPorDefecto } from "@/lib/facturas";
 import { localDate } from "@/lib/hoy";
 import { can, dateLabel, impuestoFactura, money } from "@/lib/domain";
+import { DateField } from "@/components/ui/date-field";
 
 export type FacturaInicial = { project_id?: string; concept?: string; base?: number; certification_id?: string };
 const euros = (c: number) => (c / 100).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -82,7 +83,7 @@ export function InvoicePanel({ open, onClose, invoiceId, inicial }: { open: bool
             {factura.paid_on && <div><dt>Cobrada el</dt><dd>{dateLabel(factura.paid_on)}</dd></div>}
           </dl>
           {factura.status === "sent" && permitido && <section className="invoice-pay" aria-label="Marcar como cobrada">
-            <label className="field"><span>Fecha de cobro</span><input type="date" value={cobradaEl} onChange={e => setCobradaEl(e.target.value)} /></label>
+            <label className="field"><span>Fecha de cobro</span><DateField label="Fecha de cobro" value={cobradaEl} onChange={setCobradaEl} /></label>
             <Button variant="primary" onClick={cobrar} disabled={guardando || busy || !cobradaEl}><Check size={16} strokeWidth={1.9} aria-hidden="true" />Marcar como cobrada</Button>
           </section>}
           <p className="pl-note">Una factura enviada no se edita ni se borra, para que la numeración no tenga huecos. Plano la registra y le hace seguimiento: no sustituye a la factura oficial.</p>
@@ -108,7 +109,7 @@ export function InvoicePanel({ open, onClose, invoiceId, inicial }: { open: bool
           <label className="field"><span>Base</span><span className="unit-input"><input type="text" inputMode="decimal" value={form.base} disabled={deCobro} onChange={e => setForm({ ...form, base: e.target.value })} placeholder="4.068,74" aria-invalid={form.base !== "" && !base ? true : undefined} /><span>€</span></span></label>
           <div className="field"><span>IVA</span><Select label="IVA" value={form.vat} onChange={v => setForm({ ...form, vat: v })} options={[{ value: "21", label: "21 %" }, { value: "10", label: "10 %", hint: "Vivienda con requisitos" }, { value: "4", label: "4 %" }, { value: "0", label: "0 %" }]} /></div>
         </div>
-        <label className="field"><span>Vence</span><input type="date" value={form.due} min={localDate()} onChange={e => setForm({ ...form, due: e.target.value })} /></label>
+        <label className="field"><span>Vence</span><DateField label="Vence" value={form.due} min={localDate()} onChange={v => setForm({ ...form, due: v })} /></label>
         {deCobro && <p className="muted text-xs">El importe sale del cobro preparado.</p>}
         <dl className="sum-box"><div><dt>Base</dt><dd className="pl-mono">{money(base ?? 0)}</dd></div><div><dt>IVA {form.vat} %</dt><dd className="pl-mono">{money(tax)}</dd></div><div data-total><dt>Total</dt><dd className="pl-mono">{money((base ?? 0) + tax)}</dd></div></dl>
         <p className="pl-note">Al enviarla recibe su número (serie anual, sin huecos) y ya no se puede editar ni borrar. Plano la registra y le hace seguimiento: no sustituye a la factura oficial.</p>

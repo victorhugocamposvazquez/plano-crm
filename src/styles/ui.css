@@ -3625,3 +3625,46 @@ a.flow-back, a.flow-back:hover { text-decoration: none; }
 .nueva-tarea textarea { resize: vertical; min-height: 64px; font: inherit; }
 .nueva-tarea-atajos { display: flex; flex-wrap: wrap; gap: var(--pl-space-2); margin-bottom: var(--pl-space-2); }
 .nueva-tarea-atajos .segment { flex: 0 0 auto; min-height: var(--pl-touch); }
+
+/* Campo de fecha con el calendario de Plano (DateField): el botón se ve como un Select y el panel como sus listas. */
+.date-field { position: relative; width: 100%; }
+.date-field-button { display: flex; align-items: center; justify-content: space-between; gap: 10px; width: 100%; height: var(--pl-control-height); padding: 0 12px 0 14px; border: var(--pl-hairline) solid var(--pl-line); border-radius: var(--pl-radius-control); background: var(--pl-surface); color: var(--pl-ink); font: inherit; font-size: var(--pl-text-ui); font-weight: var(--pl-weight-regular); text-align: left; cursor: pointer; }
+.date-field-button > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.date-field-button > span[data-vacio] { color: var(--pl-muted); }
+.date-field-button > svg { flex: 0 0 auto; color: var(--pl-muted); }
+.date-field-button:hover { border-color: var(--pl-strong-line); }
+.date-field[data-open] .date-field-button { border-color: var(--pl-ink); }
+.date-field-button:focus-visible { outline: 2px solid var(--pl-blue); outline-offset: 2px; }
+.date-field-required { position: absolute; left: 50%; bottom: 0; width: 1px; height: 1px; padding: 0; border: 0; opacity: 0; pointer-events: none; }
+.date-field-panel { position: absolute; z-index: 30; left: 0; width: 304px; max-width: calc(100vw - 32px); padding: 12px; border: var(--pl-hairline) solid var(--pl-line); border-radius: var(--pl-radius-panel); background: var(--pl-surface); box-shadow: var(--pl-shadow-2); animation: pl-sube 160ms var(--pl-enter-ease); }
+.date-field-panel[data-side="bottom"] { top: calc(100% + 6px); }
+.date-field-panel[data-side="top"] { bottom: calc(100% + 6px); }
+.date-field-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 8px; }
+.date-field-head strong { font-size: var(--pl-text-ui); font-weight: var(--pl-weight-semibold); }
+.date-field-nav { display: inline-flex; align-items: center; justify-content: center; width: 36px; height: 36px; border: 0; border-radius: var(--pl-radius-full); background: none; color: var(--pl-ink); cursor: pointer; }
+.date-field-nav:hover:not(:disabled) { background: var(--pl-raised); }
+.date-field-nav:disabled { color: var(--pl-muted); opacity: 0.4; cursor: default; }
+.date-field-grid { display: flex; flex-direction: column; gap: 2px; }
+.date-field-week { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; }
+.date-field-week > [role="columnheader"] { padding: 4px 0 6px; color: var(--pl-muted); font-size: var(--pl-text-xs); font-weight: var(--pl-weight-medium); text-align: center; }
+.date-field-week > [role="gridcell"] { display: flex; justify-content: center; }
+.date-field-day { position: relative; width: 38px; height: 38px; border: 0; border-radius: var(--pl-radius-full); background: none; color: var(--pl-ink); font: inherit; font-size: var(--pl-text-md); font-variant-numeric: tabular-nums; cursor: pointer; }
+.date-field-day:hover:not(:disabled) { background: var(--pl-raised); }
+.date-field-day[data-otro-mes] { color: var(--pl-muted); }
+.date-field-day[data-hoy] { font-weight: var(--pl-weight-semibold); }
+.date-field-day[data-hoy]::after { content: ""; position: absolute; left: 50%; bottom: 5px; width: 4px; height: 4px; margin-left: -2px; border-radius: 50%; background: var(--pl-orange); }
+.date-field-day[aria-pressed="true"] { background: var(--pl-ink); color: var(--pl-bg); font-weight: var(--pl-weight-semibold); }
+.date-field-day[aria-pressed="true"]:hover { background: var(--pl-ink); }
+.date-field-day:disabled { color: var(--pl-muted); opacity: 0.35; cursor: default; }
+.date-field-day:focus-visible { outline: 2px solid var(--pl-blue); outline-offset: 1px; }
+.date-field-foot { display: flex; align-items: center; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: var(--pl-hairline) solid var(--pl-line); }
+.date-field-link { min-height: 36px; padding: 0 10px; border: 0; border-radius: var(--pl-radius-control); background: none; color: var(--pl-ink); font: inherit; font-size: var(--pl-text-md); font-weight: var(--pl-weight-medium); cursor: pointer; }
+.date-field-link:hover { background: var(--pl-raised); }
+/* Dentro de un diálogo (o en el móvil) el calendario se abre en su sitio, empujando el formulario: así nunca queda recortado por el scroll. */
+.modal .date-field-panel, .date-field-panel[data-en-linea] { position: static; width: 100%; max-width: none; margin-top: 6px; box-shadow: none; }
+@media (max-width: 767px) { .date-field-panel { position: static; width: 100%; max-width: none; margin-top: 6px; box-shadow: none; } }
+.modal .date-field-day, .date-field-panel[data-en-linea] .date-field-day { width: 40px; height: 40px; }
+.date-field-panel { color: var(--pl-ink); font-size: var(--pl-text-ui); font-weight: var(--pl-weight-regular); text-transform: none; letter-spacing: normal; }
+.date-field-head strong { color: var(--pl-ink); white-space: nowrap; }
+.modal .date-field-panel, .date-field-panel[data-en-linea] { min-width: 288px; }
+@media (max-width: 767px) { .date-field-panel { min-width: 0; } }

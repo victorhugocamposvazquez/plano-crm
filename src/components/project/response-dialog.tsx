@@ -6,6 +6,7 @@ import { Select } from "@/components/ui/select";
 import { useWorkspace } from "@/components/workspace-provider";
 import { localDate } from "@/lib/hoy";
 import { can, dateLabel, money, totals, type BudgetVersion, type Project } from "@/lib/domain";
+import { DateField } from "@/components/ui/date-field";
 
 type Respuesta = "acepta" | "cambios" | "rechaza";
 const respuestas: { id: Respuesta; label: string; hint: string; tone: string }[] = [
@@ -63,7 +64,7 @@ export function ResponseDialog({ open, onClose, project, version, approved, onNu
           {respuesta === "acepta" && <>
             <div className="line-grid">
               <div className="field"><span>Cómo lo aceptó</span><Select label="Cómo lo aceptó" value={medio} onChange={setMedio} options={medios.map(m => ({ value: m, label: m }))} /></div>
-              <label className="field"><span>Fecha</span><input type="date" value={fecha} onChange={e => setFecha(e.target.value)} required /></label>
+              <label className="field"><span>Fecha</span><DateField label="Fecha" value={fecha} onChange={setFecha} required /></label>
             </div>
             <div className="answer-impact">
               <strong>Qué cambia en el proyecto si lo aceptas</strong>
