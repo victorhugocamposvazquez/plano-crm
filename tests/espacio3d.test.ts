@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { createDemo } from "@/lib/demo";
-import { aplicar3d, aspectos, cantidades, candidatos, colorDicho, elementoDe, escena3d, estadoInicial, interpretar3d, partidas3d, type Orden3d } from "@/lib/espacio3d";
+import { describirDisponibilidad, disponibilidad, stockDePropuesta, aplicar3d, aspectos, cantidades, candidatos, colorDicho, elementoDe, escena3d, estadoInicial, interpretar3d, partidas3d, type Orden3d } from "@/lib/espacio3d";
 
 const { articles } = createDemo();
 const nombre = (o: Orden3d | null) => o && o.tipo === "poner" ? o.article.name : null;
@@ -65,5 +65,28 @@ describe("Propuesta en 3D con el catálogo", () => {
     expect(nave.dims).toEqual({ largo: 12, ancho: 8, alto: 5 });
     expect(cantidades(nave)).toMatchObject({ suelo: 96, paredes: 200 });
     expect(nave.suelo?.article_id).toBe(e.suelo?.article_id);
+  });
+
+  it("dice lo que queda libre en almacén y lo que falta pedir", () => {
+    const demo = createDemo();
+    let e = estadoInicial("local");
+    for (const frase of ["pon porcelánico en el suelo", "pon dos muebles auxiliares", "pinta las paredes"]) e = aplicar3d(e, interpretar3d(frase, articles)!, articles);
+    const s = stockDePropuesta(e, demo.articles, demo.purchases);
+    expect(s.map(x => [x.article.code, x.d.libre, x.d.necesita, x.d.falta, x.d.estado])).toEqual([["PAV-002", 60, 12, 0, "cubre"], ["CAR-003", 1, 2, 1, "corto"]]);
+    expect(describirDisponibilidad(s[1].d)).toBe("En almacén queda 1 ud libre: falta 1 ud por pedir.");
+    expect(describirDisponibilidad(s[0].d)).toBe("En almacén quedan 60 m² libres: basta para 12 m² (Nave · zona de cerámica).");
+    const nave = aplicar3d(e, { tipo: "espacio", espacio: "nave" }, articles);
+    expect(stockDePropuesta(nave, demo.articles, demo.purchases)[0].d).toMatchObject({ libre: 60, necesita: 96, falta: 36, estado: "corto" });
+    const tarima = demo.articles.find(a => a.code === "PAV-001")!;
+    expect(disponibilidad(tarima, 12, demo.purchases)).toBeNull();
+    expect(disponibilidad({ ...demo.articles.find(a => a.code === "EQU-001")!, stock_qty: 0 }, 2, demo.purchases)?.estado).toBe("agotado");
+  });
+
+  it("entiende las preguntas de almacén sin confundirlas con ir a la nave", () => {
+    expect(interpretar3d("¿hay stock?", articles)).toEqual({ tipo: "stock" });
+    expect(interpretar3d("¿cuánto queda de porcelánico?", articles)).toMatchObject({ tipo: "stock", article: { code: "PAV-002" } });
+    expect(interpretar3d("¿cuántas estanterías tenemos en el almacén?", articles)).toMatchObject({ tipo: "stock", article: { code: "EQU-001" } });
+    expect(interpretar3d("vamos al almacén", articles)).toEqual({ tipo: "espacio", espacio: "nave" });
+    expect(interpretar3d("pon estanterías en la nave", articles)).toMatchObject({ tipo: "poner", elemento: "mueble" });
   });
 });

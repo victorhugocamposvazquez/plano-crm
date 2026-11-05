@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useQueryState } from "@/lib/use-query-state";
-import { ChevronDown, Copy, Download, Plus, Trash2, Upload } from "lucide-react";
+import { ChevronDown, Copy, Download, Package, Plus, Trash2, Upload } from "lucide-react";
 import { ImportDialog } from "@/components/catalog/import-dialog";
 import { aCSV } from "@/lib/importar-catalogo";
 import { useWorkspace } from "@/components/workspace-provider";
@@ -13,13 +13,14 @@ import { SearchBox } from "@/components/ui/search-box";
 import { buscarTolerante, leerConsulta } from "@/lib/busqueda";
 import { can, money, type Article } from "@/lib/domain";
 import { AlmacenArticulo } from "@/components/catalog/almacen-articulo";
+import { StockRapido, puedeLlevarStock } from "@/components/catalog/stock-rapido";
 import { cantidadStock, estadoStock } from "@/lib/stock";
 import { unidades, unidadNombres, eurosACentimos, codigoSugerido, agruparPorCapitulo, capitulos, type Unidad } from "@/lib/catalogo";
 
 const NUEVA = "__nueva__";
-type Form = { chapter: string; name: string; code: string; unit: Unidad; price: string; vat: string; stocked: boolean; min: string; location: string };
-const vacio = (chapter = "", unit: Unidad = "m²", vat = "21"): Form => ({ chapter, name: "", code: "", unit, price: "", vat, stocked: false, min: "", location: "" });
-const desdeArticulo = (a: Article): Form => ({ chapter: a.chapter, name: a.name, code: a.code, unit: (unidades as readonly string[]).includes(a.unit) ? (a.unit as Unidad) : "ud", price: (a.unit_price / 100).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }), vat: String(a.vat_rate), stocked: Boolean(a.stocked), min: a.stock_min == null ? "" : String(a.stock_min).replace(".", ","), location: a.stock_location ?? "" });
+type Form = { chapter: string; name: string; code: string; unit: Unidad; price: string; vat: string; stocked: boolean; min: string; location: string; hay: string };
+const vacio = (chapter = "", unit: Unidad = "m²", vat = "21"): Form => ({ chapter, name: "", code: "", unit, price: "", vat, stocked: false, min: "", location: "", hay: "" });
+const desdeArticulo = (a: Article): Form => ({ chapter: a.chapter, name: a.name, code: a.code, unit: (unidades as readonly string[]).includes(a.unit) ? (a.unit as Unidad) : "ud", price: (a.unit_price / 100).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 }), vat: String(a.vat_rate), stocked: Boolean(a.stocked), min: a.stock_min == null ? "" : String(a.stock_min).replace(".", ","), location: a.stock_location ?? "", hay: "" });
 /** Lo que el formulario guarda del almacén; las existencias solo cambian con movimientos. */
 const almacen = (f: Form) => ({ stocked: f.stocked, stock_min: f.stocked && f.min.trim() !== "" && Number(f.min.replace(",", ".")) >= 0 ? Number(f.min.replace(",", ".")) : null, stock_location: f.stocked ? f.location.trim() : "" });
 type FiltroAlmacen = "" | "almacen" | "bajo";
@@ -66,6 +67,8 @@ export default function CatalogoPage() {
   const [borrar, setBorrar] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [fallo, setFallo] = useState("");
+  const [stockDe, setStockDe] = useState<Article | null>(null);
+  const puedeStock = puedeLlevarStock(actor.role);
   useEffect(() => { if (nuevoParam === "1" && allowed) { abrirNuevo(); setNuevoParam(""); } }, [nuevoParam]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const chapters = useMemo(() => capitulos(data.articles), [data.articles]);
@@ -94,8 +97,16 @@ export default function CatalogoPage() {
     if (cents === null) { setFallo("Escribe el precio en euros, por ejemplo 49,50."); return; }
     setGuardando(true); setFallo("");
     try {
-      if (ficha.article) await send({ type: "article.update", id: ficha.article.id, code: (form.code.trim() || ficha.article.code).toUpperCase(), name: form.name.trim(), chapter: form.chapter.trim(), unit: form.unit, unit_price: cents, vat_rate: Number(form.vat), ...almacen(form) });
-      else await send({ type: "article.create", code: (form.code.trim() || sugerido).toUpperCase(), name: form.name.trim(), chapter: form.chapter.trim(), unit: form.unit, unit_price: cents, vat_rate: Number(form.vat), ...almacen(form) });
+      const code = (form.code.trim() || ficha.article?.code || sugerido).toUpperCase();
+      const ws = ficha.article
+        ? await send({ type: "article.update", id: ficha.article.id, code, name: form.name.trim(), chapter: form.chapter.trim(), unit: form.unit, unit_price: cents, vat_rate: Number(form.vat), ...almacen(form) })
+        : await send({ type: "article.create", code, name: form.name.trim(), chapter: form.chapter.trim(), unit: form.unit, unit_price: cents, vat_rate: Number(form.vat), ...almacen(form) });
+      // Al empezar a llevar stock, lo que hay ahora entra como primer recuento.
+      const hay = form.hay.trim() === "" ? null : Number(form.hay.replace(",", "."));
+      if (form.stocked && !ficha.article?.stocked && hay !== null && Number.isFinite(hay) && hay >= 0) {
+        const id = ficha.article?.id ?? ws.articles.find(a => a.code === code)?.id;
+        if (id) await send({ type: "stock.move", article_id: id, kind: "recuento", quantity: hay, note: "Primer recuento" });
+      }
       notify(`Artículo guardado: ${form.name.trim()}`);
       setFicha(null);
     } catch (e) { setFallo(e instanceof Error ? e.message : "No se ha podido guardar el artículo."); }
@@ -162,11 +173,13 @@ export default function CatalogoPage() {
                     <strong>{a.name}</strong>
                     <small className="article-code pl-mono">{a.code}</small>
                     <span className="article-tags"><span className="items-tag">IVA {a.vat_rate} %</span>{terminos.length > 0 && <span className="items-tag">{a.chapter}</span>}</span>
-                    {a.stocked && <Existencias article={a} />}
                   </>;
-                  return allowed
-                    ? <button key={a.id} type="button" className="article-card" onClick={() => abrirArticulo(a)} aria-haspopup="dialog">{contenido}</button>
-                    : <div key={a.id} className="article-card">{contenido}</div>;
+                  return <div key={a.id} className="article-card article-item">
+                    {allowed
+                      ? <button type="button" className="article-open" onClick={() => abrirArticulo(a)} aria-haspopup="dialog">{contenido}</button>
+                      : <div className="article-open">{contenido}</div>}
+                    <Existencias article={a} onStock={puedeStock ? () => setStockDe(a) : undefined} />
+                  </div>;
                 })}
               </div>}
             </section>
@@ -197,6 +210,7 @@ export default function CatalogoPage() {
           <fieldset className="almacen-ficha">
             <legend>Almacén</legend>
             <label className="almacen-check"><input type="checkbox" checked={form.stocked} onChange={e => setForm({ ...form, stocked: e.target.checked })} /><span><strong>Se guarda en almacén</strong><small className="muted">Material que se compra y se guarda en la nave. La mano de obra y los servicios no llevan existencias.</small></span></label>
+            {form.stocked && !ficha?.article?.stocked && <label className="field"><span>¿Cuánto hay ahora en la nave?</span><span className="unit-input"><input type="text" inputMode="decimal" value={form.hay} onChange={e => setForm({ ...form, hay: e.target.value })} placeholder="0" /><span>{form.unit}</span></span></label>}
             {form.stocked && <div className="line-grid">
               <label className="field"><span>Mínimo para avisar</span><span className="unit-input"><input type="text" inputMode="decimal" value={form.min} onChange={e => setForm({ ...form, min: e.target.value })} placeholder="Sin mínimo" /><span>{form.unit}</span></span></label>
               <label className="field"><span>Dónde está</span><input type="text" value={form.location} onChange={e => setForm({ ...form, location: e.target.value })} placeholder="Nave · estantería B" maxLength={120} /></label>
@@ -212,16 +226,28 @@ export default function CatalogoPage() {
         </div>
       </Modal>
       <ImportDialog open={importParam === "1"} onClose={() => setImportParam("")} />
+      <StockRapido article={stockDe} onClose={() => setStockDe(null)} />
     </div>
   );
 }
 
-/** Existencias en la tarjeta: lo libre, lo reservado y el aviso si baja del mínimo. */
-function Existencias({ article }: { article: Article }) {
+/** Stock en la tarjeta, siempre a la vista: lo que hay, lo libre y el aviso de mínimo; o «Sin stock» y cómo empezar a llevarlo. */
+function Existencias({ article, onStock }: { article: Article; onStock?: () => void }) {
   const { data } = useWorkspace();
+  // Horas, partidas globales y trabajos (demoliciones, mano de obra, servicios) no se guardan en la nave.
+  if (!article.stocked && (article.unit === "h" || article.unit === "global" || /demolic|derribo|mano de obra|servicio|transporte|retirada|desescombro/i.test(`${article.chapter} ${article.name}`))) return null;
+  if (!article.stocked) return <div className="article-stock-row" data-sin>
+    <span className="article-stock-text"><small>Sin stock</small></span>
+    {onStock && <button type="button" className="article-stock-btn" onClick={onStock} aria-label={`Llevar stock de ${article.name}`}><Package size={14} strokeWidth={1.7} aria-hidden="true" />Llevar stock</button>}
+  </div>;
   const e = estadoStock(article, data.purchases);
-  const tono = e.agotado ? "danger" : e.bajoMinimo ? "warning" : undefined;
-  return <span className="article-stock" data-tone={tono}>
-    {e.agotado ? "Agotado" : `${cantidadStock(e.libre, article.unit)} libres`}{e.reservado > 0 ? ` · ${cantidadStock(e.reservado, article.unit)} reservados` : ""}{e.bajoMinimo && !e.agotado ? " · bajo mínimo" : ""}
-  </span>;
+  const tono = e.agotado ? "danger" : e.bajoMinimo ? "warning" : "success";
+  const libres = (n: number) => `${cantidadStock(n, article.unit)} ${n === 1 ? "libre" : "libres"}`;
+  return <div className="article-stock-row" data-tone={tono}>
+    <span className="article-stock-text">
+      <strong className="pl-mono">{cantidadStock(e.enAlmacen, article.unit)}</strong>
+      <small>{e.agotado ? "Agotado" : e.reservado > 0 ? `${libres(e.libre)} · ${cantidadStock(e.reservado, article.unit)} para obras` : "en almacén"}{e.bajoMinimo && !e.agotado ? " · bajo mínimo" : ""}</small>
+    </span>
+    {onStock && <button type="button" className="article-stock-btn" onClick={onStock} aria-label={`Stock de ${article.name}`}><Package size={14} strokeWidth={1.7} aria-hidden="true" />Stock</button>}
+  </div>;
 }

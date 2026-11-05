@@ -49,3 +49,7 @@ Ruta: `/proyectos/[id]/espacio3d`, desde el menú del proyecto («Propuesta en 3
 - «Pasar al presupuesto» añade las partidas al borrador con `budget.create` / `budget.revise` / `budget.save`, como la visita 360. Sin comandos nuevos ni migraciones; lo elegido se recuerda en el navegador (`plano.espacio3d.<proyecto>`).
 
 Pruebas: `tests/espacio3d.test.ts`.
+
+### Almacén en la propuesta 3D
+
+Si el artículo elegido se guarda en la nave (`stocked`), cada alternativa dice cuánto queda libre y el ticket avisa de lo que falta pedir («Por pedir»). Libre = existencias menos lo recibido para otras obras y aún no llevado (`estadoStock` de `src/lib/stock.ts`). Por voz: «¿hay stock?», «¿cuánto queda de porcelánico?». Pasar al presupuesto no reserva ni descuenta existencias: eso sigue pasando con los pedidos de Materiales ligados al artículo.
