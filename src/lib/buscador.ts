@@ -18,7 +18,7 @@ const acciones: Resultado[] = [
 ];
 
 const pantallas: Resultado[] = [
-  ["Hoy", "/"], ["Proyectos", "/proyectos"], ["Agenda", "/agenda"], ["Presupuestos", "/presupuestos"], ["Catálogo / Actuaciones", "/catalogo"], ["Clientes", "/clientes"], ["Compras", "/compras"], ["Documentos", "/documentos"], ["Finanzas", "/finanzas"]
+  ["Hoy", "/"], ["Proyectos", "/proyectos"], ["Agenda", "/agenda"], ["Presupuestos", "/presupuestos"], ["Catálogo / Actuaciones", "/catalogo"], ["Equipo", "/equipo"], ["Clientes", "/clientes"], ["Compras", "/compras"], ["Documentos", "/documentos"], ["Finanzas", "/finanzas"]
 ].map(([titulo, href]) => ({ id: `p-${href}`, grupo: "Pantallas" as const, titulo, href }));
 
 const coincide = (texto: string, terms: string[]) => { const n = normalize(texto); return terms.every(t => n.includes(t)); };

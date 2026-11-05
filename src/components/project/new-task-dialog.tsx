@@ -7,10 +7,9 @@ import { useWorkspace } from "@/components/workspace-provider";
 import { dateLabel } from "@/lib/domain";
 import { localDate } from "@/lib/hoy";
 import { oficios, oficiosHabituales, sumarDias } from "@/lib/agenda";
-import { puestoNombres } from "@/lib/puestos";
+import { ResponsableField, asignacion, nombreResponsable, sinResponsable, type Responsable } from "@/components/equipo/responsable-field";
 import { DateField } from "@/components/ui/date-field";
 
-const OTRA = "__otra__";
 /** El próximo lunes (si hoy es lunes, el de la semana que viene). */
 const proximoLunes = (hoy: string) => { const d = new Date(`${hoy}T12:00:00`).getDay(); return sumarDias(hoy, ((8 - d) % 7) || 7); };
 
@@ -23,18 +22,15 @@ export function NewTaskDialog({ projectId, open, initialTitle = "", onClose, ori
   const hoy = localDate();
   const [title, setTitle] = useState(initialTitle);
   const [due, setDue] = useState(hoy);
-  const [responsable, setResponsable] = useState("");
-  const [otra, setOtra] = useState("");
+  const [responsable, setResponsable] = useState<Responsable>(sinResponsable);
   const [trade, setTrade] = useState("Coordinación");
   const [weight, setWeight] = useState("10");
   const [pending, setPending] = useState(false);
-  useEffect(() => { if (open) { setTitle(initialTitle); setDue(hoy); setResponsable(""); setOtra(""); setTrade("Coordinación"); setWeight("10"); } }, [open, initialTitle, hoy]);
+  useEffect(() => { if (open) { setTitle(initialTitle); setDue(hoy); setResponsable(sinResponsable); setTrade("Coordinación"); setWeight("10"); } }, [open, initialTitle, hoy]);
 
-  const listaOficios = useMemo(() => { const o = oficios(data.tasks); return [...new Set(["Coordinación", ...(o.length ? o : oficiosHabituales)])]; }, [data.tasks]);
-  const personas = useMemo(() => [...data.members].sort((a, b) => a.display_name.localeCompare(b.display_name, "es")), [data.members]);
-  const opcionesPersona = [{ value: "", label: "Sin asignar" }, ...personas.map(m => ({ value: m.user_id, label: `${m.display_name} · ${puestoNombres[m.position]}` })), { value: OTRA, label: "Otra persona o equipo…" }];
+  const listaOficios = useMemo(() => { const o = oficios(data.tasks); return [...new Set(["Coordinación", ...(o.length ? o : oficiosHabituales), ...(data.operarios ?? []).flatMap(x => x.trades)])]; }, [data.tasks, data.operarios]);
   const atajos = [{ label: "Hoy", fecha: hoy }, { label: "Mañana", fecha: sumarDias(hoy, 1) }, { label: "Lunes", fecha: proximoLunes(hoy) }, { label: "En una semana", fecha: sumarDias(hoy, 7) }];
-  const nombreResponsable = responsable === OTRA ? otra.trim() : personas.find(m => m.user_id === responsable)?.display_name ?? "";
+  const quien = nombreResponsable(responsable, data);
 
   async function crear(e: FormEvent) {
     e.preventDefault();
@@ -42,9 +38,8 @@ export function NewTaskDialog({ projectId, open, initialTitle = "", onClose, ori
     if (!titulo || !due || pending || busy) return;
     setPending(true);
     try {
-      const asignacion = responsable && responsable !== OTRA ? { assignee_id: responsable } : { assignee: responsable === OTRA ? otra.trim() : "" };
-      await send({ type: "task.create", project_id: projectId, title: titulo, trade: trade.trim() || "Coordinación", due_date: due, weight: Math.min(100, Math.max(1, Number(weight) || 10)), ...asignacion });
-      notify(`Tarea creada para el ${dateLabel(due)}${nombreResponsable ? ` · ${nombreResponsable}` : ""}: ${titulo}`);
+      await send({ type: "task.create", project_id: projectId, title: titulo, trade: trade.trim() || "Coordinación", due_date: due, weight: Math.min(100, Math.max(1, Number(weight) || 10)), ...asignacion(responsable) });
+      notify(`Tarea creada para el ${dateLabel(due)}${quien ? ` · ${quien}` : ""}: ${titulo}`);
       onClose();
     } catch (err) { notify(err instanceof Error ? err.message : "No se ha podido crear la tarea."); }
     finally { setPending(false); }
@@ -52,7 +47,7 @@ export function NewTaskDialog({ projectId, open, initialTitle = "", onClose, ori
 
   return <Modal open={open} onClose={onClose} title="Nueva tarea" kicker={origen} footer={<>
     <Button variant="secondary" onClick={onClose} disabled={pending}>Cancelar</Button>
-    <Button variant="primary" type="submit" form="tarea-nueva" disabled={pending || busy || !title.trim() || !due || (responsable === OTRA && !otra.trim())}>{pending ? "Creando…" : "Crear tarea"}</Button>
+    <Button variant="primary" type="submit" form="tarea-nueva" disabled={pending || busy || !title.trim() || !due || (responsable.valor === "otra" && !responsable.libre.trim())}>{pending ? "Creando…" : "Crear tarea"}</Button>
   </>}>
     <form id="tarea-nueva" className="form nueva-tarea" onSubmit={crear} style={{ maxWidth: "none" }}>
       <label className="field"><span>Tarea</span><textarea value={title} onChange={e => setTitle(e.target.value)} rows={2} maxLength={500} required autoFocus placeholder="Replantear tabiquería con el electricista" /></label>
@@ -63,11 +58,8 @@ export function NewTaskDialog({ projectId, open, initialTitle = "", onClose, ori
         </div>
         <DateField label="Fecha de la tarea" value={due} min={hoy} onChange={setDue} required />
       </div>
-      <div className="line-grid">
-        <div className="field"><span>Responsable</span><Select label="Responsable" value={responsable} onChange={setResponsable} options={opcionesPersona} placeholder="Sin asignar" /></div>
-        <div className="field"><span>Oficio</span><Select label="Oficio" value={trade} onChange={setTrade} options={listaOficios.map(o => ({ value: o, label: o }))} placeholder="Coordinación" /></div>
-      </div>
-      {responsable === OTRA && <label className="field"><span>Quién</span><input type="text" value={otra} onChange={e => setOtra(e.target.value)} placeholder="Electricista de Ferrer, cuadrilla de pintura…" maxLength={120} autoFocus /></label>}
+      <div className="field"><span>Oficio</span><Select label="Oficio" value={trade} onChange={setTrade} options={listaOficios.map(o => ({ value: o, label: o }))} placeholder="Coordinación" /></div>
+      <ResponsableField value={responsable} onChange={setResponsable} oficio={trade} />
       <details className="editor-advanced">
         <summary>Cuánto cuenta en el avance</summary>
         <label className="field" style={{ marginTop: 10 }}><span>Peso</span><span className="unit-input"><input type="number" inputMode="numeric" min={1} max={100} value={weight} onChange={e => setWeight(e.target.value)} /><span>%</span></span></label>

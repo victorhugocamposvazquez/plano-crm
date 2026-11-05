@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { BookOpen, ChevronRight, CircleHelp, LogOut, Search, Settings, ShieldCheck, Smartphone, Users, Wallet } from "lucide-react";
+import { BookOpen, ChevronRight, HardHat, CircleHelp, LogOut, Search, Settings, ShieldCheck, Smartphone, Users, Wallet } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
 import { ThemePicker } from "@/components/ui/theme-toggle";
 import { TextSizeSwitch } from "@/components/ui/text-size-toggle";
@@ -43,6 +43,7 @@ export default function MasPage() {
   const entradas = [
     { href: "/clientes", label: "Clientes", icon: Users, aviso: "" },
     { href: "/catalogo", label: "Catálogo / Actuaciones", icon: BookOpen, aviso: "" },
+    { href: "/equipo", label: "Equipo y operarios", icon: HardHat, aviso: "" },
     { href: "/finanzas", label: "Finanzas", icon: Wallet, aviso: fueraDePlazo ? `${fueraDePlazo} ${fueraDePlazo === 1 ? "vencida" : "vencidas"}` : "" },
     { href: "/ajustes", label: "Ajustes de la empresa", icon: Settings, aviso: "" }
   ].filter(e => veSeccion(actor.role, e.href));

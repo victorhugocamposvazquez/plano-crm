@@ -10,7 +10,7 @@ const ocultas: Record<Role, string[]> = {
   admin: [],
   office: [],
   manager: configuracion,
-  site: ["/clientes", "/presupuestos", "/catalogo", "/finanzas", "/ajustes", ...configuracion],
+  site: ["/clientes", "/presupuestos", "/catalogo", "/finanzas", "/ajustes", "/equipo", ...configuracion],
   viewer: configuracion
 };
 

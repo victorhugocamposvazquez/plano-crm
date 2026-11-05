@@ -13,7 +13,9 @@ export async function POST(request:Request) { return endpoint(async()=>{
   if(error) {
     const known=["La persona no pertenece a esta empresa.","La empresa debe conservar al menos una persona administradora.","No puedes quitarte a ti mismo del equipo.","Datos de equipo no válidos.","Persona no encontrada."];
     // Los avisos del almacén explican qué hacer («Solo hay 6 en almacén.»): se enseñan tal cual.
-    const almacen=[/^Solo hay [\d.,]+ en almacén\.$/,/^El artículo se mide en [^:]{1,10}: el pedido también\.$/,/^Este artículo no se guarda en almacén\.$/,/^Indica una cantidad (válida|mayor que cero)\.$/,/^Artículo no encontrado\.$/];
+    const almacen=[/^Solo hay [\d.,]+ en almacén\.$/,/^El artículo se mide en [^:]{1,10}: el pedido también\.$/,/^Este artículo no se guarda en almacén\.$/,/^Indica una cantidad (válida|mayor que cero)\.$/,/^Artículo no encontrado\.$/,
+      // Y los de la ficha de operarios.
+      /^Ese operario no está en el equipo\.$/,/^Esa cuenta no pertenece a esta empresa\.$/,/^El teléfono solo admite números, espacios, «\+» y guiones\.$/,/^El correo no es válido\.$/,/^Escribe el nombre del operario\.$/,/^Operario no encontrado\.$/];
     if(known.includes(error.message ?? "") || almacen.some(r=>r.test(error.message ?? "")))throw new ApiError(error.code==="P0002"?404:400,error.message!);
     databaseError(error);
   } }

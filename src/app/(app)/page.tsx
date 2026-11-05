@@ -1,7 +1,7 @@
 "use client";
 import { useMemo, useState } from "react";
 import Link from "next/link";
-import { ArrowRight, Check } from "lucide-react";
+import { ArrowRight, Check, ChevronRight } from "lucide-react";
 import { useWorkspace, usePuesto } from "@/components/workspace-provider";
 import { Button, LinkButton } from "@/components/ui/button";
 import { TaskDialog } from "@/components/project/task-dialog";
@@ -118,7 +118,7 @@ export default function HoyPage() {
         {otras.length > 0 && (
           <details className="pl-card otras">
             <summary>Esperan a otros <span className="muted">· {resumenOtras(otras)}</span></summary>
-            {otras.slice(0, 6).map(c => <Link key={c.id} href={c.href} className="news-row" data-tone={c.tono}><span>{c.titulo}<small>{c.kicker}{c.detalle ? ` · ${c.detalle}` : ""}</small></span></Link>)}
+            <div className="otras-lista">{otras.slice(0, 6).map(c => <Link key={c.id} href={c.href} className="otras-fila" data-tone={c.tono}><i aria-hidden="true" /><span><strong>{c.titulo}</strong><small>{c.kicker}{c.detalle ? ` · ${c.detalle}` : ""}</small></span><ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" /></Link>)}</div>
           </details>
         )}
 
