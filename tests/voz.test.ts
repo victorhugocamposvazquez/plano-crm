@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { arrancarReconocimiento, decir, escuchar, elegirMicrofono, esContinuidad, esMovil, puntuacionMicrofono, type Recognition } from "@/lib/voz";
+import { arrancarReconocimiento, callar, decir, escuchar, elegirMicrofono, esContinuidad, esMovil, puntuacionMicrofono, type Recognition } from "@/lib/voz";
 
 /** Reconocedor de mentira con lo que hacen los móviles: cada sesión acaba tras una frase y tarda en soltar el micrófono. */
 class Falso {
@@ -81,6 +81,22 @@ describe("Voz en el móvil", () => {
     vivo().onerror?.({ error: "not-allowed" });
     expect(errores[0]).toMatch(/Permite el micrófono/);
     expect(fin).toBe(true);
+  });
+  it("si Safari cierra la sesión sin frase final, cuenta lo último que oyó", async () => {
+    const oido: string[] = [];
+    await escuchar({ alOir: t => oido.push(t), alParcial: () => {}, alTerminar: () => {}, alError: () => {} });
+    const r = vivo();
+    r.onresult?.({ resultIndex: 0, results: [Object.assign([{ transcript: "pon tarima" }], { isFinal: false })] });
+    r.soltar();
+    await vi.advanceTimersByTimeAsync(100);
+    expect(oido).toEqual(["pon tarima"]);
+  });
+  it("callar no deja la voz en pausa", () => {
+    const s = { speaking: false, cancel: vi.fn(), pause: vi.fn(), resume: vi.fn() };
+    vi.stubGlobal("window", { webkitSpeechRecognition: Falso, speechSynthesis: s });
+    callar();
+    expect(s.pause).not.toHaveBeenCalled();
+    expect(s.cancel).toHaveBeenCalled();
   });
   it("distingue móvil de escritorio", () => {
     expect(esMovil("Mozilla/5.0 (Linux; Android 15; Pixel 9) Mobile", 5)).toBe(true);

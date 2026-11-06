@@ -17,6 +17,7 @@ import {
 import { cantidadDesdeMedidas, describirMedidas, describirSuperficies, faltaPara, huecoPuerta, huecoVentana, interpretarMedidas, type Medidas } from "@/lib/medidas";
 import type { Direccion, Visor360 } from "@/lib/visor360";
 import { decir, escuchar, type Escucha } from "@/lib/voz";
+import { TrazaVoz, useTrazaVoz } from "@/components/capture/traza-voz";
 import "@/styles/visita-360.css";
 
 /** Dictado del navegador: cada frase final pasa por `interpretarMedidas` y, si no es de medidas, por `interpretarOrden`. */
@@ -84,6 +85,7 @@ export function Visita360({ project, budgetId }: { project: Project; budgetId: s
   const [escuchando, setEscuchando] = useState(false);
   const [oido, setOido] = useState("");
   const [enVivo, setEnVivo] = useState("");
+  const { lineas: trazaLineas, traza } = useTrazaVoz();
   const [respuesta, setRespuesta] = useState("");
   const [, setTick] = useState(0);
   const [hoja, setHoja] = useState<{ direccion: Direccion; editar?: Colocacion } | null>(null);
@@ -277,7 +279,7 @@ export function Visita360({ project, budgetId }: { project: Project; budgetId: s
   async function alternarVoz() {
     if (escuchando) { rec.current?.parar(); rec.current = null; setEscuchando(false); setEnVivo(""); return; }
     setEnVivo("");
-    const r = await escuchar({ alOir: t => atenderRef.current(t), alParcial: setEnVivo, alTerminar: () => { setEscuchando(false); setEnVivo(""); rec.current = null; }, alError: notify });
+    const r = await escuchar({ alOir: t => atenderRef.current(t), alParcial: setEnVivo, alTerminar: () => { setEscuchando(false); setEnVivo(""); rec.current = null; }, alError: notify, traza });
     if (!r) { notify("Este navegador no tiene dictado. Usa Chrome, Edge o Safari, o escribe la orden."); return; }
     rec.current = r; setEscuchando(true);
     const micro = r.continuidad && r.microfono ? `Micrófono: ${r.microfono}. ` : "";
@@ -389,6 +391,7 @@ export function Visita360({ project, budgetId }: { project: Project; budgetId: s
     </form>
 
     {(oido || respuesta) && <div className="v360-dicho" aria-live="polite">{oido && <small>Has dicho: «{oido}»</small>}{respuesta && <strong>{respuesta}</strong>}</div>}
+    <TrazaVoz lineas={trazaLineas} />
 
     <section className="pl-card v360-ticket" aria-label="Lo que va en cada estancia">
       {partidas.length === 0 && <p className="v360-ayuda" style={{ paddingTop: 14 }}>Todavía no hay nada. Pulsa «Hablar» y di <code>«la cocina mide 4 por 3 y 2,6 de alto»</code>, <code>«pon tarima en la cocina»</code>, <code>«pinta las paredes»</code>, <code>«pon dos puertas»</code>, <code>«¿cuánto va?»</code> o <code>«pásalo al presupuesto»</code>; o toca la foto y elige del catálogo.</p>}
