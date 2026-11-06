@@ -5,7 +5,7 @@ import { menuMovil, puestos, trabajo } from "@/lib/puestos";
 
 const data = createDemo();
 /** Un día después del vencimiento de la factura enviada de demo, para que «facturación» vea vencidas con cualquier fecha real. */
-const vencimiento = data.invoices.find(f => f.status === "sent")?.due_date ?? "2026-11-03";
+const vencimiento = data.invoices?.find(f => f.status === "sent")?.due_date ?? "2026-11-03";
 const hoy = (() => { const d = new Date(`${vencimiento}T12:00:00`); d.setDate(d.getDate() + 1); return d.toISOString().slice(0, 10); })();
 
 describe("Lo tuyo por puesto", () => {
