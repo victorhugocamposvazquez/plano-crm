@@ -273,9 +273,9 @@ export function Visita360({ project, budgetId }: { project: Project; budgetId: s
 
   // La escucha dura lo que el micrófono esté abierto: siempre con la versión al día de `atender`.
   const atenderRef = useRef(atender); atenderRef.current = atender;
-  function alternarVoz() {
+  async function alternarVoz() {
     if (escuchando) { rec.current?.parar(); rec.current = null; setEscuchando(false); return; }
-    const r = escuchar({ alOir: t => atenderRef.current(t), alParcial: setOido, alTerminar: () => { setEscuchando(false); rec.current = null; }, alError: notify });
+    const r = await escuchar({ alOir: t => atenderRef.current(t), alParcial: setOido, alTerminar: () => { setEscuchando(false); rec.current = null; }, alError: notify });
     if (!r) { notify("Este navegador no tiene dictado. Usa Chrome, Edge o Safari, o escribe la orden."); return; }
     rec.current = r; setEscuchando(true); setRespuesta("Te escucho. Di las medidas o qué va: «la cocina mide 4 por 3 y 2,6 de alto», «pon tarima en la cocina».");
   }

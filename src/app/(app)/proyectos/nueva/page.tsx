@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { can, money, kindNames, dateLabel, type Project, type BudgetVersion } from "@/lib/domain";
 import { trabajosRapidos, articulosPorCapitulo, articuloPara, partidasDesdeLineas, rangoEstimacion, importeLinea, notasDeVisita, comprobaciones, type Linea } from "@/lib/estimacion";
+import { abrirMicrofonoPreferido } from "@/lib/voz";
 
 type Step = 1 | 2 | 3 | 4 | 5;
 /** Sobre un proyecto: fotos y notas, y guardar. Proyecto nuevo desde la visita: además los datos. Los números internos se conservan. */
@@ -53,6 +54,7 @@ export default function NuevaVisitaPage() {
   function salir() { if (hayCambios) setConfirmarSalida(true); else volverAlDestino(); }
   const [dictando, setDictando] = useState(false);
   const recognition = useRef<Recognition | null>(null);
+  const micStream = useRef<MediaStream | null>(null);
   const Factory = useMemo(recognitionFactory, []);
 
   useEffect(() => () => { fotos.forEach(f => URL.revokeObjectURL(f.url)); }, [fotos]);
@@ -70,9 +72,10 @@ export default function NuevaVisitaPage() {
     event.target.value = "";
   }
 
-  function toggleDictado() {
+  async function toggleDictado() {
     if (!Factory) return;
-    if (dictando) { recognition.current?.stop(); return; }
+    if (dictando) { recognition.current?.stop(); recognition.current = null; micStream.current?.getTracks().forEach(t => t.stop()); micStream.current = null; setDictando(false); return; }
+    micStream.current = await abrirMicrofonoPreferido();
     const rec = new Factory();
     rec.lang = "es-ES"; rec.continuous = true; rec.interimResults = false;
     rec.onresult = e => {
@@ -80,8 +83,8 @@ export default function NuevaVisitaPage() {
       for (let i = e.resultIndex; i < e.results.length; i++) if (e.results[i].isFinal) text += e.results[i][0].transcript;
       if (text) setAlcance(prev => `${prev}${prev && !prev.endsWith(" ") ? " " : ""}${text.trim()}`);
     };
-    rec.onerror = e => { setDictando(false); notify(e.error === "not-allowed" ? "El navegador no tiene permiso para usar el micrófono." : "El dictado se ha interrumpido."); };
-    rec.onend = () => setDictando(false);
+    rec.onerror = e => { setDictando(false); micStream.current?.getTracks().forEach(t => t.stop()); micStream.current = null; notify(e.error === "not-allowed" ? "El navegador no tiene permiso para usar el micrófono." : e.error === "audio-capture" ? "No llega sonido. En el Mac, elige el micrófono del iPhone en Ajustes › Sonido › Entrada." : "El dictado se ha interrumpido."); };
+    rec.onend = () => { setDictando(false); micStream.current?.getTracks().forEach(t => t.stop()); micStream.current = null; };
     recognition.current = rec; rec.start(); setDictando(true);
   }
 
