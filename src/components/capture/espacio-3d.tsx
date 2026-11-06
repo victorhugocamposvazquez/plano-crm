@@ -198,9 +198,9 @@ export function Espacio3d({ project, budgetId }: { project: Project; budgetId: s
     setSel(id); setRespuesta(`${nombreElemento[id]}: elige del catálogo debajo, o dilo.`);
   };
 
-  function alternarVoz() {
+  async function alternarVoz() {
     if (escuchando) { rec.current?.parar(); rec.current = null; setEscuchando(false); return; }
-    const r = escuchar({ alOir: t => atenderRef.current(t), alParcial: setOido, alTerminar: () => { setEscuchando(false); rec.current = null; }, alError: notify });
+    const r = await escuchar({ alOir: t => atenderRef.current(t), alParcial: setOido, alTerminar: () => { setEscuchando(false); rec.current = null; }, alError: notify });
     if (!r) { notify("Este navegador no tiene dictado. Usa Chrome, Edge o Safari, o escribe la orden."); return; }
     rec.current = r; setEscuchando(true); setRespuesta(`Te escucho. ${ayuda}`);
   }
