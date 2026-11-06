@@ -39,19 +39,19 @@ export function decir(texto: string) {
     const u = new SpeechSynthesisUtterance(texto); u.lang = "es-ES"; u.rate = 1.05;
     hablaHasta = Date.now() + Math.min(15000, 800 + texto.length * 70);
     u.onend = () => { hablaHasta = 0; };
-    window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
+    u.onerror = () => { hablaHasta = 0; };
+    const s = window.speechSynthesis;
+    s.cancel(); s.resume?.(); s.speak(u);
   } catch { /* sin voz */ }
 }
 export function callar() {
   hablaHasta = 0;
-  try {
-    if (!("speechSynthesis" in window)) return;
-    const s = window.speechSynthesis;
-    // En iPhone `cancel()` a solas deja el audio pillado y el siguiente dictado no arranca.
-    try { s.pause(); } catch { /* sin pausa */ }
-    s.cancel();
-  } catch { /* sin voz */ }
+  // Sin pause(): en el iPhone la pausa se queda puesta en toda la página y el dictado ya no oye.
+  try { if ("speechSynthesis" in window) { window.speechSynthesis.cancel(); window.speechSynthesis.resume?.(); } } catch { /* sin voz */ }
 }
+
+/** Diagnóstico en pantalla (`?vozdebug=1`): qué hace el reconocedor en el iPhone. */
+export type Traza = (linea: string) => void;
 
 /** En móvil (Android, iPhone, iPad) se usan sesiones cortas que se relanzan; en escritorio, dictado continuo. */
 export function esMovil(ua = typeof navigator === "undefined" ? "" : navigator.userAgent, toques = typeof navigator === "undefined" ? 0 : navigator.maxTouchPoints): boolean {
@@ -140,14 +140,17 @@ const MAX_RELANZAR = 60;
  * Sigue escuchando (relanzando la sesión si el navegador la corta) hasta `parar()` o un error de permiso.
  * Mientras Plano habla, lo que oye no cuenta (sería su propia voz). Devuelve null si el navegador no tiene dictado.
  */
-export async function escuchar({ alOir, alParcial, alTerminar, alError }: { alOir: (frase: string) => void; alParcial: (texto: string) => void; alTerminar: () => void; alError: (mensaje: string) => void }): Promise<Escucha | null> {
+export async function escuchar({ alOir, alParcial, alTerminar, alError, traza }: { alOir: (frase: string) => void; alParcial: (texto: string) => void; alTerminar: () => void; alError: (mensaje: string) => void; traza?: Traza }): Promise<Escucha | null> {
   const Disponible = reconocimiento();
-  if (!Disponible) return null;
+  const t0 = Date.now();
+  const log = (m: string) => { try { traza?.(`${((Date.now() - t0) / 1000).toFixed(1)}s ${m}`); } catch { /* sin traza */ } };
+  if (!Disponible) { log("sin SpeechRecognition"); return null; }
   const Rec: new () => Recognition = Disponible;
   vigente?.parar();
   callar();
   alParcial("");
   const movil = esMovil();
+  log(`abrir · ${movil ? "móvil" : "escritorio"}`);
   let micro: MicrofonoAbierto | null = null;
   let pista: MediaStreamTrack | null = null;
   let abierto = true, actual: Recognition | null = null, relanzadas = 0, terminado = false;
@@ -160,15 +163,23 @@ export async function escuchar({ alOir, alParcial, alTerminar, alError }: { alOi
     alParcial("");
     const r = new Rec(); actual = r;
     r.lang = "es-ES"; r.continuous = !movil; r.interimResults = true;
+    // Safari en iPhone a veces cierra la sesión sin marcar la frase como final: lo último oído cuenta.
+    let pendiente = "";
     r.onresult = e => {
-      if (actual !== r || hablando()) return;
+      if (actual !== r) return;
+      if (hablando()) { log("resultado ignorado: Plano habla"); return; }
       relanzadas = 0;
       let parcial = "";
-      for (let i = e.resultIndex; i < e.results.length; i++) { const res = e.results[i]; const t = res[0]?.transcript ?? ""; if (res.isFinal) { if (t.trim()) alOir(t.trim()); } else parcial += t; }
-      if (parcial) alParcial(parcial.trim());
+      for (let i = e.resultIndex; i < e.results.length; i++) {
+        const res = e.results[i]; const t = res[0]?.transcript ?? "";
+        if (res.isFinal) { pendiente = ""; if (t.trim()) { log(`final «${t.trim()}»`); alOir(t.trim()); } }
+        else parcial += t;
+      }
+      if (parcial) { pendiente = parcial.trim(); alParcial(pendiente); }
     };
     r.onerror = e => {
       if (actual !== r) return;
+      log(`error ${e.error}`);
       if (e.error === "not-allowed" || e.error === "service-not-allowed") { alError("Permite el micrófono para dar órdenes por voz (en los ajustes del navegador)."); terminar(); }
       else if (e.error === "audio-capture") { alError("No llega sonido del micrófono. En el Mac: iPhone cerca y desbloqueado, y en Ajustes › Sonido › Entrada elige el micrófono del iPhone."); terminar(); }
       // «no-speech», «aborted» o «network»: se relanza al terminar la sesión.
@@ -176,14 +187,16 @@ export async function escuchar({ alOir, alParcial, alTerminar, alError }: { alOi
     r.onend = () => {
       if (actual !== r) return;
       actual = null;
+      log("fin de sesión");
+      if (pendiente && abierto && !hablando()) { const f = pendiente; pendiente = ""; log(`final por cierre «${f}»`); alOir(f); }
       if (!abierto) return;
       // Mientras Plano lee la respuesta, en el iPhone el micrófono no vuelve. Se espera a que calle.
       const pausa = hablando() ? Math.min(8000, Math.max(300, hablaHasta - Date.now() + 150)) : (movil ? 150 : 300);
       if (!hablando() && relanzadas++ >= MAX_RELANZAR) { terminar(); return; }
       relanzar(pausa);
     };
-    try { arrancarReconocimiento(r, pista); }
-    catch { actual = null; if (abierto && relanzadas++ < MAX_RELANZAR) relanzar(400); else terminar(); }
+    try { arrancarReconocimiento(r, pista); log(`start${pista ? " con pista" : ""}`); }
+    catch (err) { log(`start falló: ${err instanceof Error ? err.message : String(err)}`); actual = null; if (abierto && relanzadas++ < MAX_RELANZAR) relanzar(400); else terminar(); }
   }
 
   const control: Escucha = {
@@ -191,6 +204,7 @@ export async function escuchar({ alOir, alParcial, alTerminar, alError }: { alOi
     continuidad: false,
     parar() {
       if (!abierto && terminado) return;
+      log("parar");
       abierto = false;
       callar();
       const r = actual; actual = null;

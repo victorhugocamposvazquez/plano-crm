@@ -10,6 +10,7 @@ import { Modal } from "@/components/ui/modal";
 import { budgetHistory } from "@/lib/budget-history";
 import { can, lineTotal, money, totals, type Project } from "@/lib/domain";
 import { decir, escuchar, type Escucha } from "@/lib/voz";
+import { TrazaVoz, useTrazaVoz } from "@/components/capture/traza-voz";
 import {
   aplicar3d, aspectos, cantidades, candidatos, color, coloresDe, conNombre, describirDims, describirDisponibilidad, describirLibre, disponibilidad, elementoDe, elementos, escena3d, espacios, estadoInicial, huecos, porPedir, proveedorHabitual, stockDePropuesta, type PorPedir,
   interpretar3d, nombreElemento, partidas3d, unidadesQueCaben, type Elemento, type Estado3d, type Orden3d, type TipoEspacio, type Vista
@@ -49,6 +50,7 @@ export function Espacio3d({ project, budgetId }: { project: Project; budgetId: s
   const [escuchando, setEscuchando] = useState(false);
   const [oido, setOido] = useState("");
   const [enVivo, setEnVivo] = useState("");
+  const { lineas: trazaLineas, traza } = useTrazaVoz();
   const [respuesta, setRespuesta] = useState("");
   const [escrita, setEscrita] = useState("");
   const [guardando, setGuardando] = useState(false);
@@ -202,7 +204,7 @@ export function Espacio3d({ project, budgetId }: { project: Project; budgetId: s
   async function alternarVoz() {
     if (escuchando) { rec.current?.parar(); rec.current = null; setEscuchando(false); setEnVivo(""); return; }
     setEnVivo("");
-    const r = await escuchar({ alOir: t => atenderRef.current(t), alParcial: setEnVivo, alTerminar: () => { setEscuchando(false); setEnVivo(""); rec.current = null; }, alError: notify });
+    const r = await escuchar({ alOir: t => atenderRef.current(t), alParcial: setEnVivo, alTerminar: () => { setEscuchando(false); setEnVivo(""); rec.current = null; }, alError: notify, traza });
     if (!r) { notify("Este navegador no tiene dictado. Usa Chrome, Edge o Safari, o escribe la orden."); return; }
     rec.current = r; setEscuchando(true);
     const micro = r.continuidad && r.microfono ? `Micrófono: ${r.microfono}. ` : "";
@@ -262,6 +264,7 @@ export function Espacio3d({ project, budgetId }: { project: Project; budgetId: s
     </form>
 
     {(oido || respuesta) && <div className="v360-dicho" aria-live="polite">{oido && <small>Has dicho: «{oido}»</small>}{respuesta && <strong>{respuesta}</strong>}</div>}
+    <TrazaVoz lineas={trazaLineas} />
 
     <div className="v360-medidas">
       <Ruler size={18} strokeWidth={1.6} aria-hidden="true" />
