@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { Select } from "@/components/ui/select";
 import { can, money, kindNames, dateLabel, type Project, type BudgetVersion } from "@/lib/domain";
 import { trabajosRapidos, articulosPorCapitulo, articuloPara, partidasDesdeLineas, rangoEstimacion, importeLinea, notasDeVisita, comprobaciones, type Linea } from "@/lib/estimacion";
-import { abrirMicrofonoPreferido, arrancarReconocimiento, reconocimiento, type MicrofonoAbierto, type Recognition } from "@/lib/voz";
+import { abrirMicrofonoPreferido, arrancarReconocimiento, callar, esMovil, reconocimiento, type MicrofonoAbierto, type Recognition } from "@/lib/voz";
 
 type Step = 1 | 2 | 3 | 4 | 5;
 /** Sobre un proyecto: fotos y notas, y guardar. Proyecto nuevo desde la visita: además los datos. Los números internos se conservan. */
@@ -66,11 +66,14 @@ export default function NuevaVisitaPage() {
 
   async function toggleDictado() {
     if (!Factory) return;
-    if (dictando) { recognition.current?.stop(); recognition.current = null; micStream.current?.stream.getTracks().forEach(t => t.stop()); micStream.current = null; setDictando(false); return; }
-    const micro = await abrirMicrofonoPreferido();
-    micStream.current = micro;
+    if (dictando) {
+      const rec = recognition.current;
+      recognition.current = null;
+      if (rec) { rec.onresult = null; rec.onerror = null; rec.onend = null; try { rec.stop(); } catch { /* ya parado */ } try { rec.abort?.(); } catch { /* ya parado */ } }
+      micStream.current?.stream.getTracks().forEach(t => t.stop()); micStream.current = null; callar(); setDictando(false); return;
+    }
     const rec = new Factory();
-    rec.lang = "es-ES"; rec.continuous = true; rec.interimResults = false;
+    rec.lang = "es-ES"; rec.continuous = !esMovil(); rec.interimResults = false;
     rec.onresult = e => {
       let text = "";
       for (let i = e.resultIndex; i < e.results.length; i++) if (e.results[i].isFinal) text += e.results[i][0].transcript;
@@ -79,6 +82,11 @@ export default function NuevaVisitaPage() {
     rec.onerror = e => { setDictando(false); micStream.current?.stream.getTracks().forEach(t => t.stop()); micStream.current = null; notify(e.error === "not-allowed" ? "El navegador no tiene permiso para usar el micrófono." : e.error === "audio-capture" ? "No llega sonido. En el Mac, elige el micrófono del iPhone en Ajustes › Sonido › Entrada." : "El dictado se ha interrumpido."); };
     rec.onend = () => { setDictando(false); micStream.current?.stream.getTracks().forEach(t => t.stop()); micStream.current = null; };
     recognition.current = rec;
+    callar();
+    // En el iPhone el start va en el toque: si antes hay un await, el segundo dictado no oye.
+    if (esMovil()) { arrancarReconocimiento(rec, null); setDictando(true); return; }
+    const micro = await abrirMicrofonoPreferido();
+    micStream.current = micro;
     arrancarReconocimiento(rec, micro?.track);
     if (micro && !micro.continuidad) notify("No aparece el micrófono del iPhone. Déjalo cerca, desbloqueado y con Continuidad; o elígelo en Ajustes del Mac › Sonido › Entrada.");
     setDictando(true);

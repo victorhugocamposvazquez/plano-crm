@@ -83,6 +83,7 @@ export function Visita360({ project, budgetId }: { project: Project; budgetId: s
   const [fallo, setFallo] = useState("");
   const [escuchando, setEscuchando] = useState(false);
   const [oido, setOido] = useState("");
+  const [enVivo, setEnVivo] = useState("");
   const [respuesta, setRespuesta] = useState("");
   const [, setTick] = useState(0);
   const [hoja, setHoja] = useState<{ direccion: Direccion; editar?: Colocacion } | null>(null);
@@ -274,8 +275,9 @@ export function Visita360({ project, budgetId }: { project: Project; budgetId: s
   // La escucha dura lo que el micrófono esté abierto: siempre con la versión al día de `atender`.
   const atenderRef = useRef(atender); atenderRef.current = atender;
   async function alternarVoz() {
-    if (escuchando) { rec.current?.parar(); rec.current = null; setEscuchando(false); return; }
-    const r = await escuchar({ alOir: t => atenderRef.current(t), alParcial: setOido, alTerminar: () => { setEscuchando(false); rec.current = null; }, alError: notify });
+    if (escuchando) { rec.current?.parar(); rec.current = null; setEscuchando(false); setEnVivo(""); return; }
+    setEnVivo("");
+    const r = await escuchar({ alOir: t => atenderRef.current(t), alParcial: setEnVivo, alTerminar: () => { setEscuchando(false); setEnVivo(""); rec.current = null; }, alError: notify });
     if (!r) { notify("Este navegador no tiene dictado. Usa Chrome, Edge o Safari, o escribe la orden."); return; }
     rec.current = r; setEscuchando(true);
     const micro = r.continuidad && r.microfono ? `Micrófono: ${r.microfono}. ` : "";
@@ -367,7 +369,7 @@ export function Visita360({ project, budgetId }: { project: Project; budgetId: s
         </button>
       ))}
       <div className="v360-tools">
-        {escuchando ? <span className="v360-escuchando" aria-live="polite"><i />{oido || "Escuchando…"}</span> : <button type="button" className="v360-simular" onClick={() => void simular()} disabled={cargando || Boolean(fallo) || sim?.estado === "cargando"}><Sparkles size={16} strokeWidth={1.7} aria-hidden="true" />Simular</button>}
+        {escuchando ? <span className="v360-escuchando" aria-live="polite"><i />{enVivo || "Escuchando…"}</span> : <button type="button" className="v360-simular" onClick={() => void simular()} disabled={cargando || Boolean(fallo) || sim?.estado === "cargando"}><Sparkles size={16} strokeWidth={1.7} aria-hidden="true" />Simular</button>}
         <button type="button" className="v360-mic" aria-pressed={escuchando} onClick={alternarVoz} aria-label={escuchando ? "Parar de escuchar" : "Hablar"}>{escuchando ? <MicOff size={20} strokeWidth={1.8} aria-hidden="true" /> : <Mic size={20} strokeWidth={1.8} aria-hidden="true" />}<span>{escuchando ? "Parar" : "Hablar"}</span></button>
       </div>
     </div>

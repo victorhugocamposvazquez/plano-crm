@@ -7,6 +7,9 @@
  * relanza sola mientras el micrófono siga abierto, solo hay una a la vez, y al abrir se calla la voz de Plano
  * (en iPhone, si está hablando, el micrófono no arranca).
  *
+ * En el iPhone, `start()` tiene que ir en el mismo toque, sin `await` delante: si antes se pide getUserMedia, el segundo
+ * «Hablar» no oye nada. El teléfono ya es el micrófono; getUserMedia solo se usa en el Mac para Continuidad.
+ *
  * En el Mac, Continuidad expone el micrófono del iPhone. Abrimos esa pista con getUserMedia y, donde el navegador lo
  * permite, la pasamos a `SpeechRecognition.start(audioTrack)`: sin eso el dictado sigue el micrófono por defecto del Mac.
  */
@@ -39,7 +42,16 @@ export function decir(texto: string) {
     window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
   } catch { /* sin voz */ }
 }
-export function callar() { hablaHasta = 0; try { if ("speechSynthesis" in window) window.speechSynthesis.cancel(); } catch { /* sin voz */ } }
+export function callar() {
+  hablaHasta = 0;
+  try {
+    if (!("speechSynthesis" in window)) return;
+    const s = window.speechSynthesis;
+    // En iPhone `cancel()` a solas deja el audio pillado y el siguiente dictado no arranca.
+    try { s.pause(); } catch { /* sin pausa */ }
+    s.cancel();
+  } catch { /* sin voz */ }
+}
 
 /** En móvil (Android, iPhone, iPad) se usan sesiones cortas que se relanzan; en escritorio, dictado continuo. */
 export function esMovil(ua = typeof navigator === "undefined" ? "" : navigator.userAgent, toques = typeof navigator === "undefined" ? 0 : navigator.maxTouchPoints): boolean {
@@ -134,15 +146,18 @@ export async function escuchar({ alOir, alParcial, alTerminar, alError }: { alOi
   const Rec: new () => Recognition = Disponible;
   vigente?.parar();
   callar();
-  const micro = await abrirMicrofonoPreferido();
-  const pista = micro?.track ?? null;
+  alParcial("");
   const movil = esMovil();
+  let micro: MicrofonoAbierto | null = null;
+  let pista: MediaStreamTrack | null = null;
   let abierto = true, actual: Recognition | null = null, relanzadas = 0, terminado = false;
   const soltarFlujo = () => { try { micro?.stream.getTracks().forEach(t => t.stop()); } catch { /* ya cerrado */ } };
   const terminar = () => { if (terminado) return; terminado = true; abierto = false; soltarFlujo(); if (vigente === control) vigente = null; alTerminar(); };
   const relanzar = (espera: number) => setTimeout(() => { if (abierto) arrancar(); }, espera);
 
   function arrancar() {
+    if (!abierto) return;
+    alParcial("");
     const r = new Rec(); actual = r;
     r.lang = "es-ES"; r.continuous = !movil; r.interimResults = true;
     r.onresult = e => {
@@ -161,25 +176,43 @@ export async function escuchar({ alOir, alParcial, alTerminar, alError }: { alOi
     r.onend = () => {
       if (actual !== r) return;
       actual = null;
-      if (abierto && relanzadas++ < MAX_RELANZAR) relanzar(movil ? 150 : 300); else terminar();
+      if (!abierto) return;
+      // Mientras Plano lee la respuesta, en el iPhone el micrófono no vuelve. Se espera a que calle.
+      const pausa = hablando() ? Math.min(8000, Math.max(300, hablaHasta - Date.now() + 150)) : (movil ? 150 : 300);
+      if (!hablando() && relanzadas++ >= MAX_RELANZAR) { terminar(); return; }
+      relanzar(pausa);
     };
     try { arrancarReconocimiento(r, pista); }
     catch { actual = null; if (abierto && relanzadas++ < MAX_RELANZAR) relanzar(400); else terminar(); }
   }
 
   const control: Escucha = {
-    microfono: micro?.label || "",
-    continuidad: Boolean(micro?.continuidad),
+    microfono: "",
+    continuidad: false,
     parar() {
       if (!abierto && terminado) return;
       abierto = false;
+      callar();
       const r = actual; actual = null;
-      try { (r?.abort ?? r?.stop)?.call(r); } catch { /* ya parado */ }
+      if (r) {
+        r.onresult = null; r.onerror = null;
+        r.onend = null;
+        // El iPhone a veces ignora uno de los dos y deja el micrófono abierto.
+        try { r.stop(); } catch { /* ya parado */ }
+        try { r.abort?.(); } catch { /* ya parado */ }
+      }
       terminar();
     }
   };
   vigente = control;
-  if (!movil && micro && !micro.continuidad) {
+  // En el móvil, start() va en este mismo turno (el toque). Un await delante y el iPhone ignora el segundo Hablar.
+  if (movil) { arrancar(); return control; }
+  micro = await abrirMicrofonoPreferido();
+  if (!abierto) { soltarFlujo(); return control; }
+  pista = micro?.track ?? null;
+  control.microfono = micro?.label || "";
+  control.continuidad = Boolean(micro?.continuidad);
+  if (micro && !micro.continuidad) {
     alError("No aparece el micrófono del iPhone. Déjalo cerca, desbloqueado y con Continuidad; o elígelo en Ajustes del Mac › Sonido › Entrada. Mientras, uso el del Mac.");
   }
   arrancar();

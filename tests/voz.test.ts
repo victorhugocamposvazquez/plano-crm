@@ -106,6 +106,45 @@ describe("Preferencia de micrófono (Mac → iPhone Continuidad)", () => {
       { deviceId: "otro", label: "iPhone de Marta" }
     ], "otro")).toBe("otro");
   });
+  it("en el móvil el segundo Hablar vuelve a oír y no pide getUserMedia", async () => {
+    const getUserMedia = vi.fn();
+    vi.stubGlobal("navigator", {
+      userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)",
+      maxTouchPoints: 5,
+      mediaDevices: { getUserMedia, enumerateDevices: vi.fn() }
+    });
+    const oido: string[] = [];
+    const parcial: string[] = [];
+    const primero = (await escuchar({ alOir: t => oido.push(t), alParcial: t => parcial.push(t), alTerminar: () => {}, alError: () => {} }))!;
+    expect(parcial[0]).toBe("");
+    expect(getUserMedia).not.toHaveBeenCalled();
+    expect(Falso.ultimaPista).toBeUndefined();
+    vivo().oye("primera");
+    primero.parar();
+    await vi.advanceTimersByTimeAsync(500);
+    await escuchar({ alOir: t => oido.push(t), alParcial: () => {}, alTerminar: () => {}, alError: () => {} });
+    vivo().oye("segunda");
+    expect(oido).toEqual(["primera", "segunda"]);
+    expect(getUserMedia).not.toHaveBeenCalled();
+  });
+  it("en el Mac pasa la pista del iPhone a start", async () => {
+    const track = { kind: "audio", label: "iPhone de Hugo", stop: vi.fn() } as unknown as MediaStreamTrack;
+    const stream = { getTracks: () => [track], getAudioTracks: () => [track] } as unknown as MediaStream;
+    vi.stubGlobal("navigator", {
+      userAgent: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)",
+      maxTouchPoints: 0,
+      mediaDevices: {
+        getUserMedia: vi.fn().mockResolvedValue(stream),
+        enumerateDevices: vi.fn().mockResolvedValue([
+          { deviceId: "mac", label: "MacBook Pro Microphone", kind: "audioinput" },
+          { deviceId: "phone", label: "iPhone de Hugo", kind: "audioinput" }
+        ])
+      }
+    });
+    vi.stubGlobal("localStorage", { getItem: () => "", setItem: vi.fn(), removeItem: vi.fn() });
+    await escuchar({ alOir: () => {}, alParcial: () => {}, alTerminar: () => {}, alError: () => {} });
+    expect(Falso.ultimaPista).toBe(track);
+  });
   it("pasa la pista de audio a start(audioTrack) y cae a start() si falla", () => {
     const pista = { kind: "audio", label: "iPhone de Hugo" } as MediaStreamTrack;
     const conPista = { start: vi.fn(), stop: vi.fn() } as unknown as Recognition;
