@@ -33,6 +33,8 @@ export type Task = { id: string; organization_id: string; project_id: string; ti
 /** Parte vivo de una tarea: el enlace con token que recibe un operario por WhatsApp y que funciona sin cuenta. */
 export type ParteSnapshot = { direccion: string; notas: string; contacto: string; telefono: string; para: string; material: string[] };
 export type TaskShare = { id: string; organization_id: string; task_id: string; operario_id: string | null; token: string; snapshot: ParteSnapshot; created_by_name: string; created_at: string; expires_at: string; revoked_at: string | null; done_at: string | null; seen_at: string | null; messages_count: number; photos_count: number };
+/** Plantilla de tarea de la empresa: nombre, oficio y subtareas (solo texto) que se añaden al crear una tarea. */
+export type TaskTemplate = { id: string; organization_id: string; name: string; trade: string; subtasks: string[]; created_by_name: string; created_at: string; updated_at: string };
 export type Operario = { id: string; organization_id: string; name: string; phone: string; email: string; company: string; trades: string[]; hourly_cost: number | null; available: boolean; user_id: string | null; notes: string; created_at: string };
 export type Purchase = { id: string; organization_id: string; project_id: string; name: string; supplier: string; assignee: string; assignee_id: string | null; quantity: number; received_quantity: number; delivered_quantity: number; unit: string; status: "planned" | "ordered" | "received" | "delivered"; article_id?: string | null };
 /** Un cambio en las existencias de un artículo: `quantity` con signo y existencias después del cambio. */
@@ -43,7 +45,7 @@ export type Activity = { id: string; organization_id: string; project_id: string
 export type Certification = { id: string; organization_id: string; project_id: string; budget_version_id: string; title: string; amount: number; status: "draft"; created_at: string };
 /** Registro de factura: el número se asigna al enviarla, en serie anual sin huecos. No sustituye a la factura oficial. */
 export type Invoice = { id: string; organization_id: string; project_id: string; certification_id: string | null; client_name: string; concept: string; base: number; vat_rate: number; tax: number; total: number; status: "draft" | "sent" | "paid"; number: string | null; number_year: number | null; number_seq: number | null; issue_date: string | null; due_date: string | null; paid_on: string | null; created_by_name: string; created_at: string; updated_at: string };
-export type Workspace = { organization_id: string; organization_name: string; members: OrganizationMember[]; projects: Project[]; articles: Article[]; budgets: Budget[]; versions: BudgetVersion[]; tasks: Task[]; purchases: Purchase[]; documents: Document[]; messages: Message[]; activities: Activity[]; certifications: Certification[]; plan_captures?: PlanDraft[]; room_captures?: RoomDraft[]; room_imports?: RoomImport[]; budget_item_events?: BudgetItemEvent[]; invoices?: Invoice[]; stock_movements?: StockMovement[]; operarios?: Operario[]; task_shares?: TaskShare[] };
+export type Workspace = { organization_id: string; organization_name: string; members: OrganizationMember[]; projects: Project[]; articles: Article[]; budgets: Budget[]; versions: BudgetVersion[]; tasks: Task[]; purchases: Purchase[]; documents: Document[]; messages: Message[]; activities: Activity[]; certifications: Certification[]; plan_captures?: PlanDraft[]; room_captures?: RoomDraft[]; room_imports?: RoomImport[]; budget_item_events?: BudgetItemEvent[]; invoices?: Invoice[]; stock_movements?: StockMovement[]; operarios?: Operario[]; task_shares?: TaskShare[]; task_templates?: TaskTemplate[] };
 
 const text = z.string().trim().min(1).max(500);
 /** Campos de la ficha de un operario. El teléfono admite espacios, «+» y guiones; el coste por hora va en céntimos. */
@@ -59,6 +61,11 @@ const operarioCampos = {
   available: z.boolean(),
   user_id: z.uuid().nullable(),
   notes: z.string().trim().max(500)
+};
+const plantillaCampos = {
+  name: z.string().trim().min(1, "Ponle nombre a la plantilla.").max(80),
+  trade: z.string().trim().max(120),
+  subtasks: z.array(z.string().trim().min(1).max(300)).min(1, "La plantilla necesita al menos una subtarea.").max(50)
 };
 export const commandSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("member.invite"), email: z.email().trim().toLowerCase().max(254), position: positionSchema, role: roleSchema }),
@@ -83,6 +90,9 @@ export const commandSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal("operario.create"), ...operarioCampos }),
   z.object({ type: z.literal("operario.update"), id: z.uuid(), ...Object.fromEntries(Object.entries(operarioCampos).map(([k, v]) => [k, v.optional()])) as { [K in keyof typeof operarioCampos]: z.ZodOptional<(typeof operarioCampos)[K]> } }),
   z.object({ type: z.literal("operario.delete"), id: z.uuid() }),
+  z.object({ type: z.literal("template.create"), id: z.uuid().optional(), ...plantillaCampos }),
+  z.object({ type: z.literal("template.update"), id: z.uuid(), name: plantillaCampos.name.optional(), trade: plantillaCampos.trade.optional(), subtasks: plantillaCampos.subtasks.optional() }),
+  z.object({ type: z.literal("template.delete"), id: z.uuid() }),
   z.object({ type: z.literal("parte.create"), id: z.uuid(), task_id: z.uuid(), operario_id: z.uuid().nullable().optional(), snapshot: z.object({ direccion: z.string().max(300), notas: z.string().max(800), contacto: z.string().max(120), telefono: z.string().max(40), para: z.string().max(120), material: z.array(z.string().max(160)).max(8) }) }),
   z.object({ type: z.literal("parte.revoke"), id: z.uuid() }),
   z.object({ type: z.literal("task.delete"), id: z.uuid() }),
@@ -288,6 +298,24 @@ export function applyCommand(previous: Workspace, input: Command, actor: Actor, 
       // Sus tareas se quedan con el nombre escrito, sin vínculo.
       for (const t of state.tasks) if (t.operario_id === o.id) t.operario_id = null;
       activity = `Operario dado de baja: ${o.name}`; break;
+    }
+    case "template.create": {
+      const { type: _, id, ...campos } = command; void _;
+      const nombre = campos.name.toLocaleLowerCase("es");
+      if ((state.task_templates ?? []).some(x => x.name.toLocaleLowerCase("es") === nombre)) throw new Error("Ya hay una plantilla con ese nombre.");
+      (state.task_templates ??= []).push({ id: id ?? uuid(), organization_id: org, ...campos, created_by_name: actor.name, created_at: now, updated_at: now });
+      activity = `Plantilla de tarea guardada: ${campos.name}`; break;
+    }
+    case "template.update": {
+      const x = (state.task_templates ?? []).find(t => t.id === command.id); if (!x) throw new Error("Plantilla no encontrada.");
+      if (command.name && (state.task_templates ?? []).some(t => t.id !== x.id && t.name.toLocaleLowerCase("es") === command.name!.toLocaleLowerCase("es"))) throw new Error("Ya hay una plantilla con ese nombre.");
+      Object.assign(x, { ...(command.name !== undefined ? { name: command.name } : {}), ...(command.trade !== undefined ? { trade: command.trade } : {}), ...(command.subtasks !== undefined ? { subtasks: command.subtasks } : {}), updated_at: now });
+      activity = `Plantilla de tarea actualizada: ${x.name}`; break;
+    }
+    case "template.delete": {
+      const x = (state.task_templates ?? []).find(t => t.id === command.id); if (!x) throw new Error("Plantilla no encontrada.");
+      state.task_templates = (state.task_templates ?? []).filter(t => t.id !== x.id);
+      activity = `Plantilla de tarea borrada: ${x.name}`; break;
     }
     case "parte.create": {
       const t = state.tasks.find(x => x.id === command.task_id); if (!t) throw new Error("Tarea no encontrada.");

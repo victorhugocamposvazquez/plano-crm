@@ -3,11 +3,12 @@
  * Se aplican al crear o editar una tarea y después se amplían o corrigen a mano. Se sugieren por el título
  * («pintar el salón» → «Pintar paredes»). Son una base: el orden y el texto se pueden cambiar en cada tarea.
  */
-import type { PuntoLista } from "./domain";
+import type { PuntoLista, TaskTemplate } from "./domain";
 import { normalizar } from "./busqueda";
 import { puntoNuevo } from "./lista-tarea";
 
-export type PlantillaTarea = { id: string; nombre: string; oficio: string; claves: RegExp; subtareas: string[] };
+/** `propia`: la guardó la empresa (con el id de su fila); si no, es una de las de base de Plano. */
+export type PlantillaTarea = { id: string; nombre: string; oficio: string; claves: RegExp; subtareas: string[]; propia?: TaskTemplate; raices?: string[] };
 
 export const plantillasTarea: PlantillaTarea[] = [
   { id: "pintar", nombre: "Pintar paredes", oficio: "Pintura", claves: /\b(pint\w*|paredes|techos?|esmalt\w*)\b/,
@@ -28,13 +29,56 @@ export const plantillasTarea: PlantillaTarea[] = [
     subtareas: ["Retirar restos y escombro", "Aspirar y fregar", "Limpiar cristales y marcos", "Revisar remates y repasos", "Hacer fotos finales para el cliente"] }
 ];
 
-/** La plantilla que encaja con el título, si alguna: la que más palabras clave coinciden. */
-export function sugerirPlantilla(titulo: string): PlantillaTarea | null {
+// Palabras que no distinguen un trabajo de otro: «Cambiar ventanas» se sugiere por «ventanas», no por «cambiar».
+const vacias = new Set(["para", "con", "del", "las", "los", "una", "unos", "unas", "por", "sin", "todo", "toda", "todos", "final", "obra", "cambiar", "poner", "hacer", "colocar", "quitar", "revisar", "arreglar", "nuevo", "nueva", "nuevos", "nuevas", "completo", "completa"]);
+const nombreClave = (n: string) => normalizar(n).replace(/ñ/g, "n").trim();
+
+/** Las raíces que distinguen una plantilla propia, sacadas de su nombre: «Pintar fachada» → pint…, fachad… */
+export function raicesDeNombre(nombre: string): string[] {
+  return [...new Set(nombreClave(nombre).split(/[^a-z0-9]+/).filter(w => w.length >= 4 && !vacias.has(w)).map(w => w.length > 5 ? w.slice(0, -2) : w))];
+}
+export function clavesDeNombre(nombre: string): RegExp {
+  const raices = raicesDeNombre(nombre);
+  return raices.length ? new RegExp(`\\b(${raices.map(r => `${r}\\w*`).join("|")})\\b`) : /(?!)/;
+}
+
+/** Plantilla propia en la forma de las de base. */
+export const desdePropia = (t: TaskTemplate): PlantillaTarea => ({ id: t.id, nombre: t.name, oficio: t.trade, claves: clavesDeNombre(t.name), raices: raicesDeNombre(t.name), subtareas: t.subtasks, propia: t });
+
+/**
+ * Las plantillas que se ofrecen: primero las de la empresa (por nombre) y después las de base.
+ * Una propia con el mismo nombre que una de base la sustituye: así se «corrige» una de base.
+ */
+export function plantillasDisponibles(propias: TaskTemplate[] | undefined): PlantillaTarea[] {
+  // La que sustituye a una de base hereda sus palabras clave: «Pintar paredes» propia se sigue sugiriendo con «techos».
+  const lista = [...(propias ?? [])].sort((a, b) => a.name.localeCompare(b.name, "es")).map(t => {
+    const base = plantillasTarea.find(p => nombreClave(p.nombre) === nombreClave(t.name));
+    return base ? { ...desdePropia(t), claves: base.claves, raices: undefined } : desdePropia(t);
+  });
+  const usados = new Set(lista.map(p => nombreClave(p.nombre)));
+  return [...lista, ...plantillasTarea.filter(p => !usados.has(nombreClave(p.nombre)))];
+}
+
+/** La propia que ya usa ese nombre, si hay (sin distinguir mayúsculas ni acentos). */
+export const propiaConNombre = (propias: TaskTemplate[] | undefined, nombre: string) => (propias ?? []).find(t => nombreClave(t.name) === nombreClave(nombre)) ?? null;
+
+/** Subtareas de una tarea → textos para guardar como plantilla: sin vacías ni repetidas, hasta 50. */
+export function textosDePlantilla(lista: PuntoLista[]): string[] {
+  const vistos = new Set<string>();
+  return lista.map(p => p.text.trim()).filter(t => { const k = normalizar(t); if (!t || vistos.has(k)) return false; vistos.add(k); return true; }).slice(0, 50);
+}
+
+/** La plantilla que encaja con el título, si alguna: la que más palabras clave coinciden (en empate, la primera: las propias van antes). */
+export function sugerirPlantilla(titulo: string, lista: PlantillaTarea[] = plantillasTarea): PlantillaTarea | null {
   const t = normalizar(titulo).replace(/ñ/g, "n");
   if (t.trim().length < 3) return null;
   let mejor: { p: PlantillaTarea; n: number } | null = null;
-  for (const p of plantillasTarea) {
-    const n = (t.match(new RegExp(p.claves.source, "g")) ?? []).length;
+  for (const p of lista) {
+    // Una propia cuenta cuántas palabras de su nombre aparecen; si falta alguna, cede el empate a la de base
+    // («Pintar el salón» → «Pintar paredes», no «Pintar fachada»; «Pintar la fachada» → la propia).
+    const n = p.raices
+      ? p.raices.filter(r => new RegExp(`\\b${r}`).test(t)).length - (p.raices.every(r => new RegExp(`\\b${r}`).test(t)) ? 0 : 0.5)
+      : (t.match(new RegExp(p.claves.source, "g")) ?? []).length;
     if (n > 0 && (!mejor || n > mejor.n)) mejor = { p, n };
   }
   return mejor?.p ?? null;
