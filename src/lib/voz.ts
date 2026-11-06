@@ -9,6 +9,8 @@
  *
  * En el iPhone, `start()` tiene que ir en el mismo toque, sin `await` delante: si antes se pide getUserMedia, el segundo
  * «Hablar» no oye nada. El teléfono ya es el micrófono; getUserMedia solo se usa en el Mac para Continuidad.
+ * Además Safari en iPhone se queda mudo si se crea un reconocedor nuevo tras parar otro (start sin eventos): hay uno
+ * solo por página, se para con stop() (abort lo deja roto) y se vuelve a arrancar cuando ha soltado.
  *
  * En el Mac, Continuidad expone el micrófono del iPhone. Abrimos esa pista con getUserMedia y, donde el navegador lo
  * permite, la pasamos a `SpeechRecognition.start(audioTrack)`: sin eso el dictado sigue el micrófono por defecto del Mac.
@@ -18,6 +20,7 @@ export type Recognition = {
   lang: string; continuous: boolean; interimResults: boolean;
   onresult: ((e: { resultIndex: number; results: Resultados }) => void) | null;
   onend: (() => void) | null; onerror: ((e: { error: string }) => void) | null;
+  onaudiostart?: (() => void) | null;
   start(audioTrack?: MediaStreamTrack): void; stop(): void; abort?(): void;
 };
 /** Lo que devuelve `escuchar`: para cerrar el micrófono. */
@@ -135,6 +138,23 @@ export function arrancarReconocimiento(r: Recognition, pista: MediaStreamTrack |
 let vigente: Escucha | null = null;
 const MAX_RELANZAR = 60;
 
+/** El reconocedor único de la página y quién lo escucha ahora. */
+type Oyente = { resultado(e: { resultIndex: number; results: Resultados }): void; error(e: { error: string }): void; fin(): void; audio(): void };
+let motor: { r: Recognition; de: new () => Recognition; corriendo: boolean; paradoEn: number; oyente: Oyente | null } | null = null;
+function elMotor(Rec: new () => Recognition) {
+  if (motor && motor.de === Rec) return motor;
+  const m = { r: new Rec(), de: Rec, corriendo: false, paradoEn: 0, oyente: null as Oyente | null };
+  m.r.lang = "es-ES"; m.r.interimResults = true;
+  m.r.onresult = e => m.oyente?.resultado(e);
+  m.r.onerror = e => m.oyente?.error(e);
+  m.r.onaudiostart = () => m.oyente?.audio();
+  m.r.onend = () => { m.corriendo = false; m.oyente?.fin(); };
+  motor = m;
+  return m;
+}
+/** Para los tests: olvida el reconocedor de la página. */
+export function soltarMotor() { motor = null; vigente = null; }
+
 /**
  * Abre el micrófono: cada frase final va a `alOir` y lo que aún se está diciendo a `alParcial`.
  * Sigue escuchando (relanzando la sesión si el navegador la corta) hasta `parar()` o un error de permiso.
@@ -153,20 +173,17 @@ export async function escuchar({ alOir, alParcial, alTerminar, alError, traza }:
   log(`abrir · ${movil ? "móvil" : "escritorio"}`);
   let micro: MicrofonoAbierto | null = null;
   let pista: MediaStreamTrack | null = null;
-  let abierto = true, actual: Recognition | null = null, relanzadas = 0, terminado = false;
+  let abierto = true, relanzadas = 0, terminado = false, espera: ReturnType<typeof setTimeout> | null = null;
+  // Safari en iPhone a veces cierra la sesión sin marcar la frase como final: lo último oído cuenta.
+  let pendiente = "";
+  const m = elMotor(Rec);
   const soltarFlujo = () => { try { micro?.stream.getTracks().forEach(t => t.stop()); } catch { /* ya cerrado */ } };
-  const terminar = () => { if (terminado) return; terminado = true; abierto = false; soltarFlujo(); if (vigente === control) vigente = null; alTerminar(); };
-  const relanzar = (espera: number) => setTimeout(() => { if (abierto) arrancar(); }, espera);
+  const terminar = () => { if (terminado) return; terminado = true; abierto = false; if (espera) clearTimeout(espera); soltarFlujo(); if (m.oyente === oyente) m.oyente = null; if (vigente === control) vigente = null; alTerminar(); };
+  const relanzar = (ms: number) => { if (espera) clearTimeout(espera); espera = setTimeout(() => { espera = null; if (abierto) arrancar(); }, ms); };
 
-  function arrancar() {
-    if (!abierto) return;
-    alParcial("");
-    const r = new Rec(); actual = r;
-    r.lang = "es-ES"; r.continuous = !movil; r.interimResults = true;
-    // Safari en iPhone a veces cierra la sesión sin marcar la frase como final: lo último oído cuenta.
-    let pendiente = "";
-    r.onresult = e => {
-      if (actual !== r) return;
+  const oyente: Oyente = {
+    audio() { log("micrófono abierto"); },
+    resultado(e) {
       if (hablando()) { log("resultado ignorado: Plano habla"); return; }
       relanzadas = 0;
       let parcial = "";
@@ -176,27 +193,37 @@ export async function escuchar({ alOir, alParcial, alTerminar, alError, traza }:
         else parcial += t;
       }
       if (parcial) { pendiente = parcial.trim(); alParcial(pendiente); }
-    };
-    r.onerror = e => {
-      if (actual !== r) return;
+    },
+    error(e) {
       log(`error ${e.error}`);
       if (e.error === "not-allowed" || e.error === "service-not-allowed") { alError("Permite el micrófono para dar órdenes por voz (en los ajustes del navegador)."); terminar(); }
       else if (e.error === "audio-capture") { alError("No llega sonido del micrófono. En el Mac: iPhone cerca y desbloqueado, y en Ajustes › Sonido › Entrada elige el micrófono del iPhone."); terminar(); }
       // «no-speech», «aborted» o «network»: se relanza al terminar la sesión.
-    };
-    r.onend = () => {
-      if (actual !== r) return;
-      actual = null;
+    },
+    fin() {
       log("fin de sesión");
       if (pendiente && abierto && !hablando()) { const f = pendiente; pendiente = ""; log(`final por cierre «${f}»`); alOir(f); }
+      pendiente = "";
       if (!abierto) return;
       // Mientras Plano lee la respuesta, en el iPhone el micrófono no vuelve. Se espera a que calle.
       const pausa = hablando() ? Math.min(8000, Math.max(300, hablaHasta - Date.now() + 150)) : (movil ? 150 : 300);
       if (!hablando() && relanzadas++ >= MAX_RELANZAR) { terminar(); return; }
       relanzar(pausa);
-    };
-    try { arrancarReconocimiento(r, pista); log(`start${pista ? " con pista" : ""}`); }
-    catch (err) { log(`start falló: ${err instanceof Error ? err.message : String(err)}`); actual = null; if (abierto && relanzadas++ < MAX_RELANZAR) relanzar(400); else terminar(); }
+    }
+  };
+
+  function arrancar() {
+    if (!abierto) return;
+    alParcial("");
+    // Si el anterior aún no ha soltado, se arranca al llegar su fin (oyente.fin → relanzar).
+    if (m.corriendo) {
+      // Si tras pedir stop() el iPhone no avisa del fin, no esperamos para siempre.
+      if (m.paradoEn && Date.now() - m.paradoEn > 1500) { log("el anterior no soltó: fuerzo"); m.corriendo = false; try { m.r.abort?.(); } catch { /* ya parado */ } }
+      else { log("esperando a que suelte el anterior"); relanzar(300); return; }
+    }
+    m.r.continuous = !movil;
+    try { arrancarReconocimiento(m.r, pista); m.corriendo = true; m.paradoEn = 0; log(`start${pista ? " con pista" : ""}`); }
+    catch (err) { log(`start falló: ${err instanceof Error ? err.message : String(err)}`); if (abierto && relanzadas++ < MAX_RELANZAR) relanzar(400); else terminar(); }
   }
 
   const control: Escucha = {
@@ -207,17 +234,12 @@ export async function escuchar({ alOir, alParcial, alTerminar, alError, traza }:
       log("parar");
       abierto = false;
       callar();
-      const r = actual; actual = null;
-      if (r) {
-        r.onresult = null; r.onerror = null;
-        r.onend = null;
-        // El iPhone a veces ignora uno de los dos y deja el micrófono abierto.
-        try { r.stop(); } catch { /* ya parado */ }
-        try { r.abort?.(); } catch { /* ya parado */ }
-      }
+      // stop() y no abort(): en el iPhone, tras abort el reconocedor arranca sin oír.
+      if (m.corriendo) { m.paradoEn = Date.now(); try { m.r.stop(); } catch { m.corriendo = false; } }
       terminar();
     }
   };
+  m.oyente = oyente;
   vigente = control;
   // En el móvil, start() va en este mismo turno (el toque). Un await delante y el iPhone ignora el segundo Hablar.
   if (movil) { arrancar(); return control; }
