@@ -202,7 +202,9 @@ export function Espacio3d({ project, budgetId }: { project: Project; budgetId: s
     if (escuchando) { rec.current?.parar(); rec.current = null; setEscuchando(false); return; }
     const r = await escuchar({ alOir: t => atenderRef.current(t), alParcial: setOido, alTerminar: () => { setEscuchando(false); rec.current = null; }, alError: notify });
     if (!r) { notify("Este navegador no tiene dictado. Usa Chrome, Edge o Safari, o escribe la orden."); return; }
-    rec.current = r; setEscuchando(true); setRespuesta(`Te escucho. ${ayuda}`);
+    rec.current = r; setEscuchando(true);
+    const micro = r.continuidad && r.microfono ? `Micrófono: ${r.microfono}. ` : "";
+    setRespuesta(`${micro}Te escucho. ${ayuda}`);
   }
   useEffect(() => () => rec.current?.parar(), []);
 

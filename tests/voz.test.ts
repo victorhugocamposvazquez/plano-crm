@@ -1,14 +1,15 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { decir, escuchar, elegirMicrofono, esMovil, puntuacionMicrofono } from "@/lib/voz";
+import { arrancarReconocimiento, decir, escuchar, elegirMicrofono, esContinuidad, esMovil, puntuacionMicrofono, type Recognition } from "@/lib/voz";
 
 /** Reconocedor de mentira con lo que hacen los móviles: cada sesión acaba tras una frase y tarda en soltar el micrófono. */
 class Falso {
-  static vivos: Falso[] = []; static fallarAlEmpezar = 0;
+  static vivos: Falso[] = []; static fallarAlEmpezar = 0; static ultimaPista: MediaStreamTrack | null | undefined = undefined;
   lang = ""; continuous = true; interimResults = false;
   onresult: ((e: { resultIndex: number; results: unknown }) => void) | null = null;
   onend: (() => void) | null = null; onerror: ((e: { error: string }) => void) | null = null;
   activo = false;
-  start() {
+  start(audioTrack?: MediaStreamTrack) {
+    Falso.ultimaPista = audioTrack;
     if (Falso.fallarAlEmpezar > 0) { Falso.fallarAlEmpezar--; throw new Error("InvalidStateError"); }
     if (Falso.vivos.some(r => r.activo)) throw new Error("InvalidStateError: otro reconocedor tiene el micrófono");
     this.activo = true; Falso.vivos.push(this);
@@ -21,7 +22,7 @@ class Falso {
 const vivo = () => Falso.vivos.filter(r => r.activo).at(-1)!;
 
 beforeEach(() => {
-  vi.useFakeTimers(); Falso.vivos = []; Falso.fallarAlEmpezar = 0;
+  vi.useFakeTimers(); Falso.vivos = []; Falso.fallarAlEmpezar = 0; Falso.ultimaPista = undefined;
   vi.stubGlobal("window", { webkitSpeechRecognition: Falso, speechSynthesis: { speaking: false, cancel: vi.fn() } });
   vi.stubGlobal("navigator", {
     userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)",
@@ -91,6 +92,8 @@ describe("Voz en el móvil", () => {
 describe("Preferencia de micrófono (Mac → iPhone Continuidad)", () => {
   it("prioriza el iPhone frente al micrófono interno del Mac", () => {
     expect(puntuacionMicrofono("iPhone de Hugo")).toBeGreaterThan(puntuacionMicrofono("MacBook Pro Microphone"));
+    expect(esContinuidad("iPhone de Hugo")).toBe(true);
+    expect(esContinuidad("MacBook Pro Microphone")).toBe(false);
     expect(elegirMicrofono([
       { deviceId: "mac", label: "MacBook Pro Microphone", kind: "audioinput" },
       { deviceId: "phone", label: "iPhone de Hugo", kind: "audioinput" }
@@ -102,5 +105,19 @@ describe("Preferencia de micrófono (Mac → iPhone Continuidad)", () => {
       { deviceId: "phone", label: "iPhone de Hugo" },
       { deviceId: "otro", label: "iPhone de Marta" }
     ], "otro")).toBe("otro");
+  });
+  it("pasa la pista de audio a start(audioTrack) y cae a start() si falla", () => {
+    const pista = { kind: "audio", label: "iPhone de Hugo" } as MediaStreamTrack;
+    const conPista = { start: vi.fn(), stop: vi.fn() } as unknown as Recognition;
+    arrancarReconocimiento(conPista, pista);
+    expect(conPista.start).toHaveBeenCalledWith(pista);
+
+    const sinSoporte = {
+      start: vi.fn((track?: MediaStreamTrack) => { if (track) throw new Error("no admite pista"); }),
+      stop: vi.fn()
+    } as unknown as Recognition;
+    arrancarReconocimiento(sinSoporte, pista);
+    expect(sinSoporte.start).toHaveBeenNthCalledWith(1, pista);
+    expect(sinSoporte.start).toHaveBeenNthCalledWith(2);
   });
 });
