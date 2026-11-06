@@ -69,7 +69,7 @@ export default function NuevaVisitaPage() {
     if (dictando) {
       const rec = recognition.current;
       recognition.current = null;
-      if (rec) { rec.onresult = null; rec.onerror = null; rec.onend = null; try { rec.stop(); } catch { /* ya parado */ } try { rec.abort?.(); } catch { /* ya parado */ } }
+      if (rec) { rec.onresult = null; rec.onerror = null; rec.onend = null; try { rec.stop(); } catch { /* ya parado */ } }
       micStream.current?.stream.getTracks().forEach(t => t.stop()); micStream.current = null; callar(); setDictando(false); return;
     }
     const rec = new Factory();

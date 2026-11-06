@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from "vitest";
-import { arrancarReconocimiento, callar, decir, escuchar, elegirMicrofono, esContinuidad, esMovil, puntuacionMicrofono, type Recognition } from "@/lib/voz";
+import { arrancarReconocimiento, callar, decir, escuchar, soltarMotor, elegirMicrofono, esContinuidad, esMovil, puntuacionMicrofono, type Recognition } from "@/lib/voz";
 
 /** Reconocedor de mentira con lo que hacen los móviles: cada sesión acaba tras una frase y tarda en soltar el micrófono. */
 class Falso {
@@ -22,7 +22,7 @@ class Falso {
 const vivo = () => Falso.vivos.filter(r => r.activo).at(-1)!;
 
 beforeEach(() => {
-  vi.useFakeTimers(); Falso.vivos = []; Falso.fallarAlEmpezar = 0; Falso.ultimaPista = undefined;
+  vi.useFakeTimers(); Falso.vivos = []; Falso.fallarAlEmpezar = 0; Falso.ultimaPista = undefined; soltarMotor();
   vi.stubGlobal("window", { webkitSpeechRecognition: Falso, speechSynthesis: { speaking: false, cancel: vi.fn() } });
   vi.stubGlobal("navigator", {
     userAgent: "Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)",
@@ -142,6 +142,16 @@ describe("Preferencia de micrófono (Mac → iPhone Continuidad)", () => {
     vivo().oye("segunda");
     expect(oido).toEqual(["primera", "segunda"]);
     expect(getUserMedia).not.toHaveBeenCalled();
+    // El iPhone se queda mudo con un reconocedor nuevo: siempre es el mismo.
+    expect(new Set(Falso.vivos).size).toBe(1);
+  });
+  it("parar usa stop() y no abort()", async () => {
+    const e = (await escuchar({ alOir: () => {}, alParcial: () => {}, alTerminar: () => {}, alError: () => {} }))!;
+    const r = vivo();
+    const stop = vi.spyOn(r, "stop"), abort = vi.spyOn(r, "abort");
+    e.parar();
+    expect(stop).toHaveBeenCalled();
+    expect(abort).not.toHaveBeenCalled();
   });
   it("en el Mac pasa la pista del iPhone a start", async () => {
     const track = { kind: "audio", label: "iPhone de Hugo", stop: vi.fn() } as unknown as MediaStreamTrack;
