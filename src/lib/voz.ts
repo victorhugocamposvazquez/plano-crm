@@ -7,17 +7,22 @@
  * relanza sola mientras el micrófono siga abierto, solo hay una a la vez, y al abrir se calla la voz de Plano
  * (en iPhone, si está hablando, el micrófono no arranca).
  *
- * En el Mac, Continuidad a veces cede el micrófono al portátil. Antes de dictar pedimos el dispositivo que parezca
- * iPhone/iPad (o el último elegido) y mantenemos ese flujo abierto para que el navegador no vuelva al micrófono interno.
+ * En el iPhone, `start()` tiene que ir en el mismo toque, sin `await` delante: si antes se pide getUserMedia, el segundo
+ * «Hablar» no oye nada. El teléfono ya es el micrófono; getUserMedia solo se usa en el Mac para Continuidad.
+ *
+ * En el Mac, Continuidad expone el micrófono del iPhone. Abrimos esa pista con getUserMedia y, donde el navegador lo
+ * permite, la pasamos a `SpeechRecognition.start(audioTrack)`: sin eso el dictado sigue el micrófono por defecto del Mac.
  */
 type Resultados = ArrayLike<ArrayLike<{ transcript: string }> & { isFinal: boolean }>;
 export type Recognition = {
   lang: string; continuous: boolean; interimResults: boolean;
   onresult: ((e: { resultIndex: number; results: Resultados }) => void) | null;
-  onend: (() => void) | null; onerror: ((e: { error: string }) => void) | null; start(): void; stop(): void; abort?(): void;
+  onend: (() => void) | null; onerror: ((e: { error: string }) => void) | null;
+  start(audioTrack?: MediaStreamTrack): void; stop(): void; abort?(): void;
 };
 /** Lo que devuelve `escuchar`: para cerrar el micrófono. */
-export type Escucha = { parar(): void };
+export type Escucha = { parar(): void; microfono: string; continuidad: boolean };
+export type MicrofonoAbierto = { stream: MediaStream; label: string; continuidad: boolean; track: MediaStreamTrack | null };
 
 export function reconocimiento(): (new () => Recognition) | null {
   if (typeof window === "undefined") return null;
@@ -37,7 +42,16 @@ export function decir(texto: string) {
     window.speechSynthesis.cancel(); window.speechSynthesis.speak(u);
   } catch { /* sin voz */ }
 }
-export function callar() { hablaHasta = 0; try { if ("speechSynthesis" in window) window.speechSynthesis.cancel(); } catch { /* sin voz */ } }
+export function callar() {
+  hablaHasta = 0;
+  try {
+    if (!("speechSynthesis" in window)) return;
+    const s = window.speechSynthesis;
+    // En iPhone `cancel()` a solas deja el audio pillado y el siguiente dictado no arranca.
+    try { s.pause(); } catch { /* sin pausa */ }
+    s.cancel();
+  } catch { /* sin voz */ }
+}
 
 /** En móvil (Android, iPhone, iPad) se usan sesiones cortas que se relanzan; en escritorio, dictado continuo. */
 export function esMovil(ua = typeof navigator === "undefined" ? "" : navigator.userAgent, toques = typeof navigator === "undefined" ? 0 : navigator.maxTouchPoints): boolean {
@@ -53,8 +67,12 @@ export function puntuacionMicrofono(label: string, deviceId = ""): number {
   if (/iphone|ipad/.test(l)) return 100;
   if (/continuidad|continuity/.test(l)) return 95;
   if (/airpods|bluetooth/.test(l)) return 40;
-  if (/macbook|built-?in|interno|internal|default/.test(l)) return 0;
+  if (/macbook|built-?in|interno|internal|^default\b|same as system|igual que el sistema/.test(l)) return 0;
   return 10;
+}
+
+export function esContinuidad(label: string, deviceId = ""): boolean {
+  return puntuacionMicrofono(label, deviceId) >= 95;
 }
 
 /** Elige el deviceId a usar: el guardado si sigue existiendo; si no, el de mayor puntuación (iPhone Continuidad). */
@@ -73,30 +91,45 @@ function guardarPreferido(id: string) {
   try { localStorage.setItem(claveMicrofono, id); } catch { /* sin storage */ }
 }
 
+function etiquetaDe(lista: MediaDeviceInfo[], id: string, fallback = ""): string {
+  return lista.find(d => d.deviceId === id)?.label || fallback || id;
+}
+
 /**
- * Abre el micrófono preferido (iPhone Continuidad si está) y lo deja ocupado.
- * El Web Speech API no permite elegir dispositivo; mantener este flujo empuja al navegador a no volver al interno del Mac.
+ * Abre el micrófono preferido (iPhone Continuidad si el sistema lo expone).
+ * Suelta enseguida el permiso genérico y vuelve a pedir el deviceId concreto.
  */
-export async function abrirMicrofonoPreferido(): Promise<MediaStream | null> {
+export async function abrirMicrofonoPreferido(): Promise<MicrofonoAbierto | null> {
   if (typeof navigator === "undefined" || !navigator.mediaDevices?.getUserMedia) return null;
   try {
-    const previo = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const permiso = await navigator.mediaDevices.getUserMedia({ audio: true });
     const lista = await navigator.mediaDevices.enumerateDevices();
     const elegido = elegirMicrofono(lista, leerPreferido());
-    const actual = previo.getAudioTracks()[0]?.getSettings?.().deviceId ?? "";
-    if (!elegido || elegido === actual) {
-      if (elegido) guardarPreferido(elegido);
-      return previo;
-    }
-    previo.getTracks().forEach(t => t.stop());
+    permiso.getTracks().forEach(t => t.stop());
+    if (!elegido) return null;
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: { deviceId: { exact: elegido }, echoCancellation: true, noiseSuppression: true }
     });
     guardarPreferido(elegido);
-    return stream;
+    const label = etiquetaDe(lista, elegido, stream.getAudioTracks()[0]?.label || "");
+    return { stream, label, continuidad: esContinuidad(label, elegido), track: stream.getAudioTracks()[0] ?? null };
   } catch {
-    return null;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const label = stream.getAudioTracks()[0]?.label || "Micrófono";
+      return { stream, label, continuidad: esContinuidad(label), track: stream.getAudioTracks()[0] ?? null };
+    } catch {
+      return null;
+    }
   }
+}
+
+/** Arranca el reconocedor con la pista elegida cuando el navegador lo admite (`start(audioTrack)`). */
+export function arrancarReconocimiento(r: Recognition, pista: MediaStreamTrack | null | undefined) {
+  if (pista) {
+    try { r.start(pista); return; } catch { /* el motor no admite la pista */ }
+  }
+  r.start();
 }
 
 let vigente: Escucha | null = null;
@@ -113,14 +146,18 @@ export async function escuchar({ alOir, alParcial, alTerminar, alError }: { alOi
   const Rec: new () => Recognition = Disponible;
   vigente?.parar();
   callar();
-  const flujo = await abrirMicrofonoPreferido();
+  alParcial("");
   const movil = esMovil();
+  let micro: MicrofonoAbierto | null = null;
+  let pista: MediaStreamTrack | null = null;
   let abierto = true, actual: Recognition | null = null, relanzadas = 0, terminado = false;
-  const soltarFlujo = () => { try { flujo?.getTracks().forEach(t => t.stop()); } catch { /* ya cerrado */ } };
+  const soltarFlujo = () => { try { micro?.stream.getTracks().forEach(t => t.stop()); } catch { /* ya cerrado */ } };
   const terminar = () => { if (terminado) return; terminado = true; abierto = false; soltarFlujo(); if (vigente === control) vigente = null; alTerminar(); };
   const relanzar = (espera: number) => setTimeout(() => { if (abierto) arrancar(); }, espera);
 
   function arrancar() {
+    if (!abierto) return;
+    alParcial("");
     const r = new Rec(); actual = r;
     r.lang = "es-ES"; r.continuous = !movil; r.interimResults = true;
     r.onresult = e => {
@@ -133,28 +170,51 @@ export async function escuchar({ alOir, alParcial, alTerminar, alError }: { alOi
     r.onerror = e => {
       if (actual !== r) return;
       if (e.error === "not-allowed" || e.error === "service-not-allowed") { alError("Permite el micrófono para dar órdenes por voz (en los ajustes del navegador)."); terminar(); }
-      else if (e.error === "audio-capture") { alError("No llega sonido del micrófono. En el Mac, elige «Micrófono del iPhone» en Ajustes › Sonido › Entrada, con el iPhone cerca y desbloqueado."); terminar(); }
+      else if (e.error === "audio-capture") { alError("No llega sonido del micrófono. En el Mac: iPhone cerca y desbloqueado, y en Ajustes › Sonido › Entrada elige el micrófono del iPhone."); terminar(); }
       // «no-speech», «aborted» o «network»: se relanza al terminar la sesión.
     };
     r.onend = () => {
       if (actual !== r) return;
       actual = null;
-      if (abierto && relanzadas++ < MAX_RELANZAR) relanzar(movil ? 150 : 300); else terminar();
+      if (!abierto) return;
+      // Mientras Plano lee la respuesta, en el iPhone el micrófono no vuelve. Se espera a que calle.
+      const pausa = hablando() ? Math.min(8000, Math.max(300, hablaHasta - Date.now() + 150)) : (movil ? 150 : 300);
+      if (!hablando() && relanzadas++ >= MAX_RELANZAR) { terminar(); return; }
+      relanzar(pausa);
     };
-    try { r.start(); }
-    catch { actual = null; if (abierto && relanzadas++ < MAX_RELANZAR) relanzar(400); else terminar(); } // el anterior aún no había soltado el micrófono
+    try { arrancarReconocimiento(r, pista); }
+    catch { actual = null; if (abierto && relanzadas++ < MAX_RELANZAR) relanzar(400); else terminar(); }
   }
 
   const control: Escucha = {
+    microfono: "",
+    continuidad: false,
     parar() {
       if (!abierto && terminado) return;
       abierto = false;
+      callar();
       const r = actual; actual = null;
-      try { (r?.abort ?? r?.stop)?.call(r); } catch { /* ya parado */ }
+      if (r) {
+        r.onresult = null; r.onerror = null;
+        r.onend = null;
+        // El iPhone a veces ignora uno de los dos y deja el micrófono abierto.
+        try { r.stop(); } catch { /* ya parado */ }
+        try { r.abort?.(); } catch { /* ya parado */ }
+      }
       terminar();
     }
   };
   vigente = control;
+  // En el móvil, start() va en este mismo turno (el toque). Un await delante y el iPhone ignora el segundo Hablar.
+  if (movil) { arrancar(); return control; }
+  micro = await abrirMicrofonoPreferido();
+  if (!abierto) { soltarFlujo(); return control; }
+  pista = micro?.track ?? null;
+  control.microfono = micro?.label || "";
+  control.continuidad = Boolean(micro?.continuidad);
+  if (micro && !micro.continuidad) {
+    alError("No aparece el micrófono del iPhone. Déjalo cerca, desbloqueado y con Continuidad; o elígelo en Ajustes del Mac › Sonido › Entrada. Mientras, uso el del Mac.");
+  }
   arrancar();
   return control;
 }

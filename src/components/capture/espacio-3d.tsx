@@ -48,6 +48,7 @@ export function Espacio3d({ project, budgetId }: { project: Project; budgetId: s
   const [visorEstado, setVisorEstado] = useState<"cargando" | "listo" | "fallo">("cargando");
   const [escuchando, setEscuchando] = useState(false);
   const [oido, setOido] = useState("");
+  const [enVivo, setEnVivo] = useState("");
   const [respuesta, setRespuesta] = useState("");
   const [escrita, setEscrita] = useState("");
   const [guardando, setGuardando] = useState(false);
@@ -199,10 +200,13 @@ export function Espacio3d({ project, budgetId }: { project: Project; budgetId: s
   };
 
   async function alternarVoz() {
-    if (escuchando) { rec.current?.parar(); rec.current = null; setEscuchando(false); return; }
-    const r = await escuchar({ alOir: t => atenderRef.current(t), alParcial: setOido, alTerminar: () => { setEscuchando(false); rec.current = null; }, alError: notify });
+    if (escuchando) { rec.current?.parar(); rec.current = null; setEscuchando(false); setEnVivo(""); return; }
+    setEnVivo("");
+    const r = await escuchar({ alOir: t => atenderRef.current(t), alParcial: setEnVivo, alTerminar: () => { setEscuchando(false); setEnVivo(""); rec.current = null; }, alError: notify });
     if (!r) { notify("Este navegador no tiene dictado. Usa Chrome, Edge o Safari, o escribe la orden."); return; }
-    rec.current = r; setEscuchando(true); setRespuesta(`Te escucho. ${ayuda}`);
+    rec.current = r; setEscuchando(true);
+    const micro = r.continuidad && r.microfono ? `Micrófono: ${r.microfono}. ` : "";
+    setRespuesta(`${micro}Te escucho. ${ayuda}`);
   }
   useEffect(() => () => rec.current?.parar(), []);
 
@@ -241,7 +245,7 @@ export function Espacio3d({ project, budgetId }: { project: Project; budgetId: s
         <button type="button" aria-pressed={vista === "focus"} onClick={() => ver("focus")} disabled={visorEstado !== "listo"}>Ver {nombreElemento[sel].toLocaleLowerCase()}</button>
       </div>
       <div className="v360-tools">
-        {escuchando ? <span className="v360-escuchando" aria-live="polite"><i />{oido || "Escuchando…"}</span> : <span className="e3d-mover" role="group" aria-label="Mover la cámara">
+        {escuchando ? <span className="v360-escuchando" aria-live="polite"><i />{enVivo || "Escuchando…"}</span> : <span className="e3d-mover" role="group" aria-label="Mover la cámara">
           <button type="button" aria-label="Girar a la izquierda" onClick={() => visor.current?.command("left")} disabled={visorEstado !== "listo"}><RotateCcw size={18} strokeWidth={1.7} aria-hidden="true" /></button>
           <button type="button" aria-label="Girar a la derecha" onClick={() => visor.current?.command("right")} disabled={visorEstado !== "listo"}><RotateCw size={18} strokeWidth={1.7} aria-hidden="true" /></button>
           <button type="button" aria-label="Acercar" onClick={() => visor.current?.command("closer")} disabled={visorEstado !== "listo"}><ZoomIn size={18} strokeWidth={1.7} aria-hidden="true" /></button>
