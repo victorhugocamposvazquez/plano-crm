@@ -283,7 +283,8 @@ export type EscenaEquipo = { id: string; caja: Caja; alto: number; puesto: boole
 /** `carril`: puesto de la línea dentro de su haz, centrado en 0; el visor separa los tubos de lado para que se vean todos desde arriba. */
 export type EscenaTubo = { circuito: Circuito; puntos: Punto[]; alto: number; grueso: number; puesto: boolean; carril: number };
 export type EscenaPlanta = { ancho: number; fondo: number; alto: number; recintos: EscenaRecinto[] };
-function origen(planta: Planta): Punto { const ps = planta.recintos.flatMap(r => r.contorno); return [Math.min(...ps.map(p => p[0])), Math.min(...ps.map(p => p[1]))]; }
+/** Esquina de la planta en puntos del plano: el origen de la escena. */
+export function origen(planta: Planta): Punto { const ps = planta.recintos.flatMap(r => r.contorno); return [Math.min(...ps.map(p => p[0])), Math.min(...ps.map(p => p[1]))]; }
 const aMetros = (planta: Planta, o: Punto) => ([x, y]: Punto): Punto => [(x - o[0]) * planta.escala, (y - o[1]) * planta.escala];
 /** La planta en metros, con el origen en su esquina: lo que no cambia al presupuestar. */
 export function escenaPlanta(planta: Planta): EscenaPlanta {

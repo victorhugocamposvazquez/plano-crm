@@ -9,6 +9,8 @@ const colorEquipo: RGB = [30, 200, 60];
 /** Paleta de cámara térmica para la conversión: del violeta del congelado al naranja de lo que no se enfría. Contenido de la escena, no interfaz. */
 const calor: Record<string, RGB> = { congelado: [96, 60, 255], refrigerado: [0, 170, 255], atemperado: [40, 220, 130], ambiente: [255, 176, 40], servicio: [255, 84, 48] };
 const haz: RGB = [255, 70, 40];
+/** El plano en 2D como textura de suelo durante la conversión; `caja` en metros de la escena. */
+export type LaminaEscena = { lienzo: HTMLCanvasElement; caja: [number, number, number, number] };
 export type PasoConversion = "barrido" | "muros" | "tuberias" | "equipos" | "fin";
 const tramo = (t: number, desde: number, dura: number) => Math.min(1, Math.max(0, (t - desde) / dura));
 const suave = (t: number) => t * t * (3 - 2 * t), frena = (t: number) => 1 - (1 - t) ** 3;
@@ -82,6 +84,7 @@ export function createPlantaViewer(container: HTMLElement, escena: EscenaPlanta,
     alzados.push({ id: r.id, uso: r.uso, grupo: alzado, x0: Math.min(...xs), suelo: suelo.material as THREE.MeshStandardMaterial, pared, borde });
     const s = rotulo(r.nombre, r.rotulo, tinta, fuente);
     s.position.set((Math.min(...xs) + Math.max(...xs)) / 2, r.alto + 1.2, (Math.min(...zs) + Math.max(...zs)) / 2);
+    s.userData.titulo = r.nombre; s.userData.detalle = r.rotulo; s.userData.recinto = r.id; s.userData.alto = r.alto;
     s.userData.ancho = Math.min(Math.max(Math.max(...xs) - Math.min(...xs), 7), 13); s.scale.set(s.userData.ancho, s.userData.ancho * s.userData.proporcion, 1);
     // Los recintos pequeños (aseos, vestíbulos) no llevan rótulo en la escena: se pisarían. Sus datos salen al tocarlos.
     if (Math.max(Math.max(...xs) - Math.min(...xs), Math.max(...zs) - Math.min(...zs)) < 6) { liberar(s); continue; }
@@ -157,8 +160,8 @@ export function createPlantaViewer(container: HTMLElement, escena: EscenaPlanta,
    * Luego las tuberías se trazan una a una, caen los equipos y un destello devuelve la escena a sus colores.
    * Todo es geometría ligera (líneas, puntos y planos aditivos), sin sombras ni postproceso, y dura lo mismo en cualquier dispositivo.
    */
-  function convertir(alPaso: (p: PasoConversion) => void, alTerminar: () => void) {
-    if (quieto()) { alPaso("fin"); alTerminar(); return; }
+  function convertir(alPaso: (p: PasoConversion, reconocidos: number, ultimo: string) => void, alTerminar: () => void, lamina?: LaminaEscena) {
+    if (quieto()) { alPaso("fin", alzados.length, ""); alTerminar(); return; }
     convirtiendo = true; controles.enabled = false;
     const fin = destino(), esf = new THREE.Spherical().setFromVector3(fin.posicion.clone().sub(fin.objetivo));
     const orden = [...alzados].sort((a, b) => a.x0 - b.x0), turno = new Map(orden.map((a, i) => [a.id, i / Math.max(1, orden.length - 1)]));
@@ -186,6 +189,26 @@ export function createPlantaViewer(container: HTMLElement, escena: EscenaPlanta,
       a.grupo.scale.y = 0.001; a.suelo.transparent = true; a.suelo.opacity = 0; a.suelo.color.copy(color(calor[a.uso])); a.pared.color.copy(color(calor[a.uso])); a.pared.blending = THREE.AdditiveBlending; a.pared.opacity = 0; a.borde.color.copy(color(calor[a.uso])); a.borde.transparent = true; a.borde.opacity = 0;
     }
     for (const r of rotulos) r.material.opacity = 0;
+    // El plano en 2D tendido en el suelo: la conversión empieza leyéndolo y los muros nacen de sus líneas.
+    let papel: THREE.MeshBasicMaterial | null = null;
+    if (lamina) {
+      const mapa = new THREE.CanvasTexture(lamina.lienzo); mapa.colorSpace = THREE.SRGBColorSpace; mapa.anisotropy = 4;
+      papel = new THREE.MeshBasicMaterial({ map: mapa, transparent: true, opacity: 0, depthWrite: false });
+      const hoja = new THREE.Mesh(new THREE.PlaneGeometry(lamina.caja[2] - lamina.caja[0], lamina.caja[3] - lamina.caja[1]), papel);
+      hoja.rotation.x = -Math.PI / 2; hoja.position.set((lamina.caja[0] + lamina.caja[2]) / 2, 0.03, (lamina.caja[1] + lamina.caja[3]) / 2); hoja.renderOrder = 2; efimero.add(hoja);
+    }
+    // Etiqueta de «reconocido» de cada recinto con rótulo: aparece cuando el haz pasa por él y sube con sus muros.
+    const etiquetas = rotulos.map(r => { const e = new THREE.Sprite(new THREE.SpriteMaterial({ map: rotulo(r.userData.titulo, r.userData.detalle, "rgb(244 236 232)", fuente).material.map, transparent: true, opacity: 0, depthTest: false })); e.renderOrder = 11; e.scale.copy(r.scale); e.position.copy(r.position); e.userData = { ...r.userData }; efimero.add(e); return e; });
+    // Marca de «reconocido»: cuatro esquinas que encuadran cada recinto cuando el haz lo lee.
+    const marcas = orden.map(a => {
+      const r = escena.recintos.find(x => x.id === a.id)!, xs = r.contorno.map(p => p[0]), zs = r.contorno.map(p => p[1]);
+      const x0 = Math.min(...xs), x1 = Math.max(...xs), z0 = Math.min(...zs), z1 = Math.max(...zs), l = Math.min(2.5, (x1 - x0) * 0.25, (z1 - z0) * 0.25), y = 0.09, v: number[] = [];
+      for (const [x, dx] of [[x0, l], [x1, -l]]) for (const [z, dz] of [[z0, l], [z1, -l]]) v.push(x, y, z, x + dx, y, z, x, y, z, x, y, z + dz);
+      const g = new THREE.BufferGeometry(); g.setAttribute("position", new THREE.Float32BufferAttribute(v, 3));
+      const m = new THREE.LineBasicMaterial({ ...brillo([255, 244, 232], 0), depthTest: false }), o = new THREE.LineSegments(g, m); o.renderOrder = 10; efimero.add(o);
+      return { id: a.id, m };
+    });
+    const nombres = new Map(escena.recintos.map(r => [r.id, r.nombre]));
     // Suelo de rejilla, haz y dos ondas que salen del centro.
     const rejilla = new THREE.GridHelper(radio * 6, 72, color(haz), color(haz)); rejilla.position.set(cx, -0.05, cz);
     const mr = rejilla.material as THREE.LineBasicMaterial; mr.transparent = true; mr.opacity = 0; mr.depthWrite = false;
@@ -202,30 +225,45 @@ export function createPlantaViewer(container: HTMLElement, escena: EscenaPlanta,
       return { tubos, piezas };
     };
     instalacion.visible = true; let piezas = prepara(), grupo = instalacion;
-    const total = 9400; let dicho: PasoConversion | null = null;
-    const di = (p: PasoConversion) => { if (dicho !== p) { dicho = p; alPaso(p); } };
+    // Tiempos, en ms: el plano aparece solo, el haz lo lee de izquierda a derecha y, leído entero, se levanta.
+    const LEE = 900, HAZ = 2700, ALZA = LEE + HAZ, TUBOS = ALZA + 2900, EQUIPOS = TUBOS + 1300, FUNDE = EQUIPOS + 1500, total = FUNDE + 1400; let dicho = "";
+    const di = (p: PasoConversion, n: number, ultimo: string) => { if (dicho !== p + n) { dicho = p + n; alPaso(p, n, ultimo); } };
     animar(total, t => {
-      const s = t * total, b = suave(tramo(s, 300, 2300)), x = -margen + (escena.ancho + margen * 2) * b;
+      // `x` es por dónde va el haz; sigue avanzando fuera de la planta para que las marcas de los últimos recintos también se apaguen.
+      const s = t * total, b = tramo(s, LEE, HAZ), x = -margen + (escena.ancho + margen * 2) * Math.max(0, (s - LEE) / HAZ), paso = escena.ancho * 0.05;
       if (grupo !== instalacion) { grupo = instalacion; instalacion.visible = true; piezas = prepara(); }
-      luz.position.x = raya.position.x = x; luz.visible = raya.visible = b < 1;
-      const f = suave(tramo(s, 8200, 1200)), aparece = tramo(s, 0, 700);
-      mr.opacity = 0.34 * aparece * (1 - f);
-      ondas.forEach((o, i) => { const k = tramo(s, 200 + i * 900, 2600); o.scale.setScalar(radio * 1.9 * frena(k) + 0.01); (o.material as THREE.MeshBasicMaterial).opacity = 0.8 * Math.sin(Math.PI * k); });
-      // Plano secuencia: de cerca y en vertical a la vista final, subiendo en espiral.
-      const c = suave(tramo(s, 700, 6900));
-      camara.position.setFromSpherical(new THREE.Spherical(esf.radius * (0.52 + 0.48 * c), 0.02 + (esf.phi - 0.02) * suave(tramo(s, 1500, 5600)), esf.theta + 2.5 * (1 - c))).add(fin.objetivo); camara.lookAt(fin.objetivo);
+      luz.position.x = raya.position.x = Math.min(x, escena.ancho + margen); luz.visible = raya.visible = b > 0 && b < 1;
+      const f = suave(tramo(s, FUNDE, 1200)), aparece = tramo(s, 0, 700);
+      mr.opacity = 0.3 * tramo(s, ALZA - 400, 900) * (1 - f);
+      if (papel) papel.opacity = aparece * (1 - 0.45 * tramo(s, ALZA, 2500)) * (1 - f);
+      ondas.forEach((o, i) => { const k = tramo(s, ALZA - 300 + i * 700, 2400); o.scale.setScalar(radio * 1.9 * frena(k) + 0.01); (o.material as THREE.MeshBasicMaterial).opacity = 0.7 * Math.sin(Math.PI * k); });
+      // Plano secuencia: primero en vertical y derecho, como se lee un plano; después baja girando una vuelta entera hasta la vista final.
+      const c = suave(tramo(s, ALZA, 5400));
+      camara.position.setFromSpherical(new THREE.Spherical(esf.radius * (0.94 + 0.06 * c - 0.06 * (1 - c) * tramo(s, 0, ALZA)), 0.02 + (esf.phi - 0.02) * suave(tramo(s, ALZA, 4600)), (esf.theta - Math.PI * 2) * c)).add(fin.objetivo); camara.lookAt(fin.objetivo);
+      let reconocidos = 0, ultimo = "";
       alzados.forEach((a, i) => {
-        const visto = tramo(x - a.x0, 0, escena.ancho * 0.06), k = turno.get(a.id) ?? 0, ini = base.get(a.id)!, sube = tramo(s, 2000 + k * 2300, 1100), e = extras[i];
-        a.suelo.opacity = visto * (0.5 + 0.5 * f); a.borde.opacity = visto;
+        const visto = tramo(x - a.x0, 0, paso), k = turno.get(a.id) ?? 0, ini = base.get(a.id)!, sube = tramo(s, ALZA + 100 + k * 2100, 1100), e = extras[i];
+        if (visto > 0.5) reconocidos++;
+        // Al reconocerlo, el suelo del recinto da un fogonazo y se queda teñido.
+        a.suelo.opacity = Math.min(1, visto * (0.3 + 0.45 * (1 - tramo(x - a.x0, paso, paso * 4)) * (1 - f) + 0.7 * f)); a.borde.opacity = visto;
         a.grupo.scale.y = Math.max(0.001, frena(sube));
         e.nube.opacity = Math.min(1, sube * 3) * 0.9 * (1 - f); e.canto.opacity = Math.min(1, sube * 3) * (1 - f);
         a.suelo.color.copy(color(calor[a.uso])).lerp(ini.suelo, f); a.borde.color.copy(color(calor[a.uso])).lerp(ini.borde, f); a.pared.color.copy(color(calor[a.uso])).lerp(ini.suelo, f);
         a.pared.blending = f < 0.5 ? THREE.AdditiveBlending : THREE.NormalBlending; a.pared.opacity = 0.3 * tramo(sube, 0.5, 0.5) + (0.2 - 0.3) * f;
       });
-      const traza = tramo(s, 5300, 1700); piezas.tubos.forEach((o, i) => { o.visible = i < traza * piezas.tubos.length; });
-      piezas.piezas.forEach((o, i) => { const cae = tramo(s, 6700 + i / Math.max(1, piezas.piezas.length) * 700, 700); o.visible = cae > 0; o.position.y = (1 - frena(cae)) * escena.alto * 0.9; });
+      for (const e of etiquetas) {
+        const a = alzados.find(z => z.id === e.userData.recinto)!;
+        e.material.opacity = tramo(x - a.x0, 0, paso) * (1 - f); e.position.y = Math.max(0.4, (e.userData.alto as number) * a.grupo.scale.y + 1.2);
+      }
+      for (const marca of marcas) {
+        const a = alzados.find(z => z.id === marca.id)!, visto = tramo(x - a.x0, 0, paso);
+        if (visto > 0.5) ultimo = nombres.get(marca.id) ?? ultimo;
+        marca.m.opacity = visto * (1 - 0.8 * tramo(x - a.x0, paso * 2, paso * 6)) * (1 - tramo(s, ALZA, 500));
+      }
+      const traza = tramo(s, TUBOS, 1600); piezas.tubos.forEach((o, i) => { o.visible = i < traza * piezas.tubos.length; });
+      piezas.piezas.forEach((o, i) => { const cae = tramo(s, EQUIPOS + i / Math.max(1, piezas.piezas.length) * 700, 700); o.visible = cae > 0; o.position.y = (1 - frena(cae)) * escena.alto * 0.9; });
       for (const r of rotulos) r.material.opacity = f;
-      di(s < 2000 ? "barrido" : s < 5300 ? "muros" : s < 6700 ? "tuberias" : s < 8200 ? "equipos" : "fin");
+      di(s < ALZA ? "barrido" : s < TUBOS ? "muros" : s < EQUIPOS ? "tuberias" : s < FUNDE ? "equipos" : "fin", reconocidos, ultimo);
     }, () => {
       mundo.remove(efimero); liberar(efimero);
       alzados.forEach((a, i) => { for (const o of extras[i].objetos) { a.grupo.remove(o); liberar(o); } a.grupo.scale.y = 1; a.suelo.transparent = false; a.suelo.opacity = 1; a.suelo.color.copy(base.get(a.id)!.suelo); a.pared.blending = THREE.NormalBlending; a.borde.transparent = false; a.borde.opacity = 1; });
