@@ -57,3 +57,16 @@ Si el artículo elegido se guarda en la nave (`stocked`), cada alternativa dice 
 ### Pedir lo que falta
 
 En «Por pedir», cada artículo tiene «Pedir»: apunta un pedido en Materiales del proyecto, ligado al artículo del catálogo (`purchase.create` con `article_id`), con la cantidad que falta y el último proveedor usado para ese artículo. Lo ya pedido para esta obra y aún no recibido se descuenta (`enCamino`). Por voz: «pide lo que falta». Al recibir el pedido entra en el almacén; al llevarlo a obra sale.
+
+## Plano en 3D: una planta entera con su instalación (12 nov 2026)
+
+Ruta: `/proyectos/[id]/planta3d`, desde el menú del proyecto («Plano en 3D») y desde «Añadir al presupuesto». A diferencia de la propuesta en 3D, que es una caja, aquí se levanta la planta completa: cada recinto a su altura, con el suelo del color de su uso térmico, los equipos y el trazado de tuberías.
+
+- **Datos:** `src/lib/planta-ejemplo.ts` es una nave frigorífica real sin nombres de cliente. Superficie, altura y temperatura son las rotuladas; contornos, equipos y tuberías salen de los trazos del PDF, en puntos, con la escala deducida de las superficies de las cámaras. Los rótulos están transcritos a mano: Plano no los lee todavía (ver `docs/PREGUNTAS.md`).
+- **Cantidades:** evaporadores por modelo en unidades; tubería en metros por diámetro, medida sobre el trazado en planta (`medicionTuberia`), sin bajadas ni subida a la central; una central. Los ramales solo cuentan si su equipo está puesto. Los tramos con rótulo dudoso se listan para confirmar.
+- **Catálogo:** capítulo «Refrigeración». El evaporador se empareja por la referencia que lleva el nombre del artículo (`TEWSDC45`), la tubería por el diámetro (`1 3/8`) y la central por la palabra. Sin artículo o con precio 0 la partida sale como «Precio pendiente» y queda fuera del total; nunca se inventa una cifra. Los artículos de la demostración van a 0 y no se cargan con los proyectos de ejemplo.
+- **Órdenes** (voz, escritas o tocando): «pon lo del plano», «pon dos evaporadores en la cámara 3», «un TEWSDC45 en muelles», «cambia el BT09 por un TEWSSC80-4», «quita el MT04», «quita la tubería», «¿qué lleva la cámara 2?», «¿cuántos metros de aspiración de baja?», «entra en la cámara 2», «vista general», «¿cuánto va?», «deshaz», «pásalo al presupuesto».
+- **Visor:** `src/lib/visual/planta-viewer.ts`, con Three.js bajo demanda y pintado solo cuando cambia algo. Lo presupuestado se ve macizo; lo que marca el plano y falta, en silueta. La altura de las tuberías no viene en el plano: se dibujan bajo el techo.
+- Lo elegido se recuerda en el navegador (`plano.planta3d.<proyecto>.<planta>`) y pasa al borrador con `budget.create` / `budget.revise` / `budget.save`. Sin comandos nuevos ni migraciones.
+
+Pruebas: `tests/planta3d.test.ts`.

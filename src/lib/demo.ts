@@ -35,7 +35,22 @@ export function createDemo(): Workspace {
     { id: demoId(41), organization_id: org, code: "PAV-003", name: "Pavimento de resina continuo con imprimación", chapter: "Pavimentos", unit: "m²", unit_price: 4200, vat_rate: 21 },
     { id: demoId(42), organization_id: org, code: "PIN-002", name: "Revestimiento mineral decorativo", chapter: "Pintura", unit: "m²", unit_price: 3100, vat_rate: 21 },
     { id: demoId(43), organization_id: org, code: "CAR-003", name: "Mueble auxiliar de 120 cm montado", chapter: "Carpintería", unit: "ud", unit_price: 88000, vat_rate: 21, stocked: true, stock_qty: 1, stock_min: 0, stock_location: "Nave · exposición" },
-    { id: demoId(44), organization_id: org, code: "EQU-001", name: "Estantería metálica modular montada", chapter: "Equipamiento", unit: "ud", unit_price: 74000, vat_rate: 21, stocked: true, stock_qty: 4, stock_min: 2, stock_location: "Nave · fondo" }
+    { id: demoId(44), organization_id: org, code: "EQU-001", name: "Estantería metálica modular montada", chapter: "Equipamiento", unit: "ud", unit_price: 74000, vat_rate: 21, stocked: true, stock_qty: 4, stock_min: 2, stock_location: "Nave · fondo" },
+    // Refrigeración para «Plano en 3D»: los modelos y diámetros del plano de ejemplo. Precio a 0 = pendiente; no hay tarifa cargada.
+    { id: demoId(110), organization_id: org, code: "REF-001", name: "Evaporador cúbico de cámara TEWSSC80-1", chapter: "Refrigeración", unit: "ud", unit_price: 0, vat_rate: 21 },
+    { id: demoId(111), organization_id: org, code: "REF-002", name: "Evaporador cúbico de cámara TEWSSC80-2", chapter: "Refrigeración", unit: "ud", unit_price: 0, vat_rate: 21 },
+    { id: demoId(112), organization_id: org, code: "REF-003", name: "Evaporador cúbico de cámara TEWSSC75-3", chapter: "Refrigeración", unit: "ud", unit_price: 0, vat_rate: 21 },
+    { id: demoId(113), organization_id: org, code: "REF-004", name: "Evaporador cúbico de cámara TEWSSC80-4", chapter: "Refrigeración", unit: "ud", unit_price: 0, vat_rate: 21 },
+    { id: demoId(114), organization_id: org, code: "REF-005", name: "Evaporador de plafón de pasillo TEWSDC50", chapter: "Refrigeración", unit: "ud", unit_price: 0, vat_rate: 21 },
+    { id: demoId(115), organization_id: org, code: "REF-006", name: "Evaporador cúbico de muelle TEWSDC45", chapter: "Refrigeración", unit: "ud", unit_price: 0, vat_rate: 21 },
+    { id: demoId(116), organization_id: org, code: "REF-010", name: "Central frigorífica de CO2", chapter: "Refrigeración", unit: "ud", unit_price: 0, vat_rate: 21 },
+    { id: demoId(117), organization_id: org, code: "REF-021", name: "Tubería frigorífica CO2 Ø 5/8\"", chapter: "Refrigeración", unit: "ml", unit_price: 0, vat_rate: 21 },
+    { id: demoId(118), organization_id: org, code: "REF-022", name: "Tubería frigorífica CO2 Ø 3/4\"", chapter: "Refrigeración", unit: "ml", unit_price: 0, vat_rate: 21 },
+    { id: demoId(119), organization_id: org, code: "REF-023", name: "Tubería frigorífica CO2 Ø 1 1/8\"", chapter: "Refrigeración", unit: "ml", unit_price: 0, vat_rate: 21 },
+    { id: demoId(120), organization_id: org, code: "REF-024", name: "Tubería frigorífica CO2 Ø 1 3/8\"", chapter: "Refrigeración", unit: "ml", unit_price: 0, vat_rate: 21 },
+    { id: demoId(121), organization_id: org, code: "REF-025", name: "Tubería frigorífica CO2 Ø 1 5/8\"", chapter: "Refrigeración", unit: "ml", unit_price: 0, vat_rate: 21 },
+    { id: demoId(122), organization_id: org, code: "REF-026", name: "Tubería frigorífica CO2 Ø 2 1/8\"", chapter: "Refrigeración", unit: "ml", unit_price: 0, vat_rate: 21 },
+    { id: demoId(123), organization_id: org, code: "REF-027", name: "Tubería frigorífica CO2 Ø 3 1/8\"", chapter: "Refrigeración", unit: "ml", unit_price: 0, vat_rate: 21 }
   ];
   const items: BudgetItem[] = articles.slice(0,6).map((a, i) => ({ id: demoId(100 + i), chapter: a.chapter, description: a.name, quantity: [42, 38, 86, 7, 235, 24][i], unit: a.unit as BudgetItem["unit"], unit_price: a.unit_price, adjustment_percent: 0, vat_rate: a.vat_rate, inclusion: "included" }));
   const revised = structuredClone(items); revised[0].adjustment_percent = 15; revised[2].description = "Tarima laminada roble natural, gama premium"; revised[2].unit_price = 5480; revised[3].quantity = 8;

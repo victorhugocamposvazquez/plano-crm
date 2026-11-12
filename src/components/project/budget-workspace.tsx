@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { ArrowRight, BookOpen, Camera, ChevronDown, ChevronLeft, LayoutTemplate, PenLine, Plus, Orbit, Box } from "lucide-react";
+import { ArrowRight, BookOpen, Camera, ChevronDown, ChevronLeft, LayoutTemplate, PenLine, Plus, Orbit, Box, Boxes } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Menu } from "@/components/ui/menu";
 import { BudgetActions } from "./budget-actions";
@@ -94,6 +94,7 @@ export function BudgetWorkspace({project,budget,versions,onNavigate,onEdit,canEd
           {id:"fotos",label:"Desde fotos de la visita",hint:"Fotos, notas y una cifra orientativa.",icon:<Camera size={16} strokeWidth={1.7}/>,onSelect:()=>router.push(fotosHref)},
           {id:"visita360",label:"En la visita 360",hint:"Recorre la estancia y di qué va en cada sitio.",icon:<Orbit size={16} strokeWidth={1.7}/>,onSelect:()=>router.push(`/proyectos/${project.id}/visita360?p=${budget.id}`)},
           {id:"espacio3d",label:"En la propuesta en 3D",hint:"Cambia suelo, paredes y muebles del catálogo y míralo.",icon:<Box size={16} strokeWidth={1.7}/>,onSelect:()=>router.push(`/proyectos/${project.id}/espacio3d?p=${budget.id}`)},
+          {id:"planta3d",label:"En el plano en 3D",hint:"La planta con sus alturas: presupuesta la instalación.",icon:<Boxes size={16} strokeWidth={1.7}/>,onSelect:()=>router.push(`/proyectos/${project.id}/planta3d?p=${budget.id}`)},
           {id:"mano",label:"Escribir una partida a mano",icon:<PenLine size={16} strokeWidth={1.7}/>,onSelect:onEdit}
         ]}/>}
       </div>

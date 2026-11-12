@@ -37,7 +37,8 @@ export function previsualizar(data: Workspace): Vista[] {
 
 /** Artículos de ejemplo que faltan en el catálogo (por código). */
 export function articulosQueFaltan(data: Workspace) {
-  return createDemo().articles.filter(a => !data.articles.some(x => x.code === a.code));
+  // Los de Refrigeración (Plano en 3D) van sin precio y solo viven en la demostración: no se cargan en el catálogo de una empresa.
+  return createDemo().articles.filter(a => a.chapter !== "Refrigeración" && !data.articles.some(x => x.code === a.code));
 }
 
 /** Crea catálogo, proyectos, presupuestos (con su V1 aprobada y V2 en borrador donde toca), tareas, compras y mensajes. Sigue aunque algo falle y lo anota. */
