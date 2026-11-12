@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
-import { MessageCircle, Footprints, ListPlus, Receipt, ArrowLeftRight, MessageSquare, Ellipsis, Pencil, LayoutTemplate, Camera, ChevronRight, Orbit, Box } from "lucide-react";
+import { MessageCircle, Footprints, ListPlus, Receipt, ArrowLeftRight, MessageSquare, Ellipsis, Pencil, LayoutTemplate, Camera, ChevronRight, Orbit, Box, Boxes } from "lucide-react";
 import { Menu } from "@/components/ui/menu";
 import { Modal } from "@/components/ui/modal";
 import { Button } from "@/components/ui/button";
@@ -89,7 +89,8 @@ export function ProjectMenu({ project, approvedVersion, puedeEstimar, onChat, so
     ...(puedeEstimar ? [
       { id: "visita", label: "Desde fotos", hint: "Fotos de la obra, notas y una cifra orientativa", icon: <Footprints size={16} strokeWidth={1.7} />, onSelect: () => router.push(`/proyectos/nueva?proyecto=${project.id}`) },
       { id: "visita360", label: "Visita 360", hint: "Recorre la estancia y di qué va en cada sitio", icon: <Orbit size={16} strokeWidth={1.7} />, onSelect: () => router.push(`/proyectos/${project.id}/visita360`) },
-      { id: "espacio3d", label: "Propuesta en 3D", hint: "Cambia suelo, paredes y muebles del catálogo por voz o tocando", icon: <Box size={16} strokeWidth={1.7} />, onSelect: () => router.push(`/proyectos/${project.id}/espacio3d`) }
+      { id: "espacio3d", label: "Propuesta en 3D", hint: "Cambia suelo, paredes y muebles del catálogo por voz o tocando", icon: <Box size={16} strokeWidth={1.7} />, onSelect: () => router.push(`/proyectos/${project.id}/espacio3d`) },
+      { id: "planta3d", label: "Plano en 3D", hint: "La planta con sus alturas: presupuesta la instalación por voz o tocando", icon: <Boxes size={16} strokeWidth={1.7} />, onSelect: () => router.push(`/proyectos/${project.id}/planta3d`) }
     ] : []),
     { id: "chat", label: "Abrir el chat", hint: "Conversación del equipo", icon: <MessageSquare size={16} strokeWidth={1.7} />, onSelect: onChat }
   ];
@@ -112,6 +113,7 @@ export function ProjectMenu({ project, approvedVersion, puedeEstimar, onChat, so
             {fotosHref && <button type="button" className="opt-row" onClick={() => ir(fotosHref)}><span className="opt-ico" data-tone="warning"><Camera size={18} strokeWidth={1.7} aria-hidden="true" /></span><span className="opt-text"><strong>Desde fotos</strong><small>Fotos de la obra, notas y una cifra orientativa.</small></span><ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" className="muted" /></button>}
             <button type="button" className="opt-row" onClick={() => ir(`/proyectos/${project.id}/visita360`)}><span className="opt-ico"><Orbit size={18} strokeWidth={1.7} aria-hidden="true" /></span><span className="opt-text"><strong>Visita 360</strong><small>Recorre la estancia y di qué va en cada sitio.</small></span><ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" className="muted" /></button>
             <button type="button" className="opt-row" onClick={() => ir(`/proyectos/${project.id}/espacio3d`)}><span className="opt-ico"><Box size={18} strokeWidth={1.7} aria-hidden="true" /></span><span className="opt-text"><strong>Propuesta en 3D</strong><small>Cambia suelo, paredes y muebles del catálogo por voz o tocando.</small></span><ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" className="muted" /></button>
+            <button type="button" className="opt-row" onClick={() => ir(`/proyectos/${project.id}/planta3d`)}><span className="opt-ico"><Boxes size={18} strokeWidth={1.7} aria-hidden="true" /></span><span className="opt-text"><strong>Plano en 3D</strong><small>La planta con sus alturas: presupuesta la instalación por voz o tocando.</small></span><ChevronRight size={16} strokeWidth={1.7} aria-hidden="true" className="muted" /></button>
           </div>}
           <div className="action-group" role="group" aria-labelledby="acciones-obra">
             <span className="section-label" id="acciones-obra"><span>Obra</span></span>

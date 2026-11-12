@@ -57,3 +57,36 @@ Si el artículo elegido se guarda en la nave (`stocked`), cada alternativa dice 
 ### Pedir lo que falta
 
 En «Por pedir», cada artículo tiene «Pedir»: apunta un pedido en Materiales del proyecto, ligado al artículo del catálogo (`purchase.create` con `article_id`), con la cantidad que falta y el último proveedor usado para ese artículo. Lo ya pedido para esta obra y aún no recibido se descuenta (`enCamino`). Por voz: «pide lo que falta». Al recibir el pedido entra en el almacén; al llevarlo a obra sale.
+
+## Plano en 3D: una planta entera con su instalación (12 nov 2026)
+
+Ruta: `/proyectos/[id]/planta3d`, desde el menú del proyecto («Plano en 3D») y desde «Añadir al presupuesto». A diferencia de la propuesta en 3D, que es una caja, aquí se levanta la planta completa: cada recinto a su altura, con el suelo del color de su uso térmico, los equipos y el trazado de tuberías.
+
+- **Datos:** `src/lib/planta-ejemplo.ts` es una nave frigorífica real sin nombres de cliente. Superficie, altura y temperatura son las rotuladas; contornos, equipos y tuberías salen de los trazos del PDF, en puntos, con la escala deducida de las superficies de las cámaras. Los rótulos están transcritos a mano: Plano no los lee todavía (ver `docs/PREGUNTAS.md`).
+- **Cantidades:** evaporadores por modelo en unidades; tubería en metros por diámetro, medida sobre el trazado en planta (`medicionTuberia`), sin bajadas ni subida a la central; una central. Los ramales solo cuentan si su equipo está puesto. Los tramos con rótulo dudoso se listan para confirmar.
+- **Catálogo:** capítulo «Refrigeración». El evaporador se empareja por la referencia que lleva el nombre del artículo (`TEWSDC45`), la tubería por el diámetro (`1 3/8`) y la central por la palabra. Sin artículo o con precio 0 la partida sale como «Precio pendiente» y queda fuera del total; nunca se inventa una cifra. Los artículos de la demostración van a 0 y no se cargan con los proyectos de ejemplo.
+- **Órdenes** (voz, escritas o tocando): «pon lo del plano», «pon dos evaporadores en la cámara 3», «un TEWSDC45 en muelles», «cambia el BT09 por un TEWSSC80-4», «quita el MT04», «quita la tubería», «¿qué lleva la cámara 2?», «¿cuántos metros de aspiración de baja?», «entra en la cámara 2», «vista general», «¿cuánto va?», «deshaz», «pásalo al presupuesto».
+- **Visor:** `src/lib/visual/planta-viewer.ts`, con Three.js bajo demanda y pintado solo cuando cambia algo. Lo presupuestado se ve macizo; lo que marca el plano y falta, en silueta. La altura de las tuberías no viene en el plano: se dibujan bajo el techo.
+- Lo elegido se recuerda en el navegador (`plano.planta3d.<proyecto>.<planta>`) y pasa al borrador con `budget.create` / `budget.revise` / `budget.save`. Sin comandos nuevos ni migraciones.
+
+Pruebas: `tests/planta3d.test.ts`.
+
+### Subir un plano y verlo convertirse (12 nov 2026)
+
+«Subir un plano» lee un PDF en el navegador y levanta su planta. Hugo pidió que lo hiciera Plano y, por ahora, solo con planos que traen texto.
+
+- **Lectura:** `src/lib/planta-lector-pdf.ts` saca textos y trazos rectos de la primera hoja con PDF.js (sin el tope de 250.000 operadores de la lectura rápida: estas plantas pasan del millón). `src/lib/planta-lector.ts` hace el resto, sin dependencias: rótulos con «S: … m²» (nombre, «h:», «Tª:») son recintos; «EQUIPO BT01» con el modelo debajo, equipos; «CO2 A_BT = Ø1 3/8"», diámetros.
+- **Contornos y escala:** se rellena el hueco entre muros alrededor de cada rótulo. Qué grises son muro se decide probando: gana la combinación que más recintos hace cuadrar con su superficie rotulada, y de ahí sale la escala. Cada recinto queda como medido (cuadra a menos del 6 %), aproximado (contorno de los muros, pero se desvía) o estimado (los muros no cierran: cuadrado con la superficie rotulada).
+- **Equipos y tuberías:** el símbolo es el grupo compacto de trazos de color más cercano al rótulo; las tuberías, las corridas largas de color. El circuito sale del color (azul, rosa, verde, rojo) y el diámetro del rótulo más cercano que nombra ese circuito. Es una convención de estos planos y la pantalla lo avisa. La leyenda del plano queda fuera.
+- **Sin texto:** si el PDF no trae texto (impreso con «Print to PDF», escaneado) se avisa y no se convierte.
+- **Conversión:** mientras se lee, `escaner-plano.tsx` pinta el plano una vez en un lienzo 2D con aspecto de cámara térmica y un haz en CSS lo recorre. Al terminar, el visor (`convertir`) parte de la planta vista desde arriba, levanta los muros mientras inclina la cámara, baja los equipos y vuelve a los colores normales. Unos 5 s, sin postproceso ni librerías nuevas. «Ver la conversión» la repite.
+- **Revisión:** «Leído del plano, por revisar» lista avisos y cómo se midió cada recinto. La planta leída se guarda en el navegador (`plano.planta3d.subida.<proyecto>`); persistirla en el servidor es de Codex.
+
+En el plano de la nave frigorífica: 27 recintos (15 medidos, 5 aproximados, 7 estimados, casi todos aseos y despachos con mobiliario), 14 equipos con su modelo y unos 466 m de tubería. La escala sale 0,1505 m por punto, un 0,7 % por encima de la calculada a mano.
+
+Pruebas: `tests/planta-lector.test.ts` (plano sintético; el PDF real no se copia al repositorio).
+
+### Precios orientativos y referencia al plano (12 nov 2026)
+
+Hugo pidió precios orientativos para poder presupuestar. Los 14 artículos del capítulo «Refrigeración» (`src/lib/demo.ts`) llevan ahora un precio estimado por Claude, no una tarifa: en internet solo hay públicas tarifas de accesorios K65 y de equipos pequeños. En una empresa real, «Plano en 3D» ofrece «Añadir al catálogo» cuando faltan (un `article.create` por artículo); no entran con los proyectos de ejemplo. Al pasar la propuesta al presupuesto, las notas de la versión quedan referenciadas al plano y avisan de que los precios son orientativos.
+

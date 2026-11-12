@@ -377,3 +377,7 @@ Pantalla independiente para mantener el rediseño de Fable: una zona visible, co
 ### Preparación PDF recuperable · 2/11/2026 (Codex, autorizada por Hugo)
 
 Se conserva el flujo de Fable con tres pasos. Bloque compacto «Guardar preparación / Cargar la guardada», fecha/autor y estados por texto; usa tokens existentes, ambos temas y controles de 44 px. Los diálogos confirman sustitución, reinicio y salida sin copia segura. El guardado de preparación se distingue de añadir partidas al presupuesto. Se corrige además una colisión de `.work-head` con la vista Obra que ocultaba nombres y casillas en el flujo PDF móvil, y el desbordamiento de su destino largo. Estilos limitados a `plan-draft.css`, sin nuevos tokens ni cambios al armazón compartido.
+
+### Conversión de plano a 3D · 12 noviembre 2026
+
+Tokens nuevos, fijos en los dos temas igual que `--pl-document-bg`: `--pl-scan-bg` (`#070B12`, fondo del escáner), `--pl-scan-ink` (`#F4ECE8`) y `--pl-scan-muted` (`#B7A9A3`) para la letra sobre ese fondo, `--pl-scan-beam` (`#FF4628`, haz), `--pl-scan-glow` y `--pl-scan-grid` (el mismo rojo al 28 % y al 10 %). Solo se usan mientras dura la lectura y la conversión en «Plano en 3D»; al terminar, el escenario vuelve al papel. La paleta térmica de los recintos durante la conversión es contenido de la escena (como los colores de uso y de circuito) y vive en el visor. Con «reducir movimiento» no hay haz ni conversión: la planta aparece ya levantada.
