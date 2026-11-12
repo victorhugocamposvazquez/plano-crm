@@ -280,7 +280,8 @@ export function describirMetros(planta: Planta, estado: EstadoPlanta, circuito?:
 // ── Escena ─────────────────────────────────────────────────────────────────
 export type EscenaRecinto = { id: string; nombre: string; rotulo: string; contorno: Punto[]; alto: number; uso: Uso };
 export type EscenaEquipo = { id: string; caja: Caja; alto: number; puesto: boolean };
-export type EscenaTubo = { circuito: Circuito; puntos: Punto[]; alto: number; grueso: number; puesto: boolean };
+/** `carril`: puesto de la línea dentro de su haz, centrado en 0; el visor separa los tubos de lado para que se vean todos desde arriba. */
+export type EscenaTubo = { circuito: Circuito; puntos: Punto[]; alto: number; grueso: number; puesto: boolean; carril: number };
 export type EscenaPlanta = { ancho: number; fondo: number; alto: number; recintos: EscenaRecinto[] };
 function origen(planta: Planta): Punto { const ps = planta.recintos.flatMap(r => r.contorno); return [Math.min(...ps.map(p => p[0])), Math.min(...ps.map(p => p[1]))]; }
 const aMetros = (planta: Planta, o: Punto) => ([x, y]: Punto): Punto => [(x - o[0]) * planta.escala, (y - o[1]) * planta.escala];
@@ -299,7 +300,10 @@ export function escenaInstalacion(planta: Planta, estado: EstadoPlanta): { equip
   // La altura de la tubería no viene en el plano: se dibuja bajo el techo del recinto más bajo por el que pasa.
   const techo = (t: Tramo) => Math.min(...planta.recintos.filter(r => t.puntos.some(p => dentro(r.contorno, p))).map(r => r.alto), 4.4) - 0.35;
   // Un tramo con una sola línea (plano leído: cada circuito trae su trazado) baja un escalón por circuito para no pisarse con los que van pegados.
-  const escalon = (t: Tramo, c: Circuito) => t.lineas.length === 1 ? ORDEN_CIRCUITO.indexOf(c) * 0.22 : 0;
-  const tubos = planta.tramos.flatMap(t => t.lineas.flatMap(l => Array.from({ length: l.n ?? 1 }, () => ({ circuito: l.c, puntos: t.puntos.map(m), alto: techo(t) - escalon(t, l.c), grueso: valorDiametro(l.d), puesto: estado.tuberia && (!t.equipo || puestos.has(t.equipo)) }))));
+  const tubos = planta.tramos.flatMap(t => {
+    // Un tramo con una sola línea (plano leído: cada circuito trae su trazado) toma el carril de su circuito, para no pisarse con los que van pegados.
+    const lineas = t.lineas.flatMap(l => Array.from({ length: l.n ?? 1 }, () => l)), unica = t.lineas.length === 1;
+    return lineas.map((l, i) => ({ circuito: l.c, puntos: t.puntos.map(m), alto: techo(t), grueso: valorDiametro(l.d), puesto: estado.tuberia && (!t.equipo || puestos.has(t.equipo)), carril: unica ? ORDEN_CIRCUITO.indexOf(l.c) - 1.5 + (lineas.length > 1 ? (i - (lineas.length - 1) / 2) * 0.5 : 0) : i - (lineas.length - 1) / 2 }));
+  });
   return { equipos, tubos };
 }

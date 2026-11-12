@@ -221,7 +221,9 @@ export function Planta3d({ project, planta, budgetId, informe = null, archivo, e
   const leyendo = lectura && lectura.fase !== "error", oscuro = Boolean(leyendo) || (conversion !== null && conversion !== "fin");
   const pasosLectura: PasoLectura[] = !leyendo ? [] : (["Abriendo el plano", lectura.rotulos ? `Leyendo rótulos: ${lectura.rotulos} textos` : "Leyendo rótulos", "Recogiendo los trazos del dibujo", "Buscando muros y midiendo recintos"]).map((texto, i) => ({ texto, estado: i < fases.indexOf(lectura.fase) ? "hecho" : i === fases.indexOf(lectura.fase) ? "ahora" : "luego" }));
   const metros = cifra(medicionTuberia(planta).total, 0);
-  const rotuloConversion = conversion === "barrido" ? "Reconociendo la planta" : conversion === "muros" ? `Levantando ${planta.recintos.length} recintos a su altura` : conversion === "instalacion" ? `Colocando ${planta.equipos.length} equipos y ${metros} m de tubería` : "";
+  const superficie = cifra(planta.recintos.reduce((t, r) => t + r.superficie, 0), 0), volumenTotal = cifra(planta.recintos.reduce((t, r) => t + r.superficie * r.alto, 0), 0);
+  const rotuloConversion: [string, string] | null = conversion === "barrido" ? ["Reconociendo la planta", `${superficie} m² en planta`] : conversion === "muros" ? [`Levantando ${planta.recintos.length} recintos`, `${volumenTotal} m³ a su altura`]
+    : conversion === "tuberias" ? ["Trazando tuberías", `${metros} m por circuito`] : conversion === "equipos" ? [`Colocando ${planta.equipos.length} equipos`, "donde marca el plano"] : null;
   const elegir = (e: React.ChangeEvent<HTMLInputElement>) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) alSubir?.(f); };
   return <div className="page v360 e3d p3d">
     <header className="v360-head">
@@ -245,7 +247,8 @@ export function Planta3d({ project, planta, budgetId, informe = null, archivo, e
         <p>{lectura.sinTexto ? "Los rótulos de «" + lectura.archivo + "» están dibujados como trazos, no escritos, y Plano no puede leerlos. Por ahora solo se convierten planos con texto: pide el PDF exportado desde el programa de dibujo, no impreso ni escaneado." : lectura.error}</p>
         <div><label className="btn btn-primary"><span>Elegir otro plano</span><input type="file" accept="application/pdf,.pdf" className="sr-only" onChange={elegir} /></label><Button variant="secondary" onClick={alCerrarLectura}>Cerrar</Button></div>
       </div>}
-      {conversion !== null && !lectura && rotuloConversion && <p className="p3d-hud" role="status">{rotuloConversion}</p>}
+      {conversion !== null && !lectura && <div className="p3d-cine" data-fin={conversion === "fin" || undefined} aria-hidden="true"><i /><i /><b /></div>}
+      {conversion !== null && !lectura && rotuloConversion && <p className="p3d-hud" role="status" key={conversion}><strong>{rotuloConversion[0]}</strong><span>{rotuloConversion[1]}</span></p>}
       {!listo && !lectura && <div className="v360-loading">{visorEstado === "cargando" ? "Levantando la planta…" : "La vista 3D no está disponible en este navegador. Puedes seguir con la lista de recintos."}</div>}
       <div className="e3d-vistas" role="group" aria-label="Vista">
         <button type="button" aria-pressed={encuadre === null} onClick={() => ver(null)} disabled={!listo}>Planta entera</button>
