@@ -90,3 +90,7 @@ Pruebas: `tests/planta-lector.test.ts` (plano sintético; el PDF real no se copi
 
 Hugo pidió precios orientativos para poder presupuestar. Los 14 artículos del capítulo «Refrigeración» (`src/lib/demo.ts`) llevan ahora un precio estimado por Claude, no una tarifa: en internet solo hay públicas tarifas de accesorios K65 y de equipos pequeños. En una empresa real, «Plano en 3D» ofrece «Añadir al catálogo» cuando faltan (un `article.create` por artículo); no entran con los proyectos de ejemplo. Al pasar la propuesta al presupuesto, las notas de la versión quedan referenciadas al plano y avisan de que los precios son orientativos.
 
+### Conversión cinematográfica y tuberías a la vista (12 nov 2026, noche)
+
+Hugo no veía los tubos y pidió una conversión más de cine. Las tuberías van ahora gruesas a propósito y una al lado de otra dentro de su haz (`carril` en `EscenaTubo`), a la misma altura, para que se distingan desde arriba; lo no presupuestado sigue translúcido. La conversión dura unos 9 s y es un plano secuencia: cámara cerca y en vertical que sube en espiral, rejilla de suelo, haz y dos ondas, muros que crecen como nube de puntos de escáner con el canto encendido, tuberías que se trazan en orden, equipos que caen y un destello al volver al papel. Encima, bandas de cine, viñeta y títulos grandes con las cifras de la planta. Sigue sin postproceso ni librerías nuevas, y con «reducir movimiento» no se anima.
+

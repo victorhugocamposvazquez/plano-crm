@@ -61,7 +61,22 @@
 .p3d-pasos li[data-estado="hecho"]::before { background: currentColor; }
 .p3d-pasos li[data-estado="ahora"] { color: var(--pl-scan-ink); }
 .p3d-pasos li[data-estado="ahora"]::before { background: var(--pl-scan-beam); border-color: var(--pl-scan-beam); }
-.p3d-hud { position: absolute; left: 14px; bottom: 12px; right: 14px; margin: 0; color: var(--pl-scan-ink); font-family: var(--pl-font-mono); font-size: var(--pl-text-sm); text-shadow: 0 0 6px var(--pl-scan-bg); pointer-events: none; }
+.p3d-hud { position: absolute; left: 0; right: 0; bottom: 14%; margin: 0; display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 0 16px; text-align: center; color: var(--pl-scan-ink); text-shadow: 0 0 10px var(--pl-scan-bg), 0 0 3px var(--pl-scan-bg); pointer-events: none; animation: p3d-titulo 700ms ease both; }
+.p3d-hud strong { font-family: var(--pl-font-brand); font-size: var(--pl-text-h2); font-weight: var(--pl-weight-medium); letter-spacing: 0.04em; text-transform: uppercase; }
+.p3d-hud span { font-family: var(--pl-font-mono); font-size: var(--pl-text-sm); color: var(--pl-scan-muted); }
+@keyframes p3d-titulo { from { opacity: 0; transform: translateY(8px); letter-spacing: 0.3em; } }
+/* Formato de cine: dos bandas que entran, viñeta y un destello al volver al papel. */
+.p3d-cine { position: absolute; inset: 0; pointer-events: none; background: radial-gradient(ellipse at center, transparent 55%, var(--pl-scan-bg) 130%); transition: opacity 700ms ease; }
+.p3d-cine i { position: absolute; left: 0; right: 0; height: 11%; background: var(--pl-scan-bg); animation: p3d-banda 900ms ease both; transition: transform 700ms ease; }
+.p3d-cine i:first-child { top: 0; transform-origin: top; }
+.p3d-cine i:nth-child(2) { bottom: 0; transform-origin: bottom; }
+.p3d-cine b { position: absolute; inset: 0; background: var(--pl-document-bg); opacity: 0; }
+.p3d-cine[data-fin] { background: none; }
+.p3d-cine[data-fin] i { transform: scaleY(0); }
+.p3d-cine[data-fin] b { animation: p3d-destello 1100ms ease-out both; }
+@keyframes p3d-banda { from { transform: scaleY(0); } }
+@keyframes p3d-destello { 0% { opacity: 0; } 18% { opacity: 0.85; } 100% { opacity: 0; } }
+@media (max-width: 767px) { .p3d-hud strong { font-size: var(--pl-text-ui); } }
 .p3d-aviso { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; padding: 20px; text-align: center; background: var(--pl-bg); color: var(--pl-ink); overflow: auto; }
 .p3d-aviso svg { color: var(--pl-warning); flex-shrink: 0; }
 .p3d-aviso strong { font-size: var(--pl-text-ui); font-weight: var(--pl-weight-medium); }

@@ -9,7 +9,7 @@ const colorEquipo: RGB = [30, 200, 60];
 /** Paleta de cámara térmica para la conversión: del violeta del congelado al naranja de lo que no se enfría. Contenido de la escena, no interfaz. */
 const calor: Record<string, RGB> = { congelado: [96, 60, 255], refrigerado: [0, 170, 255], atemperado: [40, 220, 130], ambiente: [255, 176, 40], servicio: [255, 84, 48] };
 const haz: RGB = [255, 70, 40];
-export type PasoConversion = "barrido" | "muros" | "instalacion" | "fin";
+export type PasoConversion = "barrido" | "muros" | "tuberias" | "equipos" | "fin";
 const tramo = (t: number, desde: number, dura: number) => Math.min(1, Math.max(0, (t - desde) / dura));
 const suave = (t: number) => t * t * (3 - 2 * t), frena = (t: number) => 1 - (1 - t) ** 3;
 const color = (rgb: RGB) => new THREE.Color().setRGB(rgb[0] / 255, rgb[1] / 255, rgb[2] / 255, THREE.SRGBColorSpace);
@@ -109,26 +109,27 @@ export function createPlantaViewer(container: HTMLElement, escena: EscenaPlanta,
     for (const e of equipos) {
       const w = e.caja[2] - e.caja[0], d = e.caja[3] - e.caja[1], h = 0.9, y = Math.max(e.alto - 1.1, h / 2 + 0.2);
       const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), new THREE.MeshStandardMaterial({ color: color(colorEquipo), roughness: 0.5, transparent: !e.puesto, opacity: e.puesto ? 1 : 0.16, depthWrite: e.puesto }));
-      m.position.set((e.caja[0] + e.caja[2]) / 2, y, (e.caja[1] + e.caja[3]) / 2); m.userData.equipo = e.id; instalacion.add(m); cajas.push(m);
+      m.position.set((e.caja[0] + e.caja[2]) / 2, y, (e.caja[1] + e.caja[3]) / 2); m.userData.equipo = e.id; const pieza = new THREE.Group(); pieza.userData.pieza = true; instalacion.add(pieza); pieza.add(m); cajas.push(m);
       const silueta = new THREE.LineSegments(new THREE.EdgesGeometry(m.geometry), new THREE.LineBasicMaterial({ color: color(colorEquipo).multiplyScalar(e.puesto ? 0.45 : 0.8) }));
-      silueta.position.copy(m.position); instalacion.add(silueta);
+      silueta.position.copy(m.position); pieza.add(silueta);
       // Cuelgue hasta el techo, para leer la altura a la que va.
-      if (e.puesto) for (const dx of [-w / 2 + 0.15, w / 2 - 0.15]) { const t = new THREE.Mesh(new THREE.BoxGeometry(0.06, e.alto - y - h / 2, 0.06), new THREE.MeshStandardMaterial({ color: color([90, 90, 90]) })); t.position.set(m.position.x + dx, (e.alto + y + h / 2) / 2, m.position.z); instalacion.add(t); }
+      if (e.puesto) for (const dx of [-w / 2 + 0.15, w / 2 - 0.15]) { const t = new THREE.Mesh(new THREE.BoxGeometry(0.06, e.alto - y - h / 2, 0.06), new THREE.MeshStandardMaterial({ color: color([90, 90, 90]) })); t.position.set(m.position.x + dx, (e.alto + y + h / 2) / 2, m.position.z); pieza.add(t); }
     }
-    // Las líneas de un mismo tramo se separan para que se distingan; el grosor acompaña al diámetro.
-    const porTramo = new Map<string, number>();
+    // Las líneas de un mismo haz van una al lado de otra, a la misma altura, para que se vean todas desde arriba.
+    // Gruesas a propósito: a escala real un tubo de 35 mm no se vería con la planta entera en pantalla.
     for (const t of tubos) {
-      const clave = JSON.stringify(t.puntos), k = porTramo.get(clave) ?? 0; porTramo.set(clave, k + 1);
-      const material = new THREE.MeshStandardMaterial({ color: color(colorCircuito[t.circuito]), roughness: 0.4, transparent: !t.puesto, opacity: t.puesto ? 1 : 0.22, depthWrite: t.puesto });
-      const r = t.puesto ? 0.05 + t.grueso * 0.035 : 0.04, y = t.alto - k * 0.22;
+      const material = new THREE.MeshStandardMaterial({ color: color(colorCircuito[t.circuito]), roughness: 0.4, transparent: !t.puesto, opacity: t.puesto ? 1 : 0.7, depthWrite: t.puesto });
+      const r = (t.puesto ? 0.13 : 0.1) + t.grueso * 0.05, y = t.alto, paso = 0.42;
       for (let i = 1; i < t.puntos.length; i++) {
-        const a = new THREE.Vector3(t.puntos[i - 1][0], y, t.puntos[i - 1][1]), b = new THREE.Vector3(t.puntos[i][0], y, t.puntos[i][1]), largo = a.distanceTo(b);
+        const dx = t.puntos[i][0] - t.puntos[i - 1][0], dz = t.puntos[i][1] - t.puntos[i - 1][1], largo = Math.hypot(dx, dz);
         if (largo < 0.01) continue;
-        const tubo = new THREE.Mesh(new THREE.CylinderGeometry(r, r, largo + r, 8), material);
-        tubo.position.copy(a).add(b).multiplyScalar(0.5); tubo.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize()); instalacion.add(tubo);
+        const ox = -dz / largo * t.carril * paso, oz = dx / largo * t.carril * paso;
+        const a = new THREE.Vector3(t.puntos[i - 1][0] + ox, y, t.puntos[i - 1][1] + oz), b = new THREE.Vector3(t.puntos[i][0] + ox, y, t.puntos[i][1] + oz);
+        const tubo = new THREE.Mesh(new THREE.CylinderGeometry(r, r, largo + paso * 2, 8), material);
+        tubo.position.copy(a).add(b).multiplyScalar(0.5); tubo.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), b.clone().sub(a).normalize()); tubo.userData.tubo = true; instalacion.add(tubo);
       }
     }
-    instalacion.visible = !convirtiendo; mundo.add(instalacion); marcar(); pintar();
+    mundo.add(instalacion); marcar(); pintar();
   }
 
   function destino(recinto?: string) {
@@ -151,45 +152,85 @@ export function createPlantaViewer(container: HTMLElement, escena: EscenaPlanta,
   }
 
   /**
-   * Conversión de 2D a 3D: la planta empieza vista desde arriba, plana y en colores de cámara térmica; un haz la recorre,
-   * los muros suben a su altura mientras la cámara se inclina, bajan los equipos y la escena vuelve a sus colores.
-   * Solo mueve lo que ya está en la escena (sin sombras ni postproceso) y dura lo mismo en cualquier dispositivo.
+   * Conversión de 2D a 3D, rodada como un plano secuencia: la cámara arranca cerca y en vertical sobre la planta en colores de cámara térmica,
+   * un haz y dos ondas la recorren, y mientras la cámara sube en espiral los muros crecen como una nube de puntos de escáner con el canto encendido.
+   * Luego las tuberías se trazan una a una, caen los equipos y un destello devuelve la escena a sus colores.
+   * Todo es geometría ligera (líneas, puntos y planos aditivos), sin sombras ni postproceso, y dura lo mismo en cualquier dispositivo.
    */
   function convertir(alPaso: (p: PasoConversion) => void, alTerminar: () => void) {
     if (quieto()) { alPaso("fin"); alTerminar(); return; }
-    convirtiendo = true; controles.enabled = false; instalacion.visible = false;
+    convirtiendo = true; controles.enabled = false;
     const fin = destino(), esf = new THREE.Spherical().setFromVector3(fin.posicion.clone().sub(fin.objetivo));
     const orden = [...alzados].sort((a, b) => a.x0 - b.x0), turno = new Map(orden.map((a, i) => [a.id, i / Math.max(1, orden.length - 1)]));
     const base = new Map(alzados.map(a => [a.id, { suelo: a.suelo.color.clone(), borde: a.borde.color.clone() }]));
-    for (const a of alzados) { a.grupo.scale.y = 0.001; a.suelo.transparent = true; a.suelo.opacity = 0; a.suelo.color.copy(color(calor[a.uso])); a.pared.color.copy(color(calor[a.uso])); a.pared.blending = THREE.AdditiveBlending; a.pared.opacity = 0.34; a.borde.color.copy(color(calor[a.uso])); a.borde.transparent = true; a.borde.opacity = 0; }
+    const efimero = new THREE.Group(); mundo.add(efimero);
+    const brillo = (c: RGB, opacity: number) => ({ color: color(c), transparent: true, opacity, blending: THREE.AdditiveBlending, depthWrite: false });
+    // Nube de puntos y canto encendido de cada recinto: van dentro de su alzado para crecer con él.
+    const extras: { nube: THREE.PointsMaterial; canto: THREE.LineBasicMaterial; objetos: THREE.Object3D[] }[] = [];
+    const presupuesto = Math.max(40, Math.floor(7000 / Math.max(1, escena.recintos.length)));
+    for (const a of alzados) {
+      const r = escena.recintos.find(x => x.id === a.id)!, perimetro = r.contorno.reduce((t, p, i) => { const q = r.contorno[(i + 1) % r.contorno.length]; return t + Math.hypot(q[0] - p[0], q[1] - p[1]); }, 0);
+      const n = Math.min(presupuesto, Math.ceil(perimetro * r.alto * 1.6)), pos = new Float32Array(n * 3), arriba: number[] = [];
+      for (let i = 0; i < n; i++) {
+        let d = Math.random() * perimetro, k = 0;
+        for (; k < r.contorno.length - 1; k++) { const p = r.contorno[k], q = r.contorno[k + 1], l = Math.hypot(q[0] - p[0], q[1] - p[1]); if (d <= l) break; d -= l; }
+        const p = r.contorno[k], q = r.contorno[(k + 1) % r.contorno.length], l = Math.hypot(q[0] - p[0], q[1] - p[1]) || 1;
+        pos[i * 3] = p[0] + (q[0] - p[0]) * d / l; pos[i * 3 + 1] = Math.random() * r.alto; pos[i * 3 + 2] = p[1] + (q[1] - p[1]) * d / l;
+      }
+      r.contorno.forEach(([x0, z0], i) => { const [x1, z1] = r.contorno[(i + 1) % r.contorno.length]; arriba.push(x0, r.alto, z0, x1, r.alto, z1); });
+      const gn = new THREE.BufferGeometry(); gn.setAttribute("position", new THREE.BufferAttribute(pos, 3));
+      const nube = new THREE.PointsMaterial({ ...brillo(calor[a.uso], 0), size: 2.2, sizeAttenuation: false });
+      const gc = new THREE.BufferGeometry(); gc.setAttribute("position", new THREE.Float32BufferAttribute(arriba, 3));
+      const canto = new THREE.LineBasicMaterial(brillo([255, 236, 220], 0));
+      const objetos = [new THREE.Points(gn, nube), new THREE.LineSegments(gc, canto)]; a.grupo.add(...objetos); extras.push({ nube, canto, objetos });
+      a.grupo.scale.y = 0.001; a.suelo.transparent = true; a.suelo.opacity = 0; a.suelo.color.copy(color(calor[a.uso])); a.pared.color.copy(color(calor[a.uso])); a.pared.blending = THREE.AdditiveBlending; a.pared.opacity = 0; a.borde.color.copy(color(calor[a.uso])); a.borde.transparent = true; a.borde.opacity = 0;
+    }
     for (const r of rotulos) r.material.opacity = 0;
-    const margen = radio * 0.15, luz = new THREE.Mesh(new THREE.PlaneGeometry(escena.fondo + margen * 2, escena.alto + 4), new THREE.MeshBasicMaterial({ color: color(haz), transparent: true, opacity: 0.3, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false }));
-    luz.rotation.y = Math.PI / 2; luz.position.set(-margen, (escena.alto + 4) / 2 - 1, cz);
-    const raya = new THREE.Mesh(new THREE.PlaneGeometry(radio * 0.035, escena.fondo + margen * 2), new THREE.MeshBasicMaterial({ color: color([255, 150, 110]), transparent: true, opacity: 0.95, blending: THREE.AdditiveBlending, side: THREE.DoubleSide, depthWrite: false }));
+    // Suelo de rejilla, haz y dos ondas que salen del centro.
+    const rejilla = new THREE.GridHelper(radio * 6, 72, color(haz), color(haz)); rejilla.position.set(cx, -0.05, cz);
+    const mr = rejilla.material as THREE.LineBasicMaterial; mr.transparent = true; mr.opacity = 0; mr.depthWrite = false;
+    const margen = radio * 0.15, luz = new THREE.Mesh(new THREE.PlaneGeometry(escena.fondo + margen * 2, escena.alto + 6), new THREE.MeshBasicMaterial({ ...brillo(haz, 0.32), side: THREE.DoubleSide }));
+    luz.rotation.y = Math.PI / 2; luz.position.set(-margen, (escena.alto + 6) / 2 - 1, cz);
+    const raya = new THREE.Mesh(new THREE.PlaneGeometry(radio * 0.03, escena.fondo + margen * 2), new THREE.MeshBasicMaterial({ ...brillo([255, 170, 130], 0.95), side: THREE.DoubleSide }));
     raya.rotation.x = -Math.PI / 2; raya.position.set(-margen, 0.06, cz);
-    mundo.add(luz, raya);
-    const total = 5200; let dicho: PasoConversion | null = null;
+    const ondas = [0, 1].map(() => { const o = new THREE.Mesh(new THREE.RingGeometry(0.97, 1, 96), new THREE.MeshBasicMaterial({ ...brillo(haz, 0), side: THREE.DoubleSide })); o.rotation.x = -Math.PI / 2; o.position.set(cx, 0.04, cz); return o; });
+    efimero.add(rejilla, luz, raya, ...ondas);
+    // Tuberías en el orden en que se dibujan; equipos, cada uno con su caída.
+    const prepara = () => {
+      const tubos = instalacion.children.filter(o => o.userData.tubo), piezas = instalacion.children.filter(o => o.userData.pieza);
+      for (const o of [...tubos, ...piezas]) o.visible = false;
+      return { tubos, piezas };
+    };
+    instalacion.visible = true; let piezas = prepara(), grupo = instalacion;
+    const total = 9400; let dicho: PasoConversion | null = null;
     const di = (p: PasoConversion) => { if (dicho !== p) { dicho = p; alPaso(p); } };
     animar(total, t => {
-      const s = t * total, b = tramo(s, 0, 1700), x = -margen + (escena.ancho + margen * 2) * b;
+      const s = t * total, b = suave(tramo(s, 300, 2300)), x = -margen + (escena.ancho + margen * 2) * b;
+      if (grupo !== instalacion) { grupo = instalacion; instalacion.visible = true; piezas = prepara(); }
       luz.position.x = raya.position.x = x; luz.visible = raya.visible = b < 1;
-      const c = suave(tramo(s, 1100, 2500));
-      camara.position.setFromSpherical(new THREE.Spherical(esf.radius, 0.02 + (esf.phi - 0.02) * c, esf.theta * c)).add(fin.objetivo); camara.lookAt(fin.objetivo);
-      const f = suave(tramo(s, 4300, 900));
-      for (const a of alzados) {
-        const visto = tramo(x - a.x0, 0, escena.ancho * 0.06), k = turno.get(a.id) ?? 0, ini = base.get(a.id)!;
-        a.suelo.opacity = visto * (0.55 + 0.45 * f); a.borde.opacity = visto;
-        a.grupo.scale.y = Math.max(0.001, frena(tramo(s, 1300 + k * 1100, 900)));
+      const f = suave(tramo(s, 8200, 1200)), aparece = tramo(s, 0, 700);
+      mr.opacity = 0.34 * aparece * (1 - f);
+      ondas.forEach((o, i) => { const k = tramo(s, 200 + i * 900, 2600); o.scale.setScalar(radio * 1.9 * frena(k) + 0.01); (o.material as THREE.MeshBasicMaterial).opacity = 0.8 * Math.sin(Math.PI * k); });
+      // Plano secuencia: de cerca y en vertical a la vista final, subiendo en espiral.
+      const c = suave(tramo(s, 700, 6900));
+      camara.position.setFromSpherical(new THREE.Spherical(esf.radius * (0.52 + 0.48 * c), 0.02 + (esf.phi - 0.02) * suave(tramo(s, 1500, 5600)), esf.theta + 2.5 * (1 - c))).add(fin.objetivo); camara.lookAt(fin.objetivo);
+      alzados.forEach((a, i) => {
+        const visto = tramo(x - a.x0, 0, escena.ancho * 0.06), k = turno.get(a.id) ?? 0, ini = base.get(a.id)!, sube = tramo(s, 2000 + k * 2300, 1100), e = extras[i];
+        a.suelo.opacity = visto * (0.5 + 0.5 * f); a.borde.opacity = visto;
+        a.grupo.scale.y = Math.max(0.001, frena(sube));
+        e.nube.opacity = Math.min(1, sube * 3) * 0.9 * (1 - f); e.canto.opacity = Math.min(1, sube * 3) * (1 - f);
         a.suelo.color.copy(color(calor[a.uso])).lerp(ini.suelo, f); a.borde.color.copy(color(calor[a.uso])).lerp(ini.borde, f); a.pared.color.copy(color(calor[a.uso])).lerp(ini.suelo, f);
-        a.pared.blending = f < 0.5 ? THREE.AdditiveBlending : THREE.NormalBlending; a.pared.opacity = 0.34 + (0.2 - 0.34) * f;
-      }
-      const cae = tramo(s, 3300, 900); instalacion.visible = cae > 0; instalacion.position.y = (1 - frena(cae)) * escena.alto * 0.7;
+        a.pared.blending = f < 0.5 ? THREE.AdditiveBlending : THREE.NormalBlending; a.pared.opacity = 0.3 * tramo(sube, 0.5, 0.5) + (0.2 - 0.3) * f;
+      });
+      const traza = tramo(s, 5300, 1700); piezas.tubos.forEach((o, i) => { o.visible = i < traza * piezas.tubos.length; });
+      piezas.piezas.forEach((o, i) => { const cae = tramo(s, 6700 + i / Math.max(1, piezas.piezas.length) * 700, 700); o.visible = cae > 0; o.position.y = (1 - frena(cae)) * escena.alto * 0.9; });
       for (const r of rotulos) r.material.opacity = f;
-      di(s < 1300 ? "barrido" : s < 3300 ? "muros" : s < 4300 ? "instalacion" : "fin");
+      di(s < 2000 ? "barrido" : s < 5300 ? "muros" : s < 6700 ? "tuberias" : s < 8200 ? "equipos" : "fin");
     }, () => {
-      mundo.remove(luz, raya); liberar(luz); liberar(raya);
-      for (const a of alzados) { a.grupo.scale.y = 1; a.suelo.transparent = false; a.suelo.opacity = 1; a.suelo.color.copy(base.get(a.id)!.suelo); a.pared.blending = THREE.NormalBlending; a.borde.transparent = false; a.borde.opacity = 1; }
-      instalacion.position.y = 0; instalacion.visible = true; convirtiendo = false; controles.enabled = true;
+      mundo.remove(efimero); liberar(efimero);
+      alzados.forEach((a, i) => { for (const o of extras[i].objetos) { a.grupo.remove(o); liberar(o); } a.grupo.scale.y = 1; a.suelo.transparent = false; a.suelo.opacity = 1; a.suelo.color.copy(base.get(a.id)!.suelo); a.pared.blending = THREE.NormalBlending; a.borde.transparent = false; a.borde.opacity = 1; });
+      for (const o of instalacion.children) { o.visible = true; o.position.y = o.userData.pieza ? 0 : o.position.y; }
+      convirtiendo = false; controles.enabled = true;
       controles.target.copy(fin.objetivo); camara.position.copy(fin.posicion); controles.update(); marcar(); pintar(); alTerminar();
     });
   }
