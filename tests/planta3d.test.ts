@@ -74,8 +74,9 @@ describe("Plano en 3D · planta frigorífica de ejemplo", () => {
     expect(p.filter(x => x.grupo === "tuberia")).toHaveLength(7);
     expect(p.filter(x => x.grupo === "tuberia").every(x => x.unit === "ml" && x.quantity > 0)).toBe(true);
     expect(p.at(-1)).toMatchObject({ grupo: "central", quantity: 1, unit: "ud" });
-    // Sin tarifa cargada: precio pendiente, nunca una cifra inventada.
-    expect(p.every(x => x.sinPrecio && x.unit_price === 0 && !x.sinArticulo)).toBe(true);
+    // El catálogo de la demostración lleva precios orientativos; sin artículo, precio pendiente y nunca una cifra inventada.
+    expect(p.every(x => !x.sinPrecio && x.unit_price > 0 && !x.sinArticulo)).toBe(true);
+    expect(partidasPlanta(planta, e, []).every(x => x.sinPrecio && x.unit_price === 0)).toBe(true);
     expect(partidasPlanta(planta, e, [])[0]).toMatchObject({ sinArticulo: true, description: "Evaporador TEWSSC80-2", chapter: "Refrigeración" });
     expect(escenaInstalacion(planta, e).tubos.every(t => t.puesto)).toBe(true);
   });

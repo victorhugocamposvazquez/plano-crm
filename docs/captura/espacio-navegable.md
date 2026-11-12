@@ -85,3 +85,8 @@ Pruebas: `tests/planta3d.test.ts`.
 En el plano de la nave frigorífica: 27 recintos (15 medidos, 5 aproximados, 7 estimados, casi todos aseos y despachos con mobiliario), 14 equipos con su modelo y unos 466 m de tubería. La escala sale 0,1505 m por punto, un 0,7 % por encima de la calculada a mano.
 
 Pruebas: `tests/planta-lector.test.ts` (plano sintético; el PDF real no se copia al repositorio).
+
+### Precios orientativos y referencia al plano (12 nov 2026)
+
+Hugo pidió precios orientativos para poder presupuestar. Los 14 artículos del capítulo «Refrigeración» (`src/lib/demo.ts`) llevan ahora un precio estimado por Claude, no una tarifa: en internet solo hay públicas tarifas de accesorios K65 y de equipos pequeños. En una empresa real, «Plano en 3D» ofrece «Añadir al catálogo» cuando faltan (un `article.create` por artículo); no entran con los proyectos de ejemplo. Al pasar la propuesta al presupuesto, las notas de la versión quedan referenciadas al plano y avisan de que los precios son orientativos.
+

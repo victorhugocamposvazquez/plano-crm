@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button";
 import { budgetHistory } from "@/lib/budget-history";
 import { can, lineTotal, money, totals, type Project } from "@/lib/domain";
 import { decir, escuchar, type Escucha } from "@/lib/voz";
+import { articulosRefrigeracionQueFaltan } from "@/lib/proyectos-ejemplo";
 import { TrazaVoz, useTrazaVoz } from "@/components/capture/traza-voz";
 import {
   aplicarPlanta, claseDe, coloresCircuito, coloresUso, describirEquipos, describirMetros, describirRecinto, escenaInstalacion, escenaPlanta, estaVacio, estadoVacio, evaporadores, interpretarPlanta, medicionTuberia, modeloDe,
@@ -140,6 +141,20 @@ export function Planta3d({ project, planta, budgetId, informe = null, archivo, e
     cambiar(nuevo); responder(explicar(o, nuevo), voz);
   }
 
+  // El catálogo de una empresa no trae refrigeración: se ofrece añadir los artículos que usa el plano, con precio orientativo.
+  const faltan = useMemo(() => articulosRefrigeracionQueFaltan(data.articles), [data.articles]);
+  const [anadiendo, setAnadiendo] = useState(false);
+  async function anadirCatalogo() {
+    if (anadiendo || !faltan.length) return;
+    setAnadiendo(true); let hechos = 0;
+    try {
+      for (const a of faltan) { await send({ type: "article.create", code: a.code, name: a.name, chapter: a.chapter, unit: a.unit as "ud" | "ml", unit_price: a.unit_price, vat_rate: a.vat_rate }); hechos++; }
+      notify(`${hechos} artículos de refrigeración añadidos al catálogo con precio orientativo`);
+    } catch (e) { notify(`${hechos ? `Añadidos ${hechos}. ` : ""}${e instanceof Error ? e.message : "No se ha podido añadir al catálogo."}`); }
+    finally { setAnadiendo(false); }
+  }
+  const referencia = `Refrigeración según plano «${informe && archivo ? archivo : planta.nombre}» (Plano en 3D): superficies y alturas rotuladas; tubería medida en planta, sin bajadas a los equipos ni subida a la central. Precios orientativos, por confirmar con tarifa.`;
+
   const incorporar = useCallback(async () => {
     if (!puede || !partidas.length || guardando) return;
     setGuardando(true);
@@ -151,16 +166,16 @@ export function Planta3d({ project, planta, budgetId, informe = null, archivo, e
       let version = budgetHistory(budget, ws.versions).working;
       if (!version || version.status !== "draft") {
         const base = budgetHistory(budget, ws.versions).current; if (!base) throw new Error("El presupuesto no tiene ninguna versión.");
-        ws = await send({ type: "budget.revise", version_id: base.id, reason: "Plano en 3D" }); version = budgetHistory(budget, ws.versions).working;
+        ws = await send({ type: "budget.revise", version_id: base.id, reason: "Plano de refrigeración" }); version = budgetHistory(budget, ws.versions).working;
       }
       if (!version) throw new Error("No hay un borrador abierto.");
       const nuevas = partidas.map(({ grupo, detalle, sinArticulo: _a, sinPrecio: _p, ...i }) => ({ ...i, id: crypto.randomUUID(), description: grupo === "evaporadores" ? `${i.description} · ${detalle}` : grupo === "tuberia" ? `${i.description} · en planta, sin bajadas` : i.description }));
-      await send({ type: "budget.save", version_id: version.id, expected_revision: version.draft_revision, items: [...version.items, ...nuevas], notes: version.notes });
+      await send({ type: "budget.save", version_id: version.id, expected_revision: version.draft_revision, items: [...version.items, ...nuevas], notes: version.notes.includes(referencia) ? version.notes : [version.notes.trim(), referencia].filter(Boolean).join("\n\n").slice(0, 4000) });
       notify(`${nuevas.length} ${nuevas.length === 1 ? "partida incorporada" : "partidas incorporadas"} a la V${version.number}${sinPrecio ? `; ${sinPrecio} sin precio` : ""}`);
       router.push(`/proyectos/${project.id}?s=budget&p=${budget.id}`);
     } catch (e) { notify(e instanceof Error ? e.message : "No se ha podido incorporar."); }
     finally { setGuardando(false); }
-  }, [puede, partidas, sinPrecio, guardando, data, budgetId, project.id, send, notify, router]);
+  }, [puede, partidas, sinPrecio, guardando, data, budgetId, project.id, send, notify, router, referencia]);
 
   // Cada frase (dicha o escrita) se interpreta contra el plano y el catálogo; lo que cambia se ve en la escena y en la cuenta.
   const atender = useCallback((frase: string) => {
@@ -301,6 +316,10 @@ export function Planta3d({ project, planta, budgetId, informe = null, archivo, e
         <button type="button" aria-pressed={estado.tuberia} onClick={() => ejecutar({ tipo: "tuberia", poner: !estado.tuberia })}>Tubería en planta<small className="pl-mono">{cifra(medicion.total, 1)} m</small></button>
         <button type="button" aria-pressed={estado.central} onClick={() => ejecutar({ tipo: "central", poner: !estado.central })}>Central de CO2<small className="pl-mono">1 ud</small></button>
       </div>
+      {faltan.length > 0 && can(actor.role, "article.create") && <div className="p3d-catalogo">
+        <span><strong>Faltan {faltan.length} artículos de refrigeración en el catálogo</strong><small>Evaporadores, tubería de CO2 y central, con precio orientativo. Cámbialos por tu tarifa en Catálogo.</small></span>
+        <Button variant="secondary" disabled={anadiendo || busy} onClick={() => void anadirCatalogo()}><Plus size={15} strokeWidth={1.8} aria-hidden="true" />{anadiendo ? "Añadiendo…" : "Añadir al catálogo"}</Button>
+      </div>}
       {vacio && <p className="v360-ayuda" style={{ paddingTop: 14 }}>Todavía no hay nada presupuestado. Lo que marca el plano se ve en silueta: ponlo de una vez o ve recinto por recinto. {ayuda}</p>}
       {partidas.map(i => <div key={i.id} className="v360-linea">
         <span className="v360-linea-texto"><span><strong>{i.description}</strong><small>{nombreGrupo[i.grupo]} · {cifra(i.quantity, 1)} {i.unit}{i.sinPrecio ? "" : ` × ${money(i.unit_price)}`} · {i.detalle}</small>{i.sinArticulo && <small className="e3d-stock" data-estado="corto">No está en el catálogo: entra sin precio.</small>}</span></span>
@@ -317,7 +336,7 @@ export function Planta3d({ project, planta, budgetId, informe = null, archivo, e
         {vacio ? <Button variant="primary" data-accent="orange" onClick={() => ejecutar({ tipo: "plano" })}>Poner lo que marca el plano</Button>
           : puede ? <Button variant="primary" data-accent="orange" disabled={guardando || busy || !partidas.length} onClick={() => void incorporar()}>{guardando ? "Pasando…" : "Pasar al presupuesto"}</Button> : <span className="muted text-sm">Tu perfil puede mirar, pero no presupuestar.</span>}
       </div>
-      <p className="v360-ayuda">Propuesta sacada del plano, por validar. Las superficies y alturas son las rotuladas; los metros de tubería se miden sobre el trazado en planta y no incluyen bajadas a los equipos ni la subida a la central. {informe ? "Recintos, equipos y tuberías los ha leído Plano del PDF: repásalos antes de pedir material." : "Recintos y equipos de este ejemplo están transcritos a mano del plano."} El precio es el del catálogo; sin precio, la partida entra a cero.</p>
+      <p className="v360-ayuda">Propuesta sacada del plano, por validar. Las superficies y alturas son las rotuladas; los metros de tubería se miden sobre el trazado en planta y no incluyen bajadas a los equipos ni la subida a la central. {informe ? "Recintos, equipos y tuberías los ha leído Plano del PDF: repásalos antes de pedir material." : "Recintos y equipos de este ejemplo están transcritos a mano del plano."} El precio es el del catálogo; los de refrigeración que añade Plano son orientativos, no una tarifa. Sin precio, la partida entra a cero. Al pasarlo, el presupuesto queda referenciado a este plano en sus notas.</p>
     </section>
   </div>;
 }
