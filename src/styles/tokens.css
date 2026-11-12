@@ -9,6 +9,13 @@
 
   /* Papel de documentos: conserva el fondo blanco también en Grafito. */
   --pl-document-bg: #ffffff;
+  /* Conversión de plano a 3D: fondo de escáner, haz y letra, iguales en los dos temas (como el papel). */
+  --pl-scan-bg: #070b12;
+  --pl-scan-ink: #f4ece8;
+  --pl-scan-muted: #b7a9a3;
+  --pl-scan-beam: #ff4628;
+  --pl-scan-glow: rgb(255 70 40 / 0.28);
+  --pl-scan-grid: rgb(255 70 40 / 0.1);
 
   /* Color · Workspace */
   --pl-bg: #ffffff;

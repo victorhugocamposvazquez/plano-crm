@@ -31,6 +31,7 @@ export const nombreUso: Record<Uso, string> = { congelado: "Congelado", refriger
 export type RGB = readonly [number, number, number];
 export const coloresUso: Record<Uso, RGB> = { congelado: [96, 154, 214], refrigerado: [92, 184, 190], atemperado: [150, 192, 120], ambiente: [205, 186, 150], servicio: [172, 172, 168] };
 export const coloresCircuito: Record<Circuito, RGB> = { "aspiracion-bt": [40, 70, 230], "aspiracion-mt": [236, 120, 236], liquido: [20, 190, 40], "gas-caliente": [228, 40, 40] };
+const ORDEN_CIRCUITO: Circuito[] = ["aspiracion-bt", "liquido", "aspiracion-mt", "gas-caliente"];
 export const CAPITULO = "Refrigeración";
 const MAX_UNIDADES = 12;
 
@@ -297,6 +298,8 @@ export function escenaInstalacion(planta: Planta, estado: EstadoPlanta): { equip
   const equipos = [...estado.equipos.map(e => ({ id: e.id, caja: caja(e.caja), alto: alto(e.recinto), puesto: true })), ...planta.equipos.filter(e => !puestos.has(e.id)).map(e => ({ id: e.id, caja: caja(e.caja), alto: alto(e.recinto), puesto: false }))];
   // La altura de la tubería no viene en el plano: se dibuja bajo el techo del recinto más bajo por el que pasa.
   const techo = (t: Tramo) => Math.min(...planta.recintos.filter(r => t.puntos.some(p => dentro(r.contorno, p))).map(r => r.alto), 4.4) - 0.35;
-  const tubos = planta.tramos.flatMap(t => t.lineas.flatMap(l => Array.from({ length: l.n ?? 1 }, () => ({ circuito: l.c, puntos: t.puntos.map(m), alto: techo(t), grueso: valorDiametro(l.d), puesto: estado.tuberia && (!t.equipo || puestos.has(t.equipo)) }))));
+  // Un tramo con una sola línea (plano leído: cada circuito trae su trazado) baja un escalón por circuito para no pisarse con los que van pegados.
+  const escalon = (t: Tramo, c: Circuito) => t.lineas.length === 1 ? ORDEN_CIRCUITO.indexOf(c) * 0.22 : 0;
+  const tubos = planta.tramos.flatMap(t => t.lineas.flatMap(l => Array.from({ length: l.n ?? 1 }, () => ({ circuito: l.c, puntos: t.puntos.map(m), alto: techo(t) - escalon(t, l.c), grueso: valorDiametro(l.d), puesto: estado.tuberia && (!t.equipo || puestos.has(t.equipo)) }))));
   return { equipos, tubos };
 }

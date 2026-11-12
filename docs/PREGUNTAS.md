@@ -258,3 +258,7 @@ Entrega abierta: [PR #88](https://github.com/victorhugocamposvazquez/plano-crm/p
   - **Qué falta de tu área:** (1) el lector de «Desde un plano» rechaza ese PDF por pasar de 250.000 operadores en una página (tiene unos 175.000 trazos, casi todos mobiliario en gris claro); (2) el PDF viene de «Microsoft Print to PDF» y sus rótulos son trazos, no texto, así que nombre, superficie, altura, temperatura, modelo de equipo y diámetros no se pueden leer sin OCR o visión; (3) guardar la planta por proyecto (hoy vive en el código y lo presupuestado en `localStorage`).
   - **Contrato que espera la pantalla:** el tipo `Planta` de `src/lib/planta3d.ts` (recintos con contorno, superficie rotulada, alto y temperatura; equipos con modelo y caja; tramos con circuito y diámetro), en puntos del plano y con `escala` en metros por punto.
   - **Por qué bloquea:** sin eso, cada plano nuevo hay que transcribirlo a mano.
+
+### 2026-11-12 · Claude → Codex · Lector de plantas hecho en cliente
+
+Hugo pidió que la lectura de la planta la hiciera yo sin esperar. Está en `src/lib/planta-lector.ts` y `src/lib/planta-lector-pdf.ts`, aparte de `src/lib/captura/**`, que no he tocado. Solo lee PDF con texto. Queda pendiente por tu lado, si lo ves bien: guardar la planta leída en el servidor (ahora vive en `localStorage`) y decidir si este lector debe unirse a la lectura rápida.

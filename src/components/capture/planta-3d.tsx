@@ -2,7 +2,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ArrowLeft, Mic, MicOff, Plus, RotateCcw, RotateCw, Send, Trash2, TriangleAlert, Undo2, ZoomIn, ZoomOut } from "lucide-react";
+import { ArrowLeft, FileUp, Mic, MicOff, Play, Plus, RotateCcw, RotateCw, Send, Trash2, TriangleAlert, Undo2, ZoomIn, ZoomOut } from "lucide-react";
 import { useWorkspace } from "@/components/workspace-provider";
 import { useBanda } from "@/components/band";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,10 @@ import {
   aplicarPlanta, claseDe, coloresCircuito, coloresUso, describirEquipos, describirMetros, describirRecinto, escenaInstalacion, escenaPlanta, estaVacio, estadoVacio, evaporadores, interpretarPlanta, medicionTuberia, modeloDe,
   nombreGrupo, nombreUso, partidasPlanta, type EstadoPlanta, type OrdenPlanta, type Planta
 } from "@/lib/planta3d";
-import type { createPlantaViewer, PlantaSeleccion } from "@/lib/visual/planta-viewer";
+import type { createPlantaViewer, PasoConversion, PlantaSeleccion } from "@/lib/visual/planta-viewer";
+import type { InformeLectura } from "@/lib/planta-lector";
+import { EscanerPlano, type PasoLectura } from "./escaner-plano";
+import type { FaseLectura, Lectura } from "./plano-en-3d";
 import "@/styles/visita-360.css";
 import "@/styles/espacio-3d.css";
 import "@/styles/planta-3d.css";
@@ -33,7 +36,17 @@ function leer(k: string): EstadoPlanta | null {
  * Plano en 3D: la planta levantada a la altura de cada recinto, con los equipos y las tuberías que marca el plano.
  * Se presupuesta diciéndolo, escribiéndolo o tocando un recinto y eligiendo del catálogo; todo es propuesta hasta pasarlo al presupuesto.
  */
-export function Planta3d({ project, planta, budgetId }: { project: Project; planta: Planta; budgetId: string | null }) {
+const fases: FaseLectura[] = ["abrir", "texto", "trazos", "medir"];
+const nombreAjuste = { medido: "Medido", aproximado: "Aproximado", estimado: "Estimado" } as const;
+type Props = {
+  project: Project; planta: Planta; budgetId: string | null;
+  /** Lo que Plano ha leído del PDF subido; sin informe, la planta es la de ejemplo. */
+  informe?: InformeLectura | null; archivo?: string;
+  /** La planta acaba de leerse: se estrena con la conversión de 2D a 3D. */
+  estreno?: boolean;
+  lectura?: Lectura | null; alSubir?: (file: File) => void; alCerrarLectura?: () => void; alQuitar?: () => void;
+};
+export function Planta3d({ project, planta, budgetId, informe = null, archivo, estreno = false, lectura = null, alSubir, alCerrarLectura, alQuitar }: Props) {
   const { data, actor, send, notify, busy } = useWorkspace();
   const router = useRouter();
   const puede = can(actor.role, "budget.save");
@@ -53,6 +66,8 @@ export function Planta3d({ project, planta, budgetId }: { project: Project; plan
   const [respuesta, setRespuesta] = useState("");
   const [escrita, setEscrita] = useState("");
   const [guardando, setGuardando] = useState(false);
+  const [conversion, setConversion] = useState<PasoConversion | null>(estreno ? "barrido" : null);
+  const porEstrenar = useRef(estreno);
 
   const k = clave(project.id, planta.id);
   useEffect(() => { const e = leer(k); if (e) setEstado(e); setCargado(true); }, [k]);
@@ -77,11 +92,23 @@ export function Planta3d({ project, planta, budgetId }: { project: Project; plan
       if (cancelado || !host.current) return;
       const v = createPlantaViewer(host.current, escena, s => alTocar.current(s));
       visor.current = v; v.instalar(ultimo.current.instalacion.equipos, ultimo.current.instalacion.tubos); v.seleccionar(ultimo.current.sel); setVisorEstado("listo");
-    }).catch(() => { if (!cancelado) setVisorEstado("fallo"); });
+      if (porEstrenar.current) convertirRef.current();
+    }).catch(() => { if (!cancelado) { setVisorEstado("fallo"); setConversion(null); } });
     return () => { cancelado = true; visor.current?.dispose(); visor.current = null; };
   }, [escena]);
   useEffect(() => { visor.current?.instalar(instalacion.equipos, instalacion.tubos); }, [instalacion]);
   useEffect(() => { visor.current?.seleccionar(sel); }, [sel]);
+
+  /** La conversión de 2D a 3D, al estrenar un plano o cuando se pide verla otra vez. */
+  function convertir() {
+    const v = visor.current; if (!v) return;
+    setEncuadre(null); setConversion("barrido");
+    v.convertir(setConversion, () => {
+      porEstrenar.current = false; setConversion(null);
+      setRespuesta(`Planta levantada: ${planta.recintos.length} recintos y ${planta.equipos.length} equipos. Arrastra para girar, pellizca o usa la rueda para acercarte y toca un recinto para ver qué lleva.`);
+    });
+  }
+  const convertirRef = useRef(convertir); convertirRef.current = convertir;
 
   function cambiar(siguiente: EstadoPlanta) {
     if (JSON.stringify(siguiente) === JSON.stringify(estado)) return false;
@@ -176,21 +203,39 @@ export function Planta3d({ project, planta, budgetId }: { project: Project; plan
   useEffect(() => () => rec.current?.parar(), []);
 
   const listo = visorEstado === "listo", vacio = estaVacio(estado);
+  const leyendo = lectura && lectura.fase !== "error", oscuro = Boolean(leyendo) || (conversion !== null && conversion !== "fin");
+  const pasosLectura: PasoLectura[] = !leyendo ? [] : (["Abriendo el plano", lectura.rotulos ? `Leyendo rótulos: ${lectura.rotulos} textos` : "Leyendo rótulos", "Recogiendo los trazos del dibujo", "Buscando muros y midiendo recintos"]).map((texto, i) => ({ texto, estado: i < fases.indexOf(lectura.fase) ? "hecho" : i === fases.indexOf(lectura.fase) ? "ahora" : "luego" }));
+  const metros = cifra(medicionTuberia(planta).total, 0);
+  const rotuloConversion = conversion === "barrido" ? "Reconociendo la planta" : conversion === "muros" ? `Levantando ${planta.recintos.length} recintos a su altura` : conversion === "instalacion" ? `Colocando ${planta.equipos.length} equipos y ${metros} m de tubería` : "";
+  const elegir = (e: React.ChangeEvent<HTMLInputElement>) => { const f = e.target.files?.[0]; e.target.value = ""; if (f) alSubir?.(f); };
   return <div className="page v360 e3d p3d">
     <header className="v360-head">
       <div>
         <Link prefetch={false} href={salida} className="flow-back solo-escritorio"><ArrowLeft size={15} strokeWidth={1.8} aria-hidden="true" /><span>{project.name}</span></Link>
         <h1>Plano en 3D · {planta.nombre.toLocaleLowerCase()}</h1>
-        <p>{planta.origen} Di, escribe o toca un recinto para presupuestar con el catálogo.</p>
+        <p>{informe ? `Leído de «${archivo}». Propuesta por revisar.` : planta.origen} Di, escribe o toca un recinto para presupuestar con el catálogo.</p>
       </div>
+      {alSubir && <label className="btn btn-secondary p3d-subir" data-ocupado={leyendo ? true : undefined}>
+        <FileUp size={16} strokeWidth={1.7} aria-hidden="true" /><span>{informe ? "Subir otro plano" : "Subir un plano"}</span>
+        <input type="file" accept="application/pdf,.pdf" className="sr-only" onChange={elegir} disabled={Boolean(leyendo)} />
+      </label>}
     </header>
 
-    <div className="e3d-stage">
+    <div className="e3d-stage" data-conversion={oscuro || undefined} data-aviso={lectura?.fase === "error" || undefined}>
       <div ref={host} className="e3d-lienzo" />
-      {!listo && <div className="v360-loading">{visorEstado === "cargando" ? "Levantando la planta…" : "La vista 3D no está disponible en este navegador. Puedes seguir con la lista de recintos."}</div>}
+      {leyendo && <EscanerPlano plano={lectura.plano} pasos={pasosLectura} />}
+      {lectura?.fase === "error" && <div className="p3d-aviso" role="alert">
+        <TriangleAlert size={22} strokeWidth={1.6} aria-hidden="true" />
+        <strong>{lectura.sinTexto ? "Este plano viene sin texto" : "No se ha podido leer el plano"}</strong>
+        <p>{lectura.sinTexto ? "Los rótulos de «" + lectura.archivo + "» están dibujados como trazos, no escritos, y Plano no puede leerlos. Por ahora solo se convierten planos con texto: pide el PDF exportado desde el programa de dibujo, no impreso ni escaneado." : lectura.error}</p>
+        <div><label className="btn btn-primary"><span>Elegir otro plano</span><input type="file" accept="application/pdf,.pdf" className="sr-only" onChange={elegir} /></label><Button variant="secondary" onClick={alCerrarLectura}>Cerrar</Button></div>
+      </div>}
+      {conversion !== null && !lectura && rotuloConversion && <p className="p3d-hud" role="status">{rotuloConversion}</p>}
+      {!listo && !lectura && <div className="v360-loading">{visorEstado === "cargando" ? "Levantando la planta…" : "La vista 3D no está disponible en este navegador. Puedes seguir con la lista de recintos."}</div>}
       <div className="e3d-vistas" role="group" aria-label="Vista">
         <button type="button" aria-pressed={encuadre === null} onClick={() => ver(null)} disabled={!listo}>Planta entera</button>
         <button type="button" aria-pressed={encuadre === recinto.id} onClick={() => ver(recinto.id)} disabled={!listo}>Ver {recinto.nombre.toLocaleLowerCase()}</button>
+        <button type="button" onClick={convertir} disabled={!listo} className="p3d-repetir" aria-label="Ver la conversión de 2D a 3D"><Play size={14} strokeWidth={1.8} aria-hidden="true" /><span>Ver la conversión</span></button>
       </div>
       <div className="v360-tools">
         {escuchando ? <span className="v360-escuchando" aria-live="polite"><i />{enVivo || "Escuchando…"}</span> : <span className="e3d-mover" role="group" aria-label="Mover la cámara">
@@ -208,6 +253,14 @@ export function Planta3d({ project, planta, budgetId }: { project: Project; plan
       {([["aspiracion-bt", "Aspiración de baja"], ["aspiracion-mt", "Aspiración de media"], ["liquido", "Líquido"], ["gas-caliente", "Gas caliente"]] as const).map(([c, n]) => <li key={c}><i aria-hidden="true" data-linea style={{ background: rgb(coloresCircuito[c]) }} />{n}</li>)}
     </ul>
 
+    {informe && <details className="pl-card p3d-lectura">
+      <summary><span><strong>Leído del plano, por revisar</strong><small>{informe.recintos.length} recintos · {informe.equipos} equipos · {cifra(informe.metrosTuberia, 0)} m de tubería · 1 punto del PDF = {cifra(planta.escala * 100, 1)} cm</small></span></summary>
+      <ul className="p3d-avisos">{informe.avisos.map(a => <li key={a}>{a}</li>)}</ul>
+      <ul className="p3d-ajustes" aria-label="Cómo se ha medido cada recinto">{informe.recintos.map(r => <li key={r.id}><button type="button" onClick={() => { setSel({ recinto: r.id }); ver(r.id); }}><span>{r.nombre}</span><small data-ajuste={r.ajuste}>{nombreAjuste[r.ajuste]}{r.ajuste !== "estimado" && r.desvio !== null ? ` · ${r.desvio > 0 ? "+" : ""}${cifra(r.desvio, 1)} %` : ""}</small></button></li>)}</ul>
+      <p className="v360-ayuda">Medido: el contorno sale de los muros y su superficie cuadra con la rotulada. Aproximado: sale de los muros, pero se desvía. Estimado: los muros no cierran y se dibuja un cuadrado con la superficie rotulada. Para presupuestar manda siempre la superficie rotulada.</p>
+      {alQuitar && <div className="p3d-lectura-pie"><Button variant="secondary" onClick={alQuitar}><Trash2 size={15} strokeWidth={1.7} aria-hidden="true" />Quitar este plano y volver al ejemplo</Button></div>}
+    </details>}
+
     <form className="v360-escribir" onSubmit={e => { e.preventDefault(); const t = escrita.trim(); if (t) { atender(t); setEscrita(""); } }}>
       <label className="sr-only" htmlFor="p3d-orden">Orden escrita</label>
       <input id="p3d-orden" type="text" value={escrita} onChange={e => setEscrita(e.target.value)} placeholder="O escríbelo: «pon un evaporador en la cámara 3»" autoComplete="off" />
@@ -222,7 +275,7 @@ export function Planta3d({ project, planta, budgetId }: { project: Project; plan
         <label className="field"><span>Recinto</span>
           <select value={recinto.id} onChange={e => setSel({ recinto: e.target.value })}>{planta.recintos.map(r => <option key={r.id} value={r.id}>{r.nombre}</option>)}</select>
         </label>
-        <p><strong className="pl-mono">{describirRecinto(recinto)}</strong><small>{nombreUso[recinto.uso]} · superficie, altura y temperatura rotuladas en el plano</small></p>
+        <p><strong className="pl-mono">{describirRecinto(recinto)}</strong><small>{nombreUso[recinto.uso]} · superficie, altura y temperatura rotuladas en el plano{informe ? ` · contorno ${nombreAjuste[informe.recintos.find(r => r.id === recinto.id)?.ajuste ?? "estimado"].toLocaleLowerCase()}` : ""}</small></p>
       </div>
       <div className="p3d-equipos">
         {puestos.map(e => <div key={e.id} className="p3d-equipo" data-sel={sel.equipo === e.id || undefined}>
@@ -264,7 +317,7 @@ export function Planta3d({ project, planta, budgetId }: { project: Project; plan
         {vacio ? <Button variant="primary" data-accent="orange" onClick={() => ejecutar({ tipo: "plano" })}>Poner lo que marca el plano</Button>
           : puede ? <Button variant="primary" data-accent="orange" disabled={guardando || busy || !partidas.length} onClick={() => void incorporar()}>{guardando ? "Pasando…" : "Pasar al presupuesto"}</Button> : <span className="muted text-sm">Tu perfil puede mirar, pero no presupuestar.</span>}
       </div>
-      <p className="v360-ayuda">Propuesta sacada del plano, por validar. Las superficies y alturas son las rotuladas; los metros de tubería se miden sobre el trazado en planta y no incluyen bajadas a los equipos ni la subida a la central. Recintos y equipos de este ejemplo están transcritos a mano del plano. El precio es el del catálogo; sin precio, la partida entra a cero.</p>
+      <p className="v360-ayuda">Propuesta sacada del plano, por validar. Las superficies y alturas son las rotuladas; los metros de tubería se miden sobre el trazado en planta y no incluyen bajadas a los equipos ni la subida a la central. {informe ? "Recintos, equipos y tuberías los ha leído Plano del PDF: repásalos antes de pedir material." : "Recintos y equipos de este ejemplo están transcritos a mano del plano."} El precio es el del catálogo; sin precio, la partida entra a cero.</p>
     </section>
   </div>;
 }
