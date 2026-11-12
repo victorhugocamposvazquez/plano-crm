@@ -28,7 +28,7 @@ export const plantaEjemplo: Planta = {
     { id: "pasillo-2", nombre: "Pasillo cámaras 2", contorno: rect(175.2, 214.7, 214, 349.9), superficie: 114.98, alto: 4.4, temp: [5, 8], uso: "refrigerado" },
     { id: "sas", nombre: "SAS", contorno: rect(175.2, 452, 214, 478.6), superficie: 22.33, alto: 4.4, uso: "servicio" },
     { id: "muelles-baja", nombre: "Muelles zona baja", contorno: [[93.2, 480.4], [310.3, 480.4], [310.3, 548.6], [227.4, 548.6], [227.4, 574], [46.7, 574], [46.7, 508.1], [93.2, 508.1]], superficie: 464.94, alto: 3.6, temp: [12, 15], uso: "atemperado" },
-    { id: "muelles-alta", nombre: "Muelles zona alta", contorno: rect(311, 481, 439.6, 548.6), superficie: 190.16, alto: 3.65, temp: [18, 20], uso: "ambiente" },
+    { id: "muelles-alta", nombre: "Muelles zona alta", contorno: rect(311, 481, 439.6, 548.6), superficie: 190.16, alto: 9.65, temp: [18, 20], uso: "ambiente" },
     { id: "almacen-seco", nombre: "Almacén seco", contorno: [[307, 214.7], [391.6, 214.7], [391.6, 284], [439.6, 284], [439.6, 479.3], [307, 479.3]], superficie: 709.13, alto: 9.8, temp: [18, 20], uso: "ambiente" },
     { id: "carga-baterias", nombre: "Carga de baterías", contorno: rect(391.6, 214.7, 439.6, 284), superficie: 71.57, alto: 9.8, uso: "servicio" },
     { id: "antecamara", nombre: "Antecámara", contorno: rect(47.4, 574.7, 219.8, 602), superficie: 105.94, alto: 3.7, uso: "servicio" },
