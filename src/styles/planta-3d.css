@@ -103,3 +103,11 @@
 .p3d-catalogo strong { font-weight: var(--pl-weight-medium); }
 .p3d-catalogo small { color: var(--pl-muted); font-size: var(--pl-text-sm); }
 .p3d-catalogo .btn { min-height: 44px; flex-shrink: 0; }
+.p3d-cab-acciones { display: flex; flex-wrap: wrap; gap: 8px; }
+.p3d-inicio { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 8px; min-height: 300px; padding: 28px 20px; text-align: center; color: var(--pl-ink); }
+.p3d-inicio svg { color: var(--pl-muted); }
+.p3d-inicio strong { font-size: var(--pl-text-ui); font-weight: var(--pl-weight-medium); }
+.p3d-inicio p { margin: 0; max-width: 520px; color: var(--pl-muted); font-size: var(--pl-text-md); }
+.p3d-inicio > div { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 10px; }
+.p3d .e3d-stage.p3d-vacio:not([data-conversion]) { background: var(--pl-surface); }
+.p3d-hud::before { content: ""; position: absolute; z-index: -1; inset: -34px 0 -28px; background: radial-gradient(ellipse 48% 50% at center, var(--pl-scan-bg) 30%, transparent 100%); opacity: 0.85; }

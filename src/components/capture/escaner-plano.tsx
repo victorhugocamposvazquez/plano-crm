@@ -1,6 +1,10 @@
 "use client";
 import { useEffect, useRef } from "react";
+import { TriangleAlert } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import type { FaseLectura, Lectura } from "./plano-en-3d";
 import type { PlanoLeido } from "@/lib/planta-lector";
+import { pintarTrazos } from "@/lib/visual/lamina-plano";
 
 export type PasoLectura = { texto: string; estado: "hecho" | "ahora" | "luego" };
 
@@ -27,20 +31,7 @@ export function EscanerPlano({ plano, pasos }: { plano: PlanoLeido | null; pasos
     const dpr = Math.min(window.devicePixelRatio || 1, 2), w = el.clientWidth * dpr, h = el.clientHeight * dpr;
     el.width = w; el.height = h; c.clearRect(0, 0, w, h);
     const [x0, y0, x1, y1] = zona(plano), k = Math.min(w / (x1 - x0), h / (y1 - y0)), ox = (w - (x1 - x0) * k) / 2 - x0 * k, oy = (h - (y1 - y0) * k) / 2 - y0 * k;
-    c.globalCompositeOperation = "lighter"; c.lineCap = "round";
-    // Muros y dibujo en rojo apagado, de una sola pasada; lo que el plano trae en color (equipos y tuberías), encendido.
-    const vivos = new Map<string, Path2D>(), gris = new Path2D();
-    for (const t of plano.trazos) {
-      const [r, g, b] = t.color, croma = Math.max(r, g, b) - Math.min(r, g, b);
-      let via = gris;
-      if (croma >= 0.3) { const tono = `rgb(${Math.round(120 + r * 135)} ${Math.round(90 + g * 165)} ${Math.round(90 + b * 165)})`; via = vivos.get(tono) ?? new Path2D(); vivos.set(tono, via); }
-      else if (r > 0.86) continue;
-      via.moveTo(t.p[0] * k + ox, t.p[1] * k + oy);
-      for (let i = 2; i < t.p.length; i += 2) via.lineTo(t.p[i] * k + ox, t.p[i + 1] * k + oy);
-    }
-    c.strokeStyle = "rgb(190 52 30 / 0.6)"; c.lineWidth = Math.max(1, dpr * 0.7); c.stroke(gris);
-    c.lineWidth = Math.max(1.5, dpr * 1.3);
-    for (const [tono, via] of vivos) { c.strokeStyle = tono; c.stroke(via); }
+    pintarTrazos(c, plano, k, ox, oy, dpr);
   }, [plano]);
   const ahora = pasos.find(p => p.estado === "ahora")?.texto ?? "";
   return <div className="p3d-escaner">
@@ -48,5 +39,24 @@ export function EscanerPlano({ plano, pasos }: { plano: PlanoLeido | null; pasos
     <i className="p3d-haz" aria-hidden="true" />
     <ol className="p3d-pasos" aria-hidden="true">{pasos.map(p => <li key={p.texto} data-estado={p.estado}>{p.texto}</li>)}</ol>
     <span className="sr-only" role="status">{ahora}</span>
+  </div>;
+}
+
+const fases: FaseLectura[] = ["abrir", "texto", "trazos", "medir"];
+/** La lectura de un plano dentro del escenario: el escáner mientras se lee, o el aviso si no se puede (plano sin texto incluido). */
+export function LecturaPlano({ lectura, alElegir, alCerrar }: { lectura: Lectura; alElegir: (file: File) => void; alCerrar?: () => void }) {
+  if (lectura.fase !== "error") {
+    const ahora = fases.indexOf(lectura.fase);
+    const pasos: PasoLectura[] = ["Abriendo el plano", lectura.rotulos ? `Leyendo rótulos: ${lectura.rotulos} textos` : "Leyendo rótulos", "Recogiendo los trazos del dibujo", "Buscando muros y midiendo recintos"].map((texto, i) => ({ texto, estado: i < ahora ? "hecho" : i === ahora ? "ahora" : "luego" }));
+    return <EscanerPlano plano={lectura.plano} pasos={pasos} />;
+  }
+  return <div className="p3d-aviso" role="alert">
+    <TriangleAlert size={22} strokeWidth={1.6} aria-hidden="true" />
+    <strong>{lectura.sinTexto ? "Este plano viene sin texto" : "No se ha podido leer el plano"}</strong>
+    <p>{lectura.sinTexto ? `Los rótulos de «${lectura.archivo}» están dibujados como trazos, no escritos, y Plano no puede leerlos. Por ahora solo se convierten planos con texto: pide el PDF exportado desde el programa de dibujo, no impreso ni escaneado.` : lectura.error}</p>
+    <div>
+      <label className="btn btn-primary"><span>Elegir otro plano</span><input type="file" accept="application/pdf,.pdf" className="sr-only" onChange={e => { const f = e.target.files?.[0]; e.target.value = ""; if (f) alElegir(f); }} /></label>
+      {alCerrar && <Button variant="secondary" onClick={alCerrar}>Cerrar</Button>}
+    </div>
   </div>;
 }
