@@ -1803,6 +1803,7 @@ button.article-open:focus-visible { outline: 2px solid var(--pl-blue); outline-o
 .equipo-cuenta > span:nth-child(2) { display: flex; flex: 1; flex-direction: column; min-width: 0; }
 .equipo-cuenta strong { font-size: var(--pl-text-ui); font-weight: var(--pl-weight-medium); }
 .equipo-cuenta small { color: var(--pl-muted); font-size: var(--pl-text-sm); }
+.equipo-cuenta .btn { margin-left: auto; flex-shrink: 0; }
 /* Quién hace una actuación, en la ficha del catálogo y en las tareas */
 .quien-lo-hace { display: flex; flex-direction: column; gap: 8px; margin-bottom: 14px; }
 .quien-lo-hace-cabeza { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }

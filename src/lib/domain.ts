@@ -4,7 +4,7 @@ import type { PlanDraft } from "./captura/plan-draft";
 import { z } from "zod";
 import type { Puesto } from "./puestos";
 export const positionSchema = z.enum(["direccion", "oficina", "tienda", "facturacion", "materiales", "jefe_obra", "equipo"]);
-const roleSchema = z.enum(["admin", "office", "manager", "site", "viewer"]);
+export const roleSchema = z.enum(["admin", "office", "manager", "site", "viewer"]);
 
 export type Role = "admin" | "office" | "manager" | "site" | "viewer";
 export type Actor = { id: string; name: string; role: Role; position: Puesto };

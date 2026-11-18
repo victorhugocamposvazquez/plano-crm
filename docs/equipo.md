@@ -40,6 +40,10 @@ Las cuentas que ya existían requieren revisión manual. El inicio de sesión ac
 
 Fuentes primarias para la configuración: [Supabase: invitación administrativa](https://supabase.com/docs/reference/javascript/auth-admin-inviteuserbyemail), [plantillas y canje de TokenHash en servidor](https://supabase.com/docs/guides/auth/auth-email-templates). La configuración concreta del proyecto queda pendiente; no se ha enviado correo desde estas pruebas.
 
+## Alta desde Equipo
+
+Administración crea la cuenta en Equipo → «Nueva cuenta»: nombre, correo, contraseña, puesto y permiso. `POST /api/equipo/cuentas` comprueba que quien llama es admin y, con la clave de servidor `SUPABASE_SECRET_KEY`, crea el usuario ya confirmado y lo añade a `organization_members`. No envía correo. «Cambiar» en una cuenta existente usa `member.update` para el puesto y el permiso. En la demostración el botón no aparece.
+
 ## Alta manual si el envío no está configurado
 
 Hugo crea o invita la cuenta desde **Supabase → Authentication → Users**, anota el UUID de Auth y comprueba que no pertenece a otro equipo de esta aplicación. Después aplica en SQL Editor, sustituyendo los valores ficticios:
