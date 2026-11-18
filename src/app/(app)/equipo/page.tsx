@@ -6,7 +6,8 @@ import { Button } from "@/components/ui/button";
 import { SearchBox } from "@/components/ui/search-box";
 import { OperarioCard } from "@/components/equipo/operario-card";
 import { OperarioDialog } from "@/components/equipo/operario-dialog";
-import { can, roleNames, type Operario } from "@/lib/domain";
+import { CuentaDialog } from "@/components/equipo/cuenta-dialog";
+import { can, roleNames, type Operario, type OrganizationMember } from "@/lib/domain";
 import { haceOficio, oficiosPosibles } from "@/lib/operarios";
 import { puestoNombres } from "@/lib/puestos";
 import { normalizar } from "@/lib/busqueda";
@@ -17,9 +18,11 @@ import { iniciales } from "@/lib/pasos";
  * y las personas que entran en Plano con su puesto y permiso.
  */
 export default function EquipoPage() {
-  const { data, actor } = useWorkspace();
+  const { data, actor, mode } = useWorkspace();
   const puede = can(actor.role, "operario.create");
+  const puedeCuentas = can(actor.role, "member.invite") && mode === "supabase";
   const [ficha, setFicha] = useState<{ operario: Operario | null } | null>(null);
+  const [cuenta, setCuenta] = useState<OrganizationMember | "nueva" | null>(null);
   const [buscar, setBuscar] = useState("");
   const [oficio, setOficio] = useState("");
   const [soloDisponibles, setSoloDisponibles] = useState(false);
@@ -58,17 +61,22 @@ export default function EquipoPage() {
     </section>
 
     <section aria-labelledby="equipo-cuentas" className="equipo-seccion">
-      <div className="equipo-seccion-cabeza"><h2 id="equipo-cuentas">Con cuenta en Plano · {data.members.length}</h2></div>
+      <div className="equipo-seccion-cabeza">
+        <h2 id="equipo-cuentas">Con cuenta en Plano · {data.members.length}</h2>
+        {puedeCuentas && <Button variant="primary" onClick={() => setCuenta("nueva")}><Plus size={16} strokeWidth={1.8} aria-hidden="true" />Nueva cuenta</Button>}
+      </div>
       <div className="pl-card equipo-cuentas">
         {[...data.members].sort((a, b) => a.display_name.localeCompare(b.display_name, "es")).map(m => <div key={m.user_id} className="equipo-cuenta">
           <span className="msg-avatar" aria-hidden="true">{iniciales(m.display_name)}</span>
           <span><strong>{m.display_name}</strong><small>{puestoNombres[m.position]} · {roleNames[m.role]}</small></span>
           {(data.operarios ?? []).some(o => o.user_id === m.user_id) && <span className="items-tag">También operario</span>}
+          {puedeCuentas && <Button variant="secondary" onClick={() => setCuenta(m)}>Cambiar</Button>}
         </div>)}
       </div>
-      <p className="muted text-xs">Las cuentas, los puestos y los permisos se cambian en la administración de la empresa.</p>
+      <p className="muted text-xs">{mode === "demo" ? "En la demostración no se crean cuentas reales." : puedeCuentas ? "Una cuenta entra en Plano con correo y contraseña. El permiso dice qué puede cambiar; el puesto, qué ve primero." : "Las cuentas las crea administración."}</p>
     </section>
 
     <OperarioDialog open={Boolean(ficha)} operario={ficha?.operario ?? null} onClose={() => setFicha(null)} />
+    <CuentaDialog open={cuenta !== null} miembro={cuenta && cuenta !== "nueva" ? cuenta : null} onClose={() => setCuenta(null)} />
   </div>;
 }
